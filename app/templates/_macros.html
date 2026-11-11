@@ -1,0 +1,59 @@
+{% macro avatar(char, size='md') -%}
+<span class="avatar avatar-{{ size }}" style="--class-color: {{ char.class_name | class_color }}" aria-hidden="true">
+  {%- if char.avatar_url -%}
+  <img src="{{ char.avatar_url }}" alt="" width="64" height="64" loading="lazy" decoding="async">
+  {%- else -%}
+  <span class="avatar-initial">{{ (char.name or '?')[:1] | upper }}</span>
+  {%- endif -%}
+</span>
+{%- endmacro %}
+
+{% macro faction_badge(faction) -%}
+{% if faction %}<span class="badge badge-{{ faction | faction_key }}">{{ faction }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro class_line(char) -%}
+<span class="class-line">
+  <span class="class-dot" style="--class-color: {{ char.class_name | class_color }}" aria-hidden="true"></span>
+  {{ char.race or 'Race inconnue' }} · {{ char.class_name or 'Classe inconnue' }}
+</span>
+{%- endmacro %}
+
+{% macro level_bar(level, max=60) -%}
+{% set pct = [((level or 0) / max * 100) | round(1), 100] | min %}
+<span class="level">
+  <span class="level-value">Niv. <strong>{{ level or '?' }}</strong><span class="visually-hidden"> sur {{ max }}</span></span>
+  <span class="level-track" aria-hidden="true"><span class="level-fill" style="width: {{ pct }}%"></span></span>
+</span>
+{%- endmacro %}
+
+{% macro event_item(e, show_character=true) -%}
+<li class="event event-{{ e.kind }}">
+  <span class="event-icon" aria-hidden="true">{{ e.icon }}</span>
+  <div class="event-body">
+    <p class="event-text">
+      {%- if show_character and e.character -%}
+      <a href="/perso/{{ e.character.id }}">{{ e.text }}</a>
+      {%- else -%}
+      {{ e.text }}
+      {%- endif -%}
+    </p>
+    <p class="event-time">{{ e.at | time_tag }}</p>
+  </div>
+</li>
+{%- endmacro %}
+
+{% macro chart_table(rows, headers, caption) -%}
+<details class="data-table">
+  <summary>Voir les données du graphique</summary>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="{{ caption }}">
+    <table>
+      <caption class="visually-hidden">{{ caption }}</caption>
+      <thead><tr>{% for h in headers %}<th scope="col">{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for row in rows %}<tr>{% for cell in row %}{% if loop.first %}<th scope="row">{{ cell }}</th>{% else %}<td>{{ cell }}</td>{% endif %}{% endfor %}</tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</details>
+{%- endmacro %}

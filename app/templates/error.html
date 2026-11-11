@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="error-page card" aria-labelledby="error-title">
+  <p class="error-code" aria-hidden="true">{{ code }}</p>
+  <h1 id="error-title">{{ title }}</h1>
+  <p>{{ message }}</p>
+  <a class="button button-primary" href="/">Retour au QG</a>
+</section>
+{% endblock %}

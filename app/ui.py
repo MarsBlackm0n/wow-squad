@@ -1,0 +1,202 @@
+"""Aides d'affichage : filtres Jinja, couleurs de classe et graphiques SVG rendus côté serveur.
+
+Les graphiques sont du SVG statique (pas de JS) avec un titre, une description textuelle et un tableau de données
+équivalent dans la page : lisibles au lecteur d'écran et sans dépendance externe.
+"""
+
+from __future__ import annotations
+
+import unicodedata
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from html import escape
+from zoneinfo import ZoneInfo
+
+from markupsafe import Markup
+
+# Couleurs officielles des classes, utilisées en accent (liseré, point) et jamais comme seul porteur d'information.
+CLASS_COLORS = {
+    "warrior": "#C69B6D", "paladin": "#F48CBA", "hunter": "#AAD372", "rogue": "#FFF468", "priest": "#F0F0F0",
+    "shaman": "#0070DD", "mage": "#3FC7EB", "warlock": "#8788EE", "druid": "#FF7C0A", "deathknight": "#C41E3A",
+    "monk": "#00FF98", "demonhunter": "#A330C9", "evoker": "#33937F",
+}
+CLASS_ALIASES = {
+    "guerri": "warrior", "paladin": "paladin", "chass": "hunter", "hunter": "hunter", "voleu": "rogue",
+    "rogue": "rogue", "pretr": "priest", "priest": "priest", "chaman": "shaman", "shaman": "shaman", "mage": "mage",
+    "demonist": "warlock", "warlock": "warlock", "druid": "druid", "chevalier": "deathknight", "death": "deathknight",
+    "moine": "monk", "monk": "monk", "demon hunter": "demonhunter", "chasseur de demons": "demonhunter",
+    "evocat": "evoker", "evoker": "evoker",
+}
+
+
+def _fold(text: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", (text or "").lower()) if unicodedata.category(c) != "Mn")
+
+
+def class_key(class_name: str) -> str:
+    folded = _fold(class_name)
+    # Les alias les plus longs d'abord : « chasseur de démons » avant « chass ».
+    for alias in sorted(CLASS_ALIASES, key=len, reverse=True):
+        if folded.startswith(alias):
+            return CLASS_ALIASES[alias]
+    return ""
+
+
+def class_color(class_name: str) -> str:
+    return CLASS_COLORS.get(class_key(class_name), "#8B93A1")
+
+
+def faction_key(faction: str) -> str:
+    f = _fold(faction)
+    return "horde" if "horde" in f else "alliance" if "alliance" in f else "neutral"
+
+
+def _aware(dt: datetime) -> datetime:
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def reltime(dt: datetime | None) -> str:
+    if not dt:
+        return "jamais"
+    seconds = int((datetime.now(timezone.utc) - _aware(dt)).total_seconds())
+    if seconds < 60:
+        return "à l'instant"
+    for unit_seconds, singular, plural in ((86400 * 30, "mois", "mois"), (86400, "jour", "jours"),
+                                           (3600, "heure", "heures"), (60, "minute", "minutes")):
+        if seconds >= unit_seconds:
+            n = seconds // unit_seconds
+            return f"il y a {n} {singular if n == 1 else plural}"
+    return "à l'instant"
+
+
+def make_formatters(tz_name: str):
+    tz = ZoneInfo(tz_name)
+
+    def localtime(dt: datetime | None, fmt: str = "%d/%m/%Y à %H:%M") -> str:
+        return _aware(dt).astimezone(tz).strftime(fmt) if dt else ""
+
+    def time_tag(dt: datetime | None) -> Markup:
+        """<time> avec date ISO lisible par les machines et date complète au survol."""
+        if not dt:
+            return Markup("<span>jamais</span>")
+        iso = _aware(dt).isoformat()
+        return Markup(f'<time datetime="{iso}" title="{escape(localtime(dt))}">{escape(reltime(dt))}</time>')
+
+    return localtime, time_tag
+
+
+FR_DAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+FR_MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
+             "novembre", "décembre"]
+
+
+def frdate(d, tz_name: str = "Europe/Paris") -> str:
+    """« Aujourd'hui », « Hier » ou « mardi 10 novembre »."""
+    today = datetime.now(ZoneInfo(tz_name)).date()
+    if d == today:
+        return "Aujourd'hui"
+    if (today - d).days == 1:
+        return "Hier"
+    return f"{FR_DAYS[d.weekday()].capitalize()} {d.day} {FR_MONTHS[d.month - 1]}"
+
+
+def number(value, digits: int = 0) -> str:
+    if value is None:
+        return "—"
+    text = f"{value:,.{digits}f}".replace(",", " ")
+    return text.replace(".", ",") if digits else text
+
+
+# --- Graphiques ----------------------------------------------------------------------------------
+
+@dataclass
+class Series:
+    label: str
+    color: str
+    points: list[tuple[datetime, float]]
+
+
+def line_chart(series: list[Series], title: str, desc: str, chart_id: str, y_label: str = "",
+               y_min: float | None = None, step: bool = True, width: int = 640, height: int = 280,
+               tz_name: str = "Europe/Paris") -> Markup:
+    series = [s for s in series if s.points]
+    if not series:
+        return Markup("")
+    pad_l, pad_r, pad_t, pad_b = 44, 14, 22, 30
+    plot_w, plot_h = width - pad_l - pad_r, height - pad_t - pad_b
+    xs = [_aware(p[0]).timestamp() for s in series for p in s.points]
+    ys = [p[1] for s in series for p in s.points]
+    x0, x1 = min(xs), max(xs)
+    if x1 - x0 < 3600:
+        x0 -= 1800
+        x1 += 1800
+    lo = y_min if y_min is not None else min(ys)
+    hi = max(ys)
+    if hi - lo < 1:
+        hi = lo + 1
+    ticks = _nice_ticks(lo, hi)
+    lo, hi = min(lo, ticks[0]), max(hi, ticks[-1])
+
+    def sx(ts: float) -> float:
+        return pad_l + (ts - x0) / (x1 - x0) * plot_w
+
+    def sy(v: float) -> float:
+        return pad_t + plot_h - (v - lo) / (hi - lo) * plot_h
+
+    parts = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" '
+             f'aria-labelledby="{chart_id}-title {chart_id}-desc" preserveAspectRatio="xMidYMid meet">',
+             f'<title id="{chart_id}-title">{escape(title)}</title>',
+             f'<desc id="{chart_id}-desc">{escape(desc)}</desc>', '<g class="chart-grid" aria-hidden="true">']
+    for t in ticks:
+        y = sy(t)
+        parts.append(f'<line x1="{pad_l}" x2="{pad_l + plot_w}" y1="{y:.1f}" y2="{y:.1f}"/>'
+                     f'<text x="{pad_l - 8}" y="{y + 4:.1f}" text-anchor="end">{number(t)}</text>')
+    ticks_x = _time_ticks(x0, x1, ZoneInfo(tz_name))
+    for i, (ts, label) in enumerate(ticks_x):
+        anchor = "start" if i == 0 else "end" if i == len(ticks_x) - 1 else "middle"
+        parts.append(f'<text x="{sx(ts):.1f}" y="{height - 8}" text-anchor="{anchor}">{label}</text>')
+    if y_label:
+        parts.append(f'<text x="{pad_l}" y="{pad_t - 4}" class="chart-axis-label">{escape(y_label)}</text>')
+    parts.append("</g>")
+
+    for s in series:
+        pts = sorted(((_aware(t).timestamp(), v) for t, v in s.points))
+        d, prev_y = [], None
+        for i, (ts, v) in enumerate(pts):
+            x, y = sx(ts), sy(v)
+            if i == 0:
+                d.append(f"M{x:.1f},{y:.1f}")
+            else:
+                d.append(f"H{x:.1f}V{y:.1f}" if step else f"L{x:.1f},{y:.1f}")
+            prev_y = y
+        end_x = pad_l + plot_w
+        d.append(f"H{end_x:.1f}")
+        parts.append(f'<path class="chart-line" d="{" ".join(d)}" stroke="{s.color}" aria-hidden="true"/>')
+        parts.append(f'<circle cx="{end_x:.1f}" cy="{prev_y:.1f}" r="4" fill="{s.color}" aria-hidden="true"/>')
+
+    # Pas d'étiquettes dans le SVG : la légende est une liste HTML à côté (lisible, zoomable, traduisible).
+    parts.append("</svg>")
+    return Markup("".join(parts))
+
+
+def _nice_ticks(lo: float, hi: float, count: int = 5) -> list[float]:
+    span = hi - lo
+    raw = span / max(count - 1, 1)
+    magnitude = 10 ** len(str(int(raw))) / 10 if raw >= 1 else 1
+    step = next(m * magnitude for m in (1, 2, 2.5, 5, 10) if m * magnitude >= raw)
+    start = (lo // step) * step
+    ticks, t = [], start
+    while t <= hi + step * 0.001:
+        ticks.append(round(t, 2))
+        t += step
+    if ticks[-1] < hi:
+        ticks.append(round(t, 2))
+    return ticks
+
+
+def _time_ticks(x0: float, x1: float, tz: ZoneInfo, count: int = 5) -> list[tuple[float, str]]:
+    span = x1 - x0
+    fmt = "%H:%M" if span < 2 * 86400 else "%d/%m"
+    return [(x0 + span * i / (count - 1),
+             datetime.fromtimestamp(x0 + span * i / (count - 1), tz=tz).strftime(fmt))
+            for i in range(count)]

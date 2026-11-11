@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, faction_badge, class_line, level_bar, event_item, chart_table %}
+
+{% macro squad_panel() %}
+<div class="squad-grid">
+  <div class="card join-card">
+    <h3>Lier son compte Battle.net <span class="tag">Recommandé</span></h3>
+    <p>On passe par la page officielle de Blizzard : ton mot de passe n'arrive jamais ici. Blizzard nous donne seulement la liste de tes persos Forever.</p>
+    <p class="hint"><strong>Une seule fois suffit.</strong> Ensuite, tes persos sont suivis en continu par l'app. Reviens ici seulement pour récupérer un nouveau reroll.</p>
+    {% if settings.battlenet_login_enabled %}
+    <a class="button button-primary" href="/auth/battlenet">Lier mon compte Battle.net</a>
+    {% else %}
+    <p class="muted">Pas encore disponible : il faut définir <code>PUBLIC_URL</code> et les identifiants API (voir le README).</p>
+    {% endif %}
+  </div>
+
+  <form class="card join-card" method="post" action="/persos" novalidate>
+    <h3>Ajouter un perso à la main</h3>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% set errors = add_form.errors or {} %}
+    <fieldset class="name-fields">
+      <legend>Nom du perso, tel qu'affiché en jeu</legend>
+      <p id="name-hint" class="hint">Sur Forever, chaque perso a un prénom et un nom. Exemple : « Mars » et « Blackmon ».</p>
+      <div class="field-row">
+        <div class="field">
+          <label for="prenom">Prénom</label>
+          <input id="prenom" name="prenom" type="text" required autocomplete="off" spellcheck="false" maxlength="40"
+                 value="{{ add_form.prenom or '' }}" aria-describedby="name-hint{{ ' prenom-error' if errors.prenom }}"
+                 {% if errors.prenom %}aria-invalid="true" autofocus{% endif %}>
+          {% if errors.prenom %}<p id="prenom-error" class="field-error"><span aria-hidden="true">!</span> {{ errors.prenom }}</p>{% endif %}
+        </div>
+        <div class="field">
+          <label for="nom">Nom</label>
+          <input id="nom" name="nom" type="text" required autocomplete="off" spellcheck="false" maxlength="40"
+                 value="{{ add_form.nom or '' }}" aria-describedby="name-hint{{ ' nom-error' if errors.nom }}"
+                 {% if errors.nom %}aria-invalid="true"{% if not errors.prenom %} autofocus{% endif %}{% endif %}>
+          {% if errors.nom %}<p id="nom-error" class="field-error"><span aria-hidden="true">!</span> {{ errors.nom }}</p>{% endif %}
+        </div>
+      </div>
+    </fieldset>
+    <div class="field">
+      <label for="joueur">Joueur <span class="optional">(facultatif)</span></label>
+      <p id="joueur-hint" class="hint">Le pote derrière le perso, pour s'y retrouver entre les rerolls.</p>
+      <input id="joueur" name="joueur" type="text" autocomplete="off" maxlength="40" value="{{ add_form.joueur or '' }}" aria-describedby="joueur-hint">
+    </div>
+    <button type="submit" class="button button-primary">Ajouter à la squad</button>
+  </form>
+</div>
+
+{% if chars %}
+<div class="card members">
+  <h3>Membres suivis <span class="count">{{ chars | length }}</span></h3>
+  <ul class="member-list" role="list">
+    {% for c in chars | sort(attribute='name') %}
+    <li class="member">
+      {{ avatar(c, 'sm') }}
+      <div class="member-body">
+        <a href="/perso/{{ c.id }}" class="member-name">{{ c.display_name }}</a>
+        <span class="rank-meta">{% if c.player %}{{ c.player }} · {% endif %}{% if c.battletag %}compte lié{% else %}ajouté à la main{% endif %}</span>
+      </div>
+      <span class="status status-{{ c.status }}">{{ {'ok': 'Suivi', 'pending': "En attente de l'API", 'error': 'Erreur'}[c.status] }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if chars | selectattr('status', 'equalto', 'pending') | list %}
+  <p class="hint">« En attente » : Blizzard n'expose un perso qu'à partir du niveau 10, après une déconnexion. Vérifie aussi l'orthographe du prénom et du nom.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if accounts %}
+<div class="card">
+  <h3>Comptes Battle.net liés <span class="count">{{ accounts | length }}</span></h3>
+  <ul class="account-list" role="list">
+    {% for a in accounts %}
+    <li><strong>{{ a.battletag.split('#')[0] }}</strong> <span class="muted">· lié {{ a.linked_at | time_tag }}</span></li>
+    {% endfor %}
+  </ul>
+  <p class="hint">Aucun mot de passe ni jeton n'est enregistré : seul le BattleTag est conservé.</p>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% block content %}
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-text">
+    <p class="eyebrow">QG de la bande · World of Warcraft: Forever</p>
+    <h1 id="hero-title">{{ settings.squad_name }}</h1>
+    <p class="hero-status">
+      {% if not blizzard_ready %}
+        <span class="status-dot status-off" aria-hidden="true"></span> API Battle.net non configurée : les données ne se mettent pas à jour.
+      {% elif last_cycle %}
+        <span class="status-dot status-on" aria-hidden="true"></span> Données à jour, synchro {{ last_cycle | time_tag }}
+        <span class="muted">(toutes les {{ (settings.refresh_interval / 60) | round | int }} min)</span>
+      {% else %}
+        <span class="status-dot status-wait" aria-hidden="true"></span> Première synchro en cours…
+      {% endif %}
+    </p>
+  </div>
+</section>
+
+{% if not chars %}
+<section class="onboarding card" aria-labelledby="onboarding-title">
+  <h2 id="onboarding-title">Bienvenue au QG !</h2>
+  <p>Trois étapes pour que la page raconte vos aventures :</p>
+  <ol class="steps">
+    <li><strong>Ajoutez vos persos</strong> : liez votre compte Battle.net ou saisissez prénom et nom ci-dessous.</li>
+    <li><strong>Jouez</strong> : un perso apparaît dans l'API à partir du niveau 10, après une déconnexion.</li>
+    <li><strong>Revenez</strong> : le journal, la course au niveau et les idées de groupe se remplissent toutes seules.</li>
+  </ol>
+</section>
+<section id="squad" class="panel-standalone" aria-labelledby="squad-title">
+  <h2 id="squad-title" class="visually-hidden">Ajouter des persos</h2>
+  {{ squad_panel() }}
+</section>
+{% else %}
+
+{# ----- L'essentiel, toujours visible ----- #}
+<div class="spotlight">
+  {% if goal %}
+  <section class="goal" aria-labelledby="goal-title">
+    <h2 id="goal-title" class="spot-title">Objectif : toute la squad niveau {{ max_level }}</h2>
+    <div class="goal-figure">
+      <span class="goal-percent">{{ goal.progress | round | int }}&nbsp;%</span>
+      <progress class="goal-progress" max="100" value="{{ goal.progress }}" aria-labelledby="goal-title"
+                aria-describedby="goal-detail">{{ goal.progress }} %</progress>
+    </div>
+    <p id="goal-detail" class="goal-detail">
+      Niveau moyen <strong>{{ goal.average_level | round(1) | replace('.', ',') }}</strong> · {{ goal.at_max }}/{{ goal.members }} au niveau max.
+      {% if goal.gap >= 3 %}<br><a href="/perso/{{ goal.leader.id }}">{{ goal.leader.name }}</a> mène, <a href="/perso/{{ goal.laggard.id }}">{{ goal.laggard.name }}</a> ferme la marche ({{ goal.gap }} niveaux d'écart).{% endif %}
+    </p>
+  </section>
+  {% endif %}
+
+  <section class="spot card" aria-labelledby="headlines-title">
+    <h2 id="headlines-title" class="spot-title">À la une</h2>
+    {% if headlines %}
+    <ul class="events" role="list">{% for e in headlines %}{{ event_item(e) }}{% endfor %}</ul>
+    {% else %}
+    <p class="muted spot-empty">Rien de marquant ces 3 derniers jours. Le prochain palier de 10 niveaux fera la une.</p>
+    {% endif %}
+  </section>
+
+  <section class="spot card" aria-labelledby="seen-title">
+    <h2 id="seen-title" class="spot-title">Vus ces dernières 24&nbsp;h</h2>
+    {% if seen %}
+    <ul class="chips" role="list">
+      {% for c in seen %}
+      <li><a class="chip" href="/perso/{{ c.id }}">{{ avatar(c, 'xs') }}<span>{{ c.name }}<span class="visually-hidden">, </span><span class="chip-meta">{{ c.last_login | time_tag }}</span></span></a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted spot-empty">Personne depuis hier. Ce soir, on se connecte&nbsp;?</p>
+    {% endif %}
+  </section>
+</div>
+
+{# ----- Onglets : liens d'ancre sans JS, motif ARIA « tabs » avec JS (static/app.js) ----- #}
+<div class="tabs" data-tabs>
+  <nav class="tablist-wrap" aria-label="Sections du QG">
+    <ul class="tablist" data-tablist>
+      <li><a class="tab" href="#ce-soir" data-tab>Ce soir{% if ideas %} <span class="tab-count">{{ ideas | length }}</span>{% endif %}</a></li>
+      <li><a class="tab" href="#journal" data-tab>Journal</a></li>
+      <li><a class="tab" href="#progression" data-tab>Progression</a></li>
+      <li><a class="tab" href="#palmares" data-tab>Palmarès</a></li>
+      <li><a class="tab" href="#squad" data-tab>La squad <span class="tab-count">{{ chars | length }}</span></a></li>
+    </ul>
+  </nav>
+
+  <section id="ce-soir" class="panel" data-panel aria-labelledby="ce-soir-title">
+    <div class="section-head">
+      <h2 id="ce-soir-title">Ce soir, on fait quoi&nbsp;?</h2>
+      <p class="section-lead">Les groupes possibles d'après vos niveaux actuels, faction par faction.</p>
+    </div>
+    {% if ideas %}
+    <ul class="ideas" role="list">
+      {% for idea in ideas %}
+      <li class="idea card">
+        <h3 class="idea-title">{{ idea.dungeon }}</h3>
+        <p class="idea-range">Niveaux {{ idea.min_level }} à {{ idea.max_level }} {{ faction_badge(idea.faction | capitalize if idea.faction != 'neutral' else '') }}</p>
+        <ul class="idea-members" role="list" aria-label="Joueurs possibles">
+          {% for m in idea.members %}
+          <li>{{ avatar(m, 'xs') }}<a href="/perso/{{ m.id }}">{{ m.name }}</a> <span class="muted">niv.&nbsp;{{ m.level }}</span></li>
+          {% endfor %}
+        </ul>
+        <p class="idea-roles {{ 'ok' if idea.has_tank and idea.has_heal else 'warn' }}">
+          <span aria-hidden="true">{{ '🛡️' if idea.has_tank and idea.has_heal else '⚠️' }}</span> {{ idea.roles_hint }}
+        </p>
+        {% if idea.alternatives %}<p class="idea-alt">Ou bien : {{ idea.alternatives[:3] | join(', ') }}</p>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">Pas encore de groupe en vue : il faut au moins deux persos de la même faction dans une même tranche de niveaux de donjon. Le premier à 13 ouvre le bal&nbsp;!</p>
+    {% endif %}
+  </section>
+
+  <section id="journal" class="panel" data-panel aria-labelledby="journal-title">
+    <div class="section-head">
+      <h2 id="journal-title">Journal de la squad</h2>
+      <p class="section-lead">Ce qui s'est passé, jour après jour.</p>
+    </div>
+    {% if days %}
+    <ol class="days" role="list">
+      {% for d in days %}
+      <li>
+        <article class="day card" aria-labelledby="day-{{ loop.index }}">
+          <header class="day-head">
+            <h3 id="day-{{ loop.index }}" class="day-title"><time datetime="{{ d.day.isoformat() }}">{{ d.day | frdate }}</time></h3>
+            <p class="day-headline">{{ d.headline }}</p>
+          </header>
+          {% for ev in d.evenings %}
+          <p class="evening"><span aria-hidden="true">🍻</span> Soirée à {{ ev.members | length }} vers {{ ev.start.strftime('%H') }}&nbsp;h : {% for m in ev.members %}<a href="/perso/{{ m.id }}">{{ m.name }}</a>{% if not loop.last %}{{ ' et ' if loop.revindex == 2 else ', ' }}{% endif %}{% endfor %}</p>
+          {% endfor %}
+          {% if d.highlights %}
+          <ul class="events" role="list">{% for e in d.highlights %}{{ event_item(e) }}{% endfor %}</ul>
+          {% endif %}
+          {% if d.events | length > d.highlights | length %}
+          <details class="day-more">
+            <summary>Tout le fil du jour ({{ d.events | length }} événements)</summary>
+            <ul class="events events-compact" role="list">{% for e in d.events %}{{ event_item(e) }}{% endfor %}</ul>
+          </details>
+          {% endif %}
+        </article>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="empty">Le journal se remplit dès que quelqu'un gagne un niveau, un haut fait ou une monture.</p>
+    {% endif %}
+  </section>
+
+  <section id="progression" class="panel" data-panel aria-labelledby="progression-title">
+    <h2 id="progression-title" class="visually-hidden">Progression</h2>
+    <div class="layout">
+      <div class="layout-main">
+        {% if race_chart %}
+        <section class="race card" aria-labelledby="race-title">
+          <h3 id="race-title" class="h2-like">Course au niveau</h3>
+          <p class="section-lead">Les 30 derniers jours. Chaque courbe porte la couleur de la classe du perso.</p>
+          <figure class="chart-frame">
+            {{ race_chart }}
+            <figcaption>
+              <ul class="legend" role="list">
+                {% for s in race_series %}<li><span class="legend-swatch" style="background: {{ s.color }}" aria-hidden="true"></span>{{ s.label }} <strong>{{ s.points[-1][1] | int }}</strong></li>{% endfor %}
+              </ul>
+            </figcaption>
+          </figure>
+          {{ chart_table(race_rows, ['Perso', 'Niveau au départ', 'Niveau actuel', 'Progression'], 'Course au niveau sur 30 jours') }}
+        </section>
+        {% else %}
+        <p class="empty">La course au niveau apparaîtra après quelques synchros.</p>
+        {% endif %}
+      </div>
+      <div class="layout-side">
+        <section class="board" aria-labelledby="board-title">
+          <h3 id="board-title" class="h2-like">Classement</h3>
+          <ol class="ranking" role="list">
+            {% for c in chars %}
+            <li class="rank-item {{ 'is-pending' if c.status == 'pending' }}" style="--class-color: {{ c.class_name | class_color }}">
+              <span class="rank-pos" aria-hidden="true">{{ '—' if c.status == 'pending' else loop.index }}</span>
+              {{ avatar(c, 'sm') }}
+              <div class="rank-body">
+                <a class="rank-name" href="/perso/{{ c.id }}">
+                  {%- if c.status != 'pending' %}<span class="visually-hidden">{{ loop.index }}. </span>{% endif -%}
+                  {{ c.display_name }}
+                </a>
+                {% if c.status == 'pending' %}
+                <span class="rank-meta">En attente de l'API</span>
+                {% else %}
+                <span class="rank-meta">{{ c.class_name }}{% if c.player %} · {{ c.player }}{% endif %}</span>
+                {{ level_bar(c.level, max_level) }}
+                {% endif %}
+              </div>
+            </li>
+            {% endfor %}
+          </ol>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <section id="palmares" class="panel" data-panel aria-labelledby="palmares-title">
+    <div class="section-head">
+      <h2 id="palmares-title">Palmarès</h2>
+      <p class="section-lead">Les trophées de la semaine, les premières fois et les records de la squad.</p>
+    </div>
+    <div class="palmares-grid">
+      <section class="card" aria-labelledby="awards-title">
+        <h3 id="awards-title">Trophées de la semaine</h3>
+        {% if week.awards %}
+        <ul class="award-list" role="list">
+          {% for a in week.awards %}
+          <li class="award award-{{ a.key }}">
+            <span class="award-icon" aria-hidden="true">{{ a.icon }}</span>
+            <div><p class="award-title">{{ a.title }}</p><p class="award-winner"><a href="/perso/{{ a.winner.id }}">{{ a.winner.name }}</a> · {{ a.detail }}</p></div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}<p class="muted">Pas encore de trophée cette semaine.</p>{% endif %}
+      </section>
+
+      <section class="card" aria-labelledby="pantheon-title">
+        <h3 id="pantheon-title">Panthéon des premières fois</h3>
+        {% if firsts %}
+        <dl class="firsts">
+          {% for f in firsts %}
+          <div class="first"><dt>{{ f.label }}</dt><dd><a href="/perso/{{ f.character.id }}">{{ f.character.name }}</a> <span class="muted">· {{ f.at | localtime('%d/%m') }}</span></dd></div>
+          {% endfor %}
+        </dl>
+        {% else %}<p class="muted">Le premier à passer un palier de 10 niveaux entrera ici.</p>{% endif %}
+      </section>
+
+      <section class="card" aria-labelledby="records-title">
+        <h3 id="records-title">Records</h3>
+        {% if records %}
+        <ul class="award-list" role="list">
+          {% for r in records %}
+          <li class="award">
+            <span class="award-icon" aria-hidden="true">{{ r.icon }}</span>
+            <div><p class="award-title">{{ r.label }}</p><p class="award-winner"><a href="/perso/{{ r.character.id }}">{{ r.character.name }}</a> · {{ r.value }} · <time datetime="{{ r.day.isoformat() }}">{{ r.day | frdate | lower }}</time></p></div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}<p class="muted">Aucun record pour l'instant.</p>{% endif %}
+      </section>
+    </div>
+  </section>
+
+  <section id="squad" class="panel" data-panel aria-labelledby="squad-title">
+    <div class="section-head">
+      <h2 id="squad-title">La squad</h2>
+      <p class="section-lead">Ajouter des persos, lier des comptes, voir qui est suivi. Personne n'a jamais à donner son mot de passe ici.</p>
+    </div>
+    {{ squad_panel() }}
+    <form method="post" action="/recap/envoyer" class="recap-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="button button-ghost button-small">Envoyer le récap de la semaine maintenant</button>
+      <p class="hint">Il part aussi automatiquement chaque semaine sur Telegram ou Discord, si un canal est configuré.</p>
+    </form>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

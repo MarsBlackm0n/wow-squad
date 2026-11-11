@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, faction_badge, class_line, level_bar, event_item, chart_table %}
+
+{% block title %}{{ char.display_name }}{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Fil d'Ariane">
+  <ol>
+    <li><a href="/">QG</a></li>
+    <li><a href="/perso/{{ char.id }}" aria-current="page">{{ char.display_name }}</a></li>
+  </ol>
+</nav>
+
+<section class="profile card" style="--class-color: {{ char.class_name | class_color }}" aria-labelledby="char-title">
+  {{ avatar(char, 'lg') }}
+  <div class="profile-main">
+    <h1 id="char-title" class="profile-name">{{ char.name }} <span class="profile-surname">{{ char.surname }}</span></h1>
+    <p class="profile-meta">
+      {{ class_line(char) }}
+      {{ faction_badge(char.faction) }}
+    </p>
+    <ul class="profile-facts" role="list">
+      {% if char.player %}<li><span class="fact-label">Joueur</span> {{ char.player }}</li>{% endif %}
+      {% if char.guild %}<li><span class="fact-label">Guilde</span> &lt;{{ char.guild }}&gt;</li>{% endif %}
+      {% if char.ruleset %}<li><span class="fact-label">Mode</span> {{ char.ruleset }}</li>{% endif %}
+      <li><span class="fact-label">Vu en jeu</span> {{ char.last_login | time_tag }}</li>
+    </ul>
+  </div>
+  <form method="post" action="/perso/{{ char.id }}/rafraichir" class="profile-action">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit" class="button button-secondary">Rafraîchir</button>
+    <p class="hint">Mis à jour {{ char.refreshed_at | time_tag }}</p>
+  </form>
+</section>
+
+{% if char.status != 'ok' or char.status_message %}
+<div class="notice notice-{{ 'info' if char.status in ('ok', 'pending') else 'error' }}" role="note">
+  <p><strong>{{ {'pending': "En attente de l'API Blizzard", 'error': 'Erreur lors de la dernière mise à jour', 'ok': 'À savoir'}[char.status] }}</strong></p>
+  <p>{{ char.status_message }}</p>
+</div>
+{% endif %}
+
+<section aria-labelledby="stats-title">
+  <h2 id="stats-title" class="visually-hidden">Statistiques</h2>
+  <dl class="stats">
+    <div class="stat stat-wide">
+      <dt>Niveau</dt>
+      <dd>{{ level_bar(char.level, max_level) }}</dd>
+    </div>
+    <div class="stat"><dt>Niveau d'objet</dt><dd>{{ char.ilvl | number(1) if char.ilvl else '—' }}</dd></div>
+    <div class="stat"><dt>Points de hauts faits</dt><dd>{{ char.achievement_points | number }}</dd></div>
+    <div class="stat"><dt>Montures</dt><dd>{{ mounts | length if mounts is not none else '—' }}</dd></div>
+    <div class="stat"><dt>Morts</dt><dd>{{ char.deaths | number }}</dd></div>
+    <div class="stat"><dt>Victoires honorables</dt><dd>{{ honorable_kills | number }}</dd></div>
+  </dl>
+</section>
+
+<div class="layout">
+  <div class="layout-main">
+    {% if level_chart %}
+    <section class="card" aria-labelledby="progress-title">
+      <h2 id="progress-title">Progression</h2>
+      <figure class="chart-frame">{{ level_chart }}</figure>
+      {% if ilvl_chart %}<figure class="chart-frame">{{ ilvl_chart }}</figure>{% endif %}
+      {% set rows = [] %}
+      {% for s in snaps | reverse %}{% if loop.index <= 30 %}{% set _ = rows.append((s.taken_at | localtime, s.level, (s.ilvl | number(1)) if s.ilvl else '—', s.achievement_points | number)) %}{% endif %}{% endfor %}
+      {{ chart_table(rows, ['Date', 'Niveau', 'ilvl', 'Points de HF'], 'Historique de ' ~ char.display_name) }}
+    </section>
+    {% else %}
+    <section class="card" aria-labelledby="progress-title">
+      <h2 id="progress-title">Progression</h2>
+      <p class="empty">La courbe apparaîtra après quelques mises à jour.</p>
+    </section>
+    {% endif %}
+
+    <section aria-labelledby="timeline-title">
+      <h2 id="timeline-title">Son histoire</h2>
+      {% set visible = events | rejectattr('kind', 'equalto', 'session') | list %}
+      {% if visible %}
+      <ul class="events timeline" role="list">
+        {% for e in visible %}{{ event_item(e, show_character=false) }}{% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty">Rien pour l'instant. Le premier niveau gagné ouvrira le bal.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="layout-side">
+    <section class="card" aria-labelledby="prof-title">
+      <h2 id="prof-title">Métiers</h2>
+      {% if professions %}
+      <ul class="professions" role="list">
+        {% for name, skill in professions | dictsort(by='value', reverse=true) %}
+        {% set cap = [300, skill] | max %}
+        <li>
+          <div class="prof-head"><span>{{ name }}</span><span><strong>{{ skill }}</strong><span class="muted">/{{ cap }}</span></span></div>
+          <span class="level-track" aria-hidden="true"><span class="level-fill" style="width: {{ (skill / cap * 100) | round(1) }}%"></span></span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty">Aucun métier remonté par l'API pour l'instant.</p>
+      {% endif %}
+    </section>
+
+    {% if mounts %}
+    <section class="card" aria-labelledby="mounts-title">
+      <h2 id="mounts-title">Écurie <span class="count">{{ mounts | length }}</span></h2>
+      <ul class="tag-list" role="list">
+        {% for name in mounts.values() | sort %}<li class="tag">{{ name }}</li>{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <section class="card" aria-labelledby="settings-title">
+      <h2 id="settings-title">Réglages</h2>
+      <form method="post" action="/perso/{{ char.id }}/joueur" class="inline-form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <div class="field">
+          <label for="joueur">Joueur</label>
+          <input id="joueur" name="joueur" type="text" maxlength="40" value="{{ char.player }}" autocomplete="off">
+        </div>
+        <button type="submit" class="button button-secondary">Enregistrer</button>
+      </form>
+
+      <details class="danger-zone">
+        <summary>Retirer de la squad</summary>
+        <p>{{ char.display_name }} disparaîtra du QG avec tout son historique (courbes, journal). Ça ne touche évidemment pas au perso en jeu.</p>
+        <form method="post" action="/perso/{{ char.id }}/supprimer">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit" class="button button-danger">Oui, retirer {{ char.name }}</button>
+        </form>
+      </details>
+    </section>
+  </div>
+</div>
+{% endblock %}

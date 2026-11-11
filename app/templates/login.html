@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Connexion{% endblock %}
+
+{% block content %}
+<section class="login card" aria-labelledby="login-title">
+  <h1 id="login-title">Entrer au QG</h1>
+  <p>Ce QG est réservé à {{ settings.squad_name }}. Saisis le mot de passe partagé par la bande.</p>
+  <form method="post" action="/connexion" novalidate>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="suite" value="{{ suite }}">
+    <div class="field">
+      <label for="password">Mot de passe du QG</label>
+      {% if error %}<p id="password-error" class="field-error"><span aria-hidden="true">!</span> {{ error }}</p>{% endif %}
+      <input id="password" name="password" type="password" required autocomplete="current-password" autofocus
+             {% if error %}aria-invalid="true" aria-describedby="password-error"{% endif %}>
+    </div>
+    <button type="submit" class="button button-primary button-block">Entrer</button>
+  </form>
+</section>
+{% endblock %}
