@@ -4,34 +4,31 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ settings.squad_name }}{% endblock %} · QG WoW: Forever</title>
-  <meta name="description" content="Le QG de {{ settings.squad_name }} sur World of Warcraft: Forever : progression, fil d'activité et récap de la semaine.">
+  <meta name="description" content="Le QG de {{ settings.squad_name }} sur World of Warcraft: Forever : progression, journal de groupe et récap de la semaine.">
   <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#0e1014">
+  <meta name="theme-color" content="#0c0e12">
   <link rel="icon" href="{{ url_for('static', path='favicon.svg') }}" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=2">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=6">
   <script>
     // Appliqué avant l'affichage pour éviter un flash du mauvais thème.
     try { var t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
   </script>
-  <script src="{{ url_for('static', path='app.js') }}?v=2" defer></script>
+  <script src="{{ url_for('static', path='app.js') }}?v=6" defer></script>
 </head>
 <body>
+  {% include "_icons.html" %}
   <a class="skip-link" href="#contenu">Aller au contenu</a>
 
   <header class="site-header">
     <div class="container header-inner">
       <a class="brand" href="/" aria-label="{{ settings.squad_name }}, retour au QG">
-        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-          <path d="M16 2 28 8v8c0 7-5 12-12 14C9 28 4 23 4 16V8z" fill="currentColor" opacity=".18"/>
-          <path d="M16 2 28 8v8c0 7-5 12-12 14C9 28 4 23 4 16V8z" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="m11 12 5 10 5-10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <svg class="brand-mark" aria-hidden="true" focusable="false"><use href="#logo"/></svg>
         <span class="brand-text">
           <span class="brand-name">{{ settings.squad_name }}</span>
-          <span class="brand-sub">QG WoW: Forever</span>
+          <span class="brand-sub">QG · WoW Forever</span>
         </span>
       </a>
       <nav class="site-nav" aria-label="Navigation principale">
@@ -42,7 +39,8 @@
       </nav>
       <div class="header-tools">
         <button type="button" class="icon-button" data-theme-toggle aria-pressed="false" hidden>
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="currentColor"/></svg>
+          <svg class="icon icon-moon" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg>
+          <svg class="icon icon-sun" aria-hidden="true" focusable="false"><use href="#i-sun"/></svg>
           <span class="visually-hidden">Thème sombre</span>
         </button>
         {% if settings.site_password and logged_in %}
@@ -61,8 +59,8 @@
       <div class="flashes" role="status" aria-live="polite">
         {% for f in flashes %}
         <p class="flash flash-{{ f.kind }}">
-          <span class="flash-icon" aria-hidden="true">{{ {'success': '✓', 'info': 'i', 'error': '!'}[f.kind] }}</span>
-          {{ f.message }}
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-{{ {'success': 'check', 'info': 'info', 'error': 'alert'}[f.kind] }}"/></svg>
+          <span>{{ f.message }}</span>
         </p>
         {% endfor %}
       </div>
@@ -73,8 +71,8 @@
 
   <footer class="site-footer">
     <div class="container footer-inner">
-      <p>Données : API Battle.net (WoW: Forever, région {{ settings.region | upper }}). Projet de potes, non affilié à Blizzard Entertainment.</p>
-      {% block footer_tools %}{% endblock %}
+      <svg class="footer-mark" aria-hidden="true" focusable="false"><use href="#logo"/></svg>
+      <p>Données : API Battle.net (WoW Forever, région {{ settings.region | upper }}). Projet entre potes, non affilié à Blizzard Entertainment.</p>
     </div>
   </footer>
 </body>

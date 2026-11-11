@@ -83,6 +83,71 @@
     // Arrivée sur un onglet précis (#squad après un formulaire) : on amène les onglets à l'écran.
     if (location.hash && fromHash() > 0) tabs.scrollIntoView({ block: "start" });
   }
+  // Cadrage de la photo : aperçu identique au recadrage serveur (photos.crop_box), glisser ou curseurs.
+  var crop = document.querySelector("[data-crop]");
+  var photoInput = document.querySelector("[data-photo-input]");
+  if (crop && photoInput) {
+    var stage = crop.querySelector("[data-crop-stage]");
+    var zoom = crop.querySelector("[data-crop-zoom]");
+    var posX = crop.querySelector("[data-crop-x]");
+    var posY = crop.querySelector("[data-crop-y]");
+    var natural = null;
+    crop.hidden = true;  // s'affiche une fois l'image choisie (sans JS, les curseurs restent utilisables)
+
+    var render = function () {
+      if (!natural) return;
+      var w = natural.w, h = natural.h, z = parseFloat(zoom.value);
+      var side = Math.min(w, h) / z;
+      var left = Math.min(Math.max(posX.value / 100 * w - side / 2, 0), w - side);
+      var top = Math.min(Math.max(posY.value / 100 * h - side / 2, 0), h - side);
+      var px = stage.clientWidth / side;
+      stage.style.backgroundSize = (w * px) + "px " + (h * px) + "px";
+      stage.style.backgroundPosition = (-left * px) + "px " + (-top * px) + "px";
+      zoom.setAttribute("aria-valuetext", "Zoom " + z.toFixed(1).replace(".", ",") + " fois");
+      posX.setAttribute("aria-valuetext", posX.value + " %");
+      posY.setAttribute("aria-valuetext", posY.value + " %");
+    };
+
+    photoInput.addEventListener("change", function () {
+      var file = photoInput.files && photoInput.files[0];
+      if (!file || !/^image\//.test(file.type)) { crop.hidden = true; return; }
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        natural = { w: img.naturalWidth, h: img.naturalHeight };
+        zoom.value = 1; posX.value = 50; posY.value = 50;
+        stage.style.backgroundImage = "url(" + url + ")";
+        stage.textContent = "";
+        crop.hidden = false;
+        render();
+      };
+      img.src = url;
+    });
+    [zoom, posX, posY].forEach(function (input) { input.addEventListener("input", render); });
+
+    // Glisser l'image : on déplace le centre du cadrage, en sens inverse du geste.
+    var drag = null;
+    stage.addEventListener("pointerdown", function (ev) {
+      if (!natural) return;
+      drag = { x: ev.clientX, y: ev.clientY, px: +posX.value, py: +posY.value };
+      stage.setPointerCapture(ev.pointerId);
+    });
+    stage.addEventListener("pointermove", function (ev) {
+      if (!drag) return;
+      var side = Math.min(natural.w, natural.h) / parseFloat(zoom.value);
+      var scale = side / stage.clientWidth;  // pixels image par pixel écran
+      posX.value = Math.min(100, Math.max(0, drag.px - (ev.clientX - drag.x) * scale / natural.w * 100));
+      posY.value = Math.min(100, Math.max(0, drag.py - (ev.clientY - drag.y) * scale / natural.h * 100));
+      render();
+    });
+    ["pointerup", "pointercancel"].forEach(function (t) { stage.addEventListener(t, function () { drag = null; }); });
+    stage.addEventListener("wheel", function (ev) {
+      if (!natural) return;
+      ev.preventDefault();
+      zoom.value = Math.min(3, Math.max(1, parseFloat(zoom.value) - ev.deltaY * 0.002));
+      render();
+    }, { passive: false });
+  }
   // Après un formulaire en erreur, on amène le champ fautif à l'écran (le focus est déjà posé par autofocus).
   var invalid = document.querySelector('[aria-invalid="true"]');
   if (invalid) {

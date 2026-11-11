@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import avatar, faction_badge, class_line, level_bar, event_item, chart_table %}
+{% from "_macros.html" import icon, avatar, faction_badge, class_line, level_bar, event_item, chart_table %}
 
 {% block title %}{{ char.display_name }}{% endblock %}
 
@@ -11,73 +11,68 @@
   </ol>
 </nav>
 
-<section class="profile card" style="--class-color: {{ char.class_name | class_color }}" aria-labelledby="char-title">
+<section class="profile" style="--class-color: {{ char.class_name | class_color }}" aria-labelledby="char-title">
   {{ avatar(char, 'lg') }}
   <div class="profile-main">
     <h1 id="char-title" class="profile-name">{{ char.name }} <span class="profile-surname">{{ char.surname }}</span></h1>
-    <p class="profile-meta">
-      {{ class_line(char) }}
-      {{ faction_badge(char.faction) }}
-    </p>
+    <p class="profile-meta">{{ class_line(char) }} {{ faction_badge(char.faction) }}</p>
     <ul class="profile-facts" role="list">
       {% if char.player %}<li><span class="fact-label">Joueur</span> {{ char.player }}</li>{% endif %}
       {% if char.guild %}<li><span class="fact-label">Guilde</span> &lt;{{ char.guild }}&gt;</li>{% endif %}
       {% if char.ruleset %}<li><span class="fact-label">Mode</span> {{ char.ruleset }}</li>{% endif %}
       <li><span class="fact-label">Vu en jeu</span> {{ char.last_login | time_tag }}</li>
+      {% if honorable_kills %}<li><span class="fact-label">Victoires honorables</span> {{ honorable_kills | number }}</li>{% endif %}
     </ul>
   </div>
   <form method="post" action="/perso/{{ char.id }}/rafraichir" class="profile-action">
     <input type="hidden" name="csrf" value="{{ csrf }}">
-    <button type="submit" class="button button-secondary">Rafraîchir</button>
-    <p class="hint">Mis à jour {{ char.refreshed_at | time_tag }}</p>
+    <button type="submit" class="button button-secondary">{{ icon('refresh') }} Rafraîchir</button>
+    <p class="meta">Mis à jour {{ char.refreshed_at | time_tag }}</p>
   </form>
 </section>
 
 {% if char.status != 'ok' or char.status_message %}
 <div class="notice notice-{{ 'info' if char.status in ('ok', 'pending') else 'error' }}" role="note">
-  <p><strong>{{ {'pending': "En attente de l'API Blizzard", 'error': 'Erreur lors de la dernière mise à jour', 'ok': 'À savoir'}[char.status] }}</strong></p>
-  <p>{{ char.status_message }}</p>
+  {{ icon('info' if char.status in ('ok', 'pending') else 'alert') }}
+  <div>
+    <p><strong>{{ {'pending': "En attente de l'API Blizzard", 'error': 'Erreur lors de la dernière mise à jour', 'ok': 'À savoir'}[char.status] }}</strong></p>
+    <p>{{ char.status_message }}</p>
+  </div>
 </div>
 {% endif %}
 
 <section aria-labelledby="stats-title">
   <h2 id="stats-title" class="visually-hidden">Statistiques</h2>
-  <dl class="stats">
-    <div class="stat stat-wide">
-      <dt>Niveau</dt>
-      <dd>{{ level_bar(char.level, max_level) }}</dd>
-    </div>
-    <div class="stat"><dt>Niveau d'objet</dt><dd>{{ char.ilvl | number(1) if char.ilvl else '—' }}</dd></div>
-    <div class="stat"><dt>Points de hauts faits</dt><dd>{{ char.achievement_points | number }}</dd></div>
-    <div class="stat"><dt>Montures</dt><dd>{{ mounts | length if mounts is not none else '—' }}</dd></div>
-    <div class="stat"><dt>Morts</dt><dd>{{ char.deaths | number }}</dd></div>
-    <div class="stat"><dt>Victoires honorables</dt><dd>{{ honorable_kills | number }}</dd></div>
+  <dl class="kpis kpis-profile">
+    <div class="kpi kpi-level"><dt>Niveau</dt><dd>{{ level_bar(char.level, max_level) }}</dd></div>
+    <div class="kpi"><dt>Rythme (7 jours)</dt><dd>{% if pace %}<span class="kpi-value">+{{ pace.per_day | number(1) }}</span><span class="kpi-note">{% if pace.reached %}objectif {{ goal_cfg.target }} atteint{% elif pace.eta %}niv. {{ goal_cfg.target }} vers le {{ pace.eta.strftime('%d/%m') }}{% else %}à l'arrêt cette semaine{% endif %}</span>{% else %}<span class="kpi-value">—</span>{% endif %}</dd></div>
+    <div class="kpi"><dt>Niveau d'objet</dt><dd><span class="kpi-value">{{ char.ilvl | number(1) if char.ilvl else '—' }}</span></dd></div>
+    <div class="kpi"><dt>Hauts faits</dt><dd><span class="kpi-value">{{ char.achievement_points | number }}</span><span class="kpi-note">points</span></dd></div>
+    <div class="kpi"><dt>Montures</dt><dd><span class="kpi-value">{{ mounts | length if mounts is not none else '—' }}</span></dd></div>
+    <div class="kpi"><dt>Morts</dt><dd><span class="kpi-value">{{ char.deaths | number }}</span></dd></div>
   </dl>
 </section>
 
-<div class="layout">
-  <div class="layout-main">
-    {% if level_chart %}
-    <section class="card" aria-labelledby="progress-title">
-      <h2 id="progress-title">Progression</h2>
+<div class="split split-profile">
+  <div class="split-main">
+    <section aria-labelledby="progress-title">
+      <h2 id="progress-title" class="block-title">Progression</h2>
+      {% if level_chart %}
       <figure class="chart-frame">{{ level_chart }}</figure>
       {% if ilvl_chart %}<figure class="chart-frame">{{ ilvl_chart }}</figure>{% endif %}
       {% set rows = [] %}
       {% for s in snaps | reverse %}{% if loop.index <= 30 %}{% set _ = rows.append((s.taken_at | localtime, s.level, (s.ilvl | number(1)) if s.ilvl else '—', s.achievement_points | number)) %}{% endif %}{% endfor %}
       {{ chart_table(rows, ['Date', 'Niveau', 'ilvl', 'Points de HF'], 'Historique de ' ~ char.display_name) }}
-    </section>
-    {% else %}
-    <section class="card" aria-labelledby="progress-title">
-      <h2 id="progress-title">Progression</h2>
+      {% else %}
       <p class="empty">La courbe apparaîtra après quelques mises à jour.</p>
+      {% endif %}
     </section>
-    {% endif %}
 
-    <section aria-labelledby="timeline-title">
-      <h2 id="timeline-title">Son histoire</h2>
+    <section aria-labelledby="timeline-title" class="profile-story">
+      <h2 id="timeline-title" class="block-title">Son histoire</h2>
       {% set visible = events | rejectattr('kind', 'equalto', 'session') | list %}
       {% if visible %}
-      <ul class="events timeline" role="list">
+      <ul class="events events-story" role="list">
         {% for e in visible %}{{ event_item(e, show_character=false) }}{% endfor %}
       </ul>
       {% else %}
@@ -86,35 +81,83 @@
     </section>
   </div>
 
-  <div class="layout-side">
-    <section class="card" aria-labelledby="prof-title">
-      <h2 id="prof-title">Métiers</h2>
+  <div class="split-side">
+    <section class="panel-block" aria-labelledby="prof-title">
+      <h2 id="prof-title" class="block-title">Métiers</h2>
       {% if professions %}
       <ul class="professions" role="list">
         {% for name, skill in professions | dictsort(by='value', reverse=true) %}
         {% set cap = [300, skill] | max %}
         <li>
-          <div class="prof-head"><span>{{ name }}</span><span><strong>{{ skill }}</strong><span class="muted">/{{ cap }}</span></span></div>
+          <div class="prof-head"><span>{{ name }}</span><span><strong>{{ skill }}</strong><span class="meta">/{{ cap }}</span></span></div>
           <span class="level-track" aria-hidden="true"><span class="level-fill" style="width: {{ (skill / cap * 100) | round(1) }}%"></span></span>
         </li>
         {% endfor %}
       </ul>
       {% else %}
-      <p class="empty">Aucun métier remonté par l'API pour l'instant.</p>
+      <p class="quiet">Aucun métier remonté par l'API pour l'instant.</p>
       {% endif %}
     </section>
 
     {% if mounts %}
-    <section class="card" aria-labelledby="mounts-title">
-      <h2 id="mounts-title">Écurie <span class="count">{{ mounts | length }}</span></h2>
+    <section class="panel-block" aria-labelledby="mounts-title">
+      <h2 id="mounts-title" class="block-title">Écurie <span class="count">{{ mounts | length }}</span></h2>
       <ul class="tag-list" role="list">
         {% for name in mounts.values() | sort %}<li class="tag">{{ name }}</li>{% endfor %}
       </ul>
     </section>
     {% endif %}
 
-    <section class="card" aria-labelledby="settings-title">
-      <h2 id="settings-title">Réglages</h2>
+    <section id="photo" class="panel-block" aria-labelledby="photo-title" tabindex="-1">
+      <h2 id="photo-title" class="block-title">Photo {{ "de " ~ char.player if char.player else "du joueur" }}</h2>
+      {% if char.player %}
+      {% set current = photo_url(char.player) %}
+      <div class="photo-row">
+        <span class="photo-preview" style="--class-color: {{ char.class_name | class_color }}" data-photo-preview>
+          {%- if current %}<img src="{{ current }}" alt="Photo actuelle de {{ char.player }}" width="72" height="72">
+          {%- else %}<span class="avatar-initial" aria-hidden="true">{{ char.player[:1] | upper }}</span>{% endif -%}
+        </span>
+        <p id="photo-hint" class="hint">Partagée par tous les persos de {{ char.player }}. JPG, PNG, WebP ou GIF, 5&nbsp;Mo max, recadrée en carré.</p>
+      </div>
+      <form method="post" action="/perso/{{ char.id }}/photo" enctype="multipart/form-data" class="photo-form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <div class="field">
+          <label for="photo-file">{{ "Changer la photo" if current else "Choisir une photo" }}</label>
+          <input id="photo-file" name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required
+                 aria-describedby="photo-hint" data-photo-input>
+        </div>
+        <fieldset class="crop" data-crop>
+          <legend>Cadrage</legend>
+          <div class="crop-stage" data-crop-stage aria-hidden="true"><span class="crop-empty">Aperçu</span></div>
+          <p id="crop-hint" class="hint">Glisse l'image dans le cercle, ou règle avec les curseurs (flèches du clavier).</p>
+          <div class="range-field">
+            <label for="crop-zoom">Zoom</label>
+            <input id="crop-zoom" name="zoom" type="range" min="1" max="3" step="0.05" value="1" aria-describedby="crop-hint" data-crop-zoom>
+          </div>
+          <div class="range-field">
+            <label for="crop-x">Position horizontale</label>
+            <input id="crop-x" name="pos_x" type="range" min="0" max="100" step="1" value="50" data-crop-x>
+          </div>
+          <div class="range-field">
+            <label for="crop-y">Position verticale</label>
+            <input id="crop-y" name="pos_y" type="range" min="0" max="100" step="1" value="50" data-crop-y>
+          </div>
+        </fieldset>
+        <button type="submit" class="button button-primary">Enregistrer la photo</button>
+      </form>
+      {% if current %}
+      <form method="post" action="/perso/{{ char.id }}/photo/supprimer" class="photo-remove">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button type="submit" class="button button-ghost button-small">Retirer la photo</button>
+      </form>
+      {% endif %}
+      {% else %}
+      <p class="quiet">La photo appartient au joueur, pas au perso. Indique d'abord qui joue {{ char.name }} dans les réglages ci-dessous.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel-block" aria-labelledby="settings-title">
+      <h2 id="settings-title" class="block-title">Réglages</h2>
       <form method="post" action="/perso/{{ char.id }}/joueur" class="inline-form">
         <input type="hidden" name="csrf" value="{{ csrf }}">
         <div class="field">
@@ -125,7 +168,7 @@
       </form>
 
       <details class="danger-zone">
-        <summary>Retirer de la squad</summary>
+        <summary>{{ icon('chevron', 'summary-chevron') }} Retirer de la squad</summary>
         <p>{{ char.display_name }} disparaîtra du QG avec tout son historique (courbes, journal). Ça ne touche évidemment pas au perso en jeu.</p>
         <form method="post" action="/perso/{{ char.id }}/supprimer">
           <input type="hidden" name="csrf" value="{{ csrf }}">

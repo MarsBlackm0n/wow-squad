@@ -7,14 +7,19 @@ la course au niveau, les trophées, et un récap chaque semaine sur Telegram ou 
 
 | Zone | Contenu |
 |---|---|
-| **À la une** (toujours visible) | Objectif commun « toute la squad niveau 60 », derniers moments forts, qui a joué ces dernières 24 h |
-| **Ce soir** | Groupes possibles par faction et tranche de niveaux, donjon conseillé, alerte s'il manque un tank ou un soigneur |
+| **En haut** (toujours visible) | Objectif commun (niveau et date réglables) avec arrivée estimée, rythme de la squad, meilleur rythme, moments forts, qui a joué ces dernières 24 h |
+| **Ce soir** | Un donjon pour chacun de vos groupes fixes, puis les autres combinaisons possibles ; alerte s'il manque un tank ou un soigneur |
 | **Journal** | Un résumé par jour : qui a joué, soirées passées ensemble, paliers, hauts faits, montures, morts |
-| **Progression** | Course au niveau sur 30 jours (avec tableau de données) et classement |
+| **Progression** | Course au niveau sur 30 jours, classement **au rythme** (niveaux par jour sur 7 jours, date d'arrivée estimée) puis au niveau |
 | **Palmarès** | Trophées de la semaine, panthéon des premières fois (premier 10, 20… 60, première monture), records |
-| **La squad** | Lier son compte Battle.net, ajouter un perso à la main (prénom + nom), voir qui est suivi |
+| **La squad** | Lier son compte Battle.net, ajouter un perso (prénom + nom), régler l'objectif, gérer les groupes fixes |
 
-Chaque perso a sa fiche : courbes niveau et ilvl, métiers, écurie, et son histoire.
+Chaque perso a sa fiche : rythme, courbes niveau et ilvl, métiers, écurie, son histoire, et la **photo du joueur**
+(une par joueur, partagée par tous ses persos ; zoom et cadrage avant l'envoi, réencodée en WebP 256×256 sans
+métadonnées, stockée dans Postgres).
+
+Comme on n'a pas tous commencé le même jour, le rythme (niveaux gagnés par jour sur les 7 derniers jours) compte
+autant que le niveau : c'est lui qui désigne le « meilleur rythme » et qui estime quand chacun atteindra l'objectif.
 
 ## Comptes Battle.net : ce qui est stocké (et ce qui ne l'est pas)
 
@@ -59,7 +64,9 @@ app/
   db.py         modèles SQLAlchemy (persos, snapshots, événements, comptes liés)
   blizzard.py   client API Battle.net (namespaces *-forever-{region}, OAuth)
   collector.py  lecture d'un perso -> état -> événements (fonctions pures + orchestration)
-  insights.py   vie de groupe : journal, soirées ensemble, idées de groupe, premières fois, records
+  insights.py   vie de groupe : journal, soirées, rythme, objectif, groupes, premières fois, records
+  squad.py      réglages modifiables depuis le site (objectif, groupes fixes)
+  photos.py     photos de profil des joueurs (validation, recadrage, WebP)
   stats.py      semaine en cours, classement, texte du récap
   worker.py     boucle de fond : synchro, notifications en direct, récap hebdo
   notify.py     Telegram / Discord

@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from .db import Character, Event, select, utcnow
+from .db import Character, Event, Snapshot, select, utcnow
 from .ui import class_key, faction_key
 
 MAX_LEVEL = 60
@@ -186,33 +186,136 @@ def group_ideas(chars: list[Character], limit: int = 4) -> list[GroupIdea]:
 # --- Objectif collectif, premières fois, records ---------------------------------------------------
 
 @dataclass
+class Pace:
+    """Rythme d'un perso sur la fenêtre récente : juste même si on n'a pas tous commencé le même jour."""
+    per_day: float        # niveaux par jour
+    gained: int           # niveaux gagnés sur la fenêtre
+    eta: date | None      # date estimée pour atteindre l'objectif (None : à l'arrêt ou déjà arrivé)
+    reached: bool
+
+
+def paces(db: Session, chars: list[Character], target: int, tz_name: str, days: int = 7) -> dict[int, Pace]:
+    now = utcnow()
+    since = now - timedelta(days=days)
+    today = now.astimezone(ZoneInfo(tz_name)).date()
+    out = {}
+    for c in chars:
+        if c.status == "pending" or not c.level:
+            continue
+        # Point de départ : dernier relevé avant la fenêtre, sinon le premier relevé dedans.
+        base = db.scalars(select(Snapshot).where(Snapshot.character_id == c.id, Snapshot.taken_at < since)
+                          .order_by(Snapshot.taken_at.desc()).limit(1)).first()
+        if base is None:
+            base = db.scalars(select(Snapshot).where(Snapshot.character_id == c.id)
+                              .order_by(Snapshot.taken_at).limit(1)).first()
+        if base is None:
+            continue
+        start = max(_aware(base.taken_at), since)
+        elapsed = max((now - start).total_seconds() / 86400, 1.0)
+        gained = max(c.level - base.level, 0)
+        per_day = gained / elapsed
+        reached = c.level >= target
+        eta = None
+        if not reached and per_day > 0.05:
+            eta = today + timedelta(days=round((target - c.level) / per_day))
+        out[c.id] = Pace(round(per_day, 1), gained, eta, reached)
+    return out
+
+
+@dataclass
 class SquadGoal:
+    target: int
+    deadline: date | None
     members: int
     average_level: float
-    progress: float  # 0-100, vers « tout le monde au niveau max »
-    at_max: int
-    laggard: Character | None
-    leader: Character | None
+    progress: float  # 0-100, vers « tout le monde au niveau cible »
+    at_target: int
+    average_pace: float
+    projected: date | None   # quand le dernier y arrivera, au rythme actuel
+    stalled: int             # persos à l'arrêt (aucun niveau sur la fenêtre)
+    fastest: Character | None
+    fastest_pace: float
 
     @property
-    def gap(self) -> int:
-        return (self.leader.level - self.laggard.level) if self.leader and self.laggard else 0
+    def days_left(self) -> int | None:
+        return (self.deadline - utcnow().date()).days if self.deadline else None
+
+    @property
+    def on_track(self) -> bool | None:
+        if not self.deadline or self.projected is None:
+            return None
+        return self.projected <= self.deadline
 
 
-def squad_goal(chars: list[Character]) -> SquadGoal | None:
+def squad_goal(chars: list[Character], target: int, deadline: date | None,
+               pace_by_char: dict[int, Pace]) -> SquadGoal | None:
     active = [c for c in chars if c.status != "pending" and c.level]
     if not active:
         return None
-    total = sum(min(c.level, MAX_LEVEL) for c in active)
+    total = sum(min(c.level, target) for c in active)
+    rated = [(c, pace_by_char[c.id]) for c in active if c.id in pace_by_char]
+    pending = [p for c, p in rated if not p.reached]
+    etas = [p.eta for p in pending if p.eta]
+    fastest = max(rated, key=lambda cp: cp[1].per_day, default=(None, None))
     return SquadGoal(
-        members=len(active),
+        target=target, deadline=deadline, members=len(active),
         average_level=total / len(active),
-        progress=round(total / (len(active) * MAX_LEVEL) * 100, 1),
-        at_max=sum(1 for c in active if c.level >= MAX_LEVEL),
-        laggard=min(active, key=lambda c: c.level),
-        leader=max(active, key=lambda c: c.level),
+        progress=round(total / (len(active) * target) * 100, 1),
+        at_target=sum(1 for c in active if c.level >= target),
+        average_pace=round(sum(p.per_day for _, p in rated) / len(rated), 1) if rated else 0.0,
+        projected=max(etas) if etas and len(etas) == len(pending) else None,
+        stalled=sum(1 for p in pending if not p.eta),
+        fastest=fastest[0] if fastest[1] and fastest[1].per_day > 0 else None,
+        fastest_pace=fastest[1].per_day if fastest[1] else 0.0,
     )
 
+
+# --- Groupes fixes de la squad (paramétrés dans « La squad ») ------------------------------------
+
+@dataclass
+class GroupPlan:
+    name: str
+    group_id: str
+    members: list[Character]
+    dungeon: str | None
+    min_level: int
+    max_level: int
+    fits: list[Character]        # dans la tranche (à 2 niveaux près)
+    out: list[Character]         # trop bas ou trop haut pour ce donjon
+    mixed_factions: bool
+    has_tank: bool
+    has_heal: bool
+
+    @property
+    def spread(self) -> int:
+        levels = [m.level for m in self.members if m.level]
+        return max(levels) - min(levels) if levels else 0
+
+
+def group_plans(groups: list[dict], chars: list[Character]) -> list[GroupPlan]:
+    by_id = {c.id: c for c in chars}
+    plans = []
+    for g in groups:
+        members = [by_id[i] for i in g.get("members", []) if i in by_id]
+        playable = [m for m in members if m.status != "pending" and m.level]
+        factions = {faction_key(m.faction) for m in playable} - {"neutral"}
+        best = None
+        for name, lo, hi, only in DUNGEONS:
+            if only and factions and factions != {only}:
+                continue
+            fits = [m for m in playable if lo - 2 <= m.level <= hi]
+            score = (len(fits), -abs((lo + hi) / 2 - (sum(m.level for m in fits) / len(fits) if fits else 0)))
+            if fits and (best is None or score > best[0]):
+                best = (score, name, lo, hi, fits)
+        classes = {class_key(m.class_name) for m in playable}
+        if best:
+            _, name, lo, hi, fits = best
+            out = [m for m in playable if m not in fits]
+        else:
+            name, lo, hi, fits, out = None, 0, 0, [], playable
+        plans.append(GroupPlan(g.get("name", "Groupe"), g.get("id", ""), members, name, lo, hi, fits, out,
+                               len(factions) > 1, bool(classes & TANK_CLASSES), bool(classes & HEAL_CLASSES)))
+    return plans
 
 @dataclass
 class First:
@@ -240,7 +343,7 @@ def firsts(db: Session) -> list[First]:
 
 @dataclass
 class Record:
-    icon: str
+    icon: str  # nom d'icône du sprite (templates/_icons.html)
     label: str
     character: Character
     value: str
@@ -267,11 +370,11 @@ def records(events: list[Event], tz_name: str) -> list[Record]:
     if levels:
         (cid, day), n = max(levels.items(), key=lambda kv: kv[1])
         if n:
-            out.append(Record("⚡", "Plus grosse journée de leveling", chars[cid], f"+{n} niveaux", day))
+            out.append(Record("bolt", "Plus grosse journée de leveling", chars[cid], f"+{n} niveaux", day))
     if deaths:
         (cid, day), n = max(deaths.items(), key=lambda kv: kv[1])
         if n:
-            out.append(Record("🪦", "Pire hécatombe en une journée", chars[cid], f"{n} morts", day))
+            out.append(Record("skull", "Pire hécatombe en une journée", chars[cid], f"{n} morts", day))
     return out
 
 

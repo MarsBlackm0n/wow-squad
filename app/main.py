@@ -19,7 +19,8 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .blizzard import make_http
 from .config import settings
-from .db import init_db
+from . import photos
+from .db import SessionLocal, init_db
 from .web import is_authenticated, render, router
 from .worker import Worker
 
@@ -30,6 +31,8 @@ OPEN_PATHS = ("/connexion", "/static/", "/healthz")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    with SessionLocal() as db:
+        photos.refresh(db)
     async with make_http() as http:
         worker = Worker(settings, http)
         app.state.worker = worker

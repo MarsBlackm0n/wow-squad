@@ -1,7 +1,20 @@
+{# Icône du sprite (_icons.html). Décorative par défaut : le texte voisin porte le sens. #}
+{% macro icon(name, cls='') -%}
+<svg class="icon {{ cls }}" aria-hidden="true" focusable="false"><use href="#i-{{ name }}"/></svg>
+{%- endmacro %}
+
+{% set EVENT_ICONS = {'level': 'up', 'level_milestone': 'star', 'achievement': 'trophy', 'mount': 'horseshoe',
+                      'deaths': 'skull', 'profession': 'hammer', 'profession_rank': 'hammer', 'guild': 'banner',
+                      'ilvl': 'shield', 'joined': 'user-plus', 'session': 'users'} %}
+{% set EVENT_TONES = {'level_milestone': 'accent', 'achievement': 'gold', 'mount': 'teal', 'deaths': 'danger',
+                      'joined': 'accent', 'guild': 'violet'} %}
+
+{# Photo du joueur en priorité, puis portrait Blizzard du perso, puis initiale. #}
 {% macro avatar(char, size='md') -%}
+{% set src = photo_url(char.player) or char.avatar_url %}
 <span class="avatar avatar-{{ size }}" style="--class-color: {{ char.class_name | class_color }}" aria-hidden="true">
-  {%- if char.avatar_url -%}
-  <img src="{{ char.avatar_url }}" alt="" width="64" height="64" loading="lazy" decoding="async">
+  {%- if src -%}
+  <img src="{{ src }}" alt="" width="64" height="64" loading="lazy" decoding="async">
   {%- else -%}
   <span class="avatar-initial">{{ (char.name or '?')[:1] | upper }}</span>
   {%- endif -%}
@@ -22,14 +35,23 @@
 {% macro level_bar(level, max=60) -%}
 {% set pct = [((level or 0) / max * 100) | round(1), 100] | min %}
 <span class="level">
-  <span class="level-value">Niv. <strong>{{ level or '?' }}</strong><span class="visually-hidden"> sur {{ max }}</span></span>
+  <span class="level-value"><strong>{{ level or '?' }}</strong><span class="level-max"><span class="visually-hidden">sur </span>/{{ max }}</span></span>
   <span class="level-track" aria-hidden="true"><span class="level-fill" style="width: {{ pct }}%"></span></span>
 </span>
 {%- endmacro %}
 
-{% macro event_item(e, show_character=true) -%}
-<li class="event event-{{ e.kind }}">
-  <span class="event-icon" aria-hidden="true">{{ e.icon }}</span>
+{# Anneau de progression (décoratif : le pourcentage est écrit à côté). #}
+{% macro ring(pct, size=72) -%}
+{% set r = 30 %}{% set c = 188.5 %}
+<svg class="ring" width="{{ size }}" height="{{ size }}" viewBox="0 0 72 72" aria-hidden="true" focusable="false">
+  <circle class="ring-track" cx="36" cy="36" r="{{ r }}"/>
+  <circle class="ring-value" cx="36" cy="36" r="{{ r }}" stroke-dasharray="{{ c }}" stroke-dashoffset="{{ (c * (1 - [pct, 100] | min / 100)) | round(1) }}"/>
+</svg>
+{%- endmacro %}
+
+{% macro event_item(e, show_character=true, clock=false) -%}
+<li class="event tone-{{ EVENT_TONES.get(e.kind, 'neutral') }}">
+  <span class="event-icon">{{ icon(EVENT_ICONS.get(e.kind, 'flag')) }}</span>
   <div class="event-body">
     <p class="event-text">
       {%- if show_character and e.character -%}
@@ -38,14 +60,14 @@
       {{ e.text }}
       {%- endif -%}
     </p>
-    <p class="event-time">{{ e.at | time_tag }}</p>
+    <p class="event-time">{% if clock %}<time datetime="{{ e.at.isoformat() }}">{{ e.at | localtime('%H:%M') }}</time>{% else %}{{ e.at | time_tag }}{% endif %}</p>
   </div>
 </li>
 {%- endmacro %}
 
 {% macro chart_table(rows, headers, caption) -%}
 <details class="data-table">
-  <summary>Voir les données du graphique</summary>
+  <summary>{{ icon('chevron', 'summary-chevron') }} Voir les données du graphique</summary>
   <div class="table-scroll" tabindex="0" role="region" aria-label="{{ caption }}">
     <table>
       <caption class="visually-hidden">{{ caption }}</caption>

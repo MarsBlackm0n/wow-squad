@@ -5,18 +5,18 @@ from __future__ import annotations
 import hmac
 import logging
 import secrets
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from . import insights
+from . import insights, photos, squad
 from .blizzard import BlizzardError, character_slug, split_slug
 from .collector import sync_account
 from .config import settings
-from .db import Account, Character, Event, SessionLocal, Snapshot, select, utcnow
+from .db import Account, Character, Event, PlayerPhoto, SessionLocal, Snapshot, select, utcnow
 from .stats import compute_week, leaderboard
 from .ui import Series, class_color, class_key, faction_key, frdate, line_chart, make_formatters, number
 
@@ -28,7 +28,7 @@ localtime, time_tag = make_formatters(settings.timezone)
 templates.env.filters.update(localtime=localtime, time_tag=time_tag, number=number, class_color=class_color,
                              class_key=class_key, faction_key=faction_key,
                              frdate=lambda d: frdate(d, settings.timezone))
-templates.env.globals.update(settings=settings, max_level=insights.MAX_LEVEL)
+templates.env.globals.update(settings=settings, max_level=insights.MAX_LEVEL, photo_url=photos.url_for)
 
 
 # --- Sessions, CSRF, messages -------------------------------------------------------------------
@@ -101,10 +101,15 @@ async def home(request: Request):
         race_chart, race_rows, race_series = _race_chart(db, chars)
         firsts = insights.firsts(db)
         accounts = db.scalars(select(Account).order_by(Account.battletag)).all()
+        goal_cfg, groups = squad.get_goal(db), squad.get_groups(db)
+        pace_by_char = insights.paces(db, chars, goal_cfg.target, tz)
     worker = request.app.state.worker
-    return render(request, "index.html", chars=chars, week=week, race_chart=race_chart, race_rows=race_rows, race_series=race_series,
-                  days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
-                  goal=insights.squad_goal(chars), firsts=firsts, records=insights.records(events, tz),
+    by_pace = sorted((c for c in chars if c.id in pace_by_char), key=lambda c: -pace_by_char[c.id].per_day)
+    return render(request, "index.html", chars=chars, week=week, race_chart=race_chart, race_rows=race_rows,
+                  race_series=race_series, days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
+                  goal=insights.squad_goal(chars, goal_cfg.target, goal_cfg.deadline, pace_by_char),
+                  goal_cfg=goal_cfg, groups=groups, plans=insights.group_plans(groups, chars),
+                  paces=pace_by_char, by_pace=by_pace, firsts=firsts, records=insights.records(events, tz),
                   seen=insights.recently_seen(chars), headlines=insights.headlines(events), accounts=accounts,
                   last_cycle=worker.last_cycle,
                   blizzard_ready=settings.blizzard_enabled, add_form=request.session.pop("add_form", None) or {})
@@ -160,7 +165,10 @@ async def character_page(request: Request, char_id: int):
                                     f"de niveau d'objet moyen.", "ilvl", y_label="ilvl", step=False,
                                     tz_name=settings.timezone)
     state = char.state or {}
-    return render(request, "character.html", char=char, snaps=snaps, events=events, level_chart=level_chart,
+    with SessionLocal() as db:
+        goal_cfg = squad.get_goal(db)
+        pace = insights.paces(db, [char], goal_cfg.target, settings.timezone).get(char.id)
+    return render(request, "character.html", char=char, pace=pace, goal_cfg=goal_cfg, snaps=snaps, events=events, level_chart=level_chart,
                   ilvl_chart=ilvl_chart, professions=state.get("professions") or {},
                   mounts=state.get("mounts"), achievements=state.get("achievements"),
                   honorable_kills=state.get("honorable_kills"))
@@ -231,6 +239,104 @@ async def delete_character(request: Request, char_id: int, csrf: str = Form(""))
             db.commit()
             flash(request, f"{name} a quitté la squad (historique supprimé).")
     return back("/")
+
+# --- Réglages de la squad : objectif et groupes ---------------------------------------------------
+
+@router.post("/reglages/objectif")
+async def set_goal(request: Request, niveau: str = Form(""), echeance: str = Form(""), csrf: str = Form("")):
+    check_csrf(request, csrf)
+    try:
+        target = int(niveau)
+        deadline = date.fromisoformat(echeance) if echeance else None
+    except ValueError:
+        flash(request, "Objectif invalide : indique un niveau entre 2 et 60 et une date valide.", "error")
+        return back("/#squad")
+    with SessionLocal() as db:
+        squad.set_goal(db, target, deadline)
+        db.commit()
+    flash(request, f"Objectif enregistré : niveau {max(2, min(target, insights.MAX_LEVEL))}"
+                   + (f" pour le {deadline.strftime('%d/%m/%Y')}." if deadline else "."))
+    return back("/#squad")
+
+
+@router.post("/groupes")
+async def save_group(request: Request, csrf: str = Form(""), nom: str = Form(""), groupe: str = Form("")):
+    check_csrf(request, csrf)
+    form = await request.form()
+    members = [int(v) for v in form.getlist("membres") if str(v).isdigit()]
+    if not nom.strip() or len(members) < 2:
+        flash(request, "Un groupe a besoin d'un nom et d'au moins deux persos.", "error")
+        return back("/#squad")
+    with SessionLocal() as db:
+        squad.save_group(db, nom, members, groupe or None)
+        db.commit()
+    flash(request, f"Groupe « {nom.strip()[:40]} » enregistré. Il apparaît en tête de « Ce soir ».")
+    return back("/#ce-soir")
+
+
+@router.post("/groupes/{group_id}/supprimer")
+async def delete_group(request: Request, group_id: str, csrf: str = Form("")):
+    check_csrf(request, csrf)
+    with SessionLocal() as db:
+        squad.delete_group(db, group_id)
+        db.commit()
+    flash(request, "Groupe supprimé.")
+    return back("/#squad")
+
+
+# --- Photos de profil (par joueur, partagées par tous ses persos) --------------------------------
+
+@router.post("/perso/{char_id}/photo")
+async def upload_photo(request: Request, char_id: int, photo: UploadFile | None = File(None), csrf: str = Form(""),
+                       zoom: float = Form(1.0), pos_x: float = Form(50), pos_y: float = Form(50)):
+    check_csrf(request, csrf)
+    with SessionLocal() as db:
+        char = db.get(Character, char_id)
+        key = photos.player_key(char.player if char else "")
+        if not key:
+            flash(request, "Indique d'abord le joueur derrière ce perso : la photo appartient au joueur.", "error")
+            return back(f"/perso/{char_id}#photo")
+        try:
+            if photo is None or not photo.filename:
+                raise ValueError("Choisis une image avant d'envoyer.")
+            image = photos.process(await photo.read(photos.MAX_UPLOAD_BYTES + 1), zoom, pos_x / 100, pos_y / 100)
+        except ValueError as exc:
+            flash(request, str(exc), "error")
+            return back(f"/perso/{char_id}#photo")
+        row = db.get(PlayerPhoto, key)
+        if row:
+            row.image, row.updated_at = image, utcnow()
+        else:
+            db.add(PlayerPhoto(key=key, image=image))
+        db.commit()
+        photos.refresh(db)
+        flash(request, f"Photo de {char.player} enregistrée. Elle s'affiche sur tous ses persos.")
+    return back(f"/perso/{char_id}")
+
+
+@router.post("/perso/{char_id}/photo/supprimer")
+async def delete_photo(request: Request, char_id: int, csrf: str = Form("")):
+    check_csrf(request, csrf)
+    with SessionLocal() as db:
+        char = db.get(Character, char_id)
+        row = db.get(PlayerPhoto, photos.player_key(char.player if char else ""))
+        if row:
+            db.delete(row)
+            db.commit()
+            photos.refresh(db)
+            flash(request, f"Photo de {char.player} retirée.")
+    return back(f"/perso/{char_id}")
+
+
+@router.get("/photo/{key}")
+async def player_photo(key: str) -> Response:
+    with SessionLocal() as db:
+        row = db.get(PlayerPhoto, photos.player_key(key))
+    if not row:
+        raise HTTPException(404, "Pas de photo pour ce joueur.")
+    # L'URL change à chaque nouvelle photo (?v=...) : on peut la mettre en cache longtemps.
+    return Response(row.image, media_type="image/webp",
+                    headers={"Cache-Control": "private, max-age=31536000, immutable"})
 
 
 @router.post("/recap/envoyer")

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 
-from sqlalchemy import (JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text,
+from sqlalchemy import (JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text,
                         UniqueConstraint, create_engine, select)
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 
@@ -102,6 +102,15 @@ class Account(Base):
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class PlayerPhoto(Base):
+    """Photo de profil d'un joueur (pas d'un perso) : partagée par tous les persos dont le champ `player` correspond."""
+    __tablename__ = "player_photos"
+
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)  # nom du joueur en minuscules
+    image: Mapped[bytes] = mapped_column(LargeBinary)  # WebP 256×256, réencodé (sans métadonnées)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class KeyValue(Base):
     __tablename__ = "kv"
 
@@ -135,5 +144,5 @@ def kv_set(db: Session, key: str, value: dict) -> None:
         db.add(KeyValue(key=key, value=value))
 
 
-__all__ = ["Account", "Character", "Event", "KeyValue", "Snapshot", "SessionLocal", "init_db", "kv_get", "kv_set",
-           "select", "utcnow"]
+__all__ = ["Account", "Character", "Event", "KeyValue", "PlayerPhoto", "Snapshot", "SessionLocal", "init_db", "kv_get",
+           "kv_set", "select", "utcnow"]

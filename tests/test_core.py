@@ -84,9 +84,31 @@ def test_evenings_cluster_logins():
     assert len(evenings) == 1 and {m.id for m in evenings[0].members} == {1, 2}
 
 
-def test_squad_goal():
-    goal = squad_goal([_char(1, 30), _char(2, 60)])
-    assert goal.progress == 75.0 and goal.at_max == 1 and goal.gap == 30
+def test_squad_goal_uses_target_and_pace():
+    from datetime import date
+    from app.insights import Pace
+    chars = [_char(1, 30), _char(2, 40), _char(3, 45)]
+    paces = {1: Pace(3.0, 21, date(2026, 11, 20), False), 2: Pace(1.0, 7, date(2026, 11, 25), False),
+             3: Pace(0.0, 0, None, True)}
+    goal = squad_goal(chars, 45, None, paces)
+    assert goal.target == 45 and goal.at_target == 1
+    assert goal.progress == round((30 + 40 + 45) / (3 * 45) * 100, 1)
+    assert goal.fastest.id == 1 and goal.projected == date(2026, 11, 25) and goal.stalled == 0
+
+
+def test_group_plans_pick_common_dungeon():
+    from app.insights import group_plans
+    chars = [_char(1, 20, "Guerrier"), _char(2, 22, "Prêtre"), _char(3, 45, "Mage")]
+    plan = group_plans([{"id": "a", "name": "Mardi", "members": [1, 2, 3]}], chars)[0]
+    assert plan.dungeon and {m.id for m in plan.fits} == {1, 2} and [m.id for m in plan.out] == [3]
+    assert plan.has_tank and plan.has_heal and plan.spread == 25
+
+
+def test_crop_box_matches_zoom_and_center():
+    from app.photos import crop_box
+    assert crop_box(1000, 500) == (250, 0, 750, 500)
+    assert crop_box(1000, 500, zoom=2, cx=0, cy=0) == (0, 0, 250, 250)
+    assert crop_box(1000, 500, zoom=2, cx=1, cy=1) == (750, 250, 1000, 500)
 
 
 def test_class_key_french_and_english():
@@ -105,3 +127,26 @@ def test_line_chart_is_accessible_svg():
     t = datetime(2026, 11, 1, tzinfo=timezone.utc)
     svg = str(line_chart([Series("A", "#fff", [(t, 10), (t + timedelta(days=1), 14)])], "Titre", "Desc", "c"))
     assert 'role="img"' in svg and "<title id=\"c-title\">Titre</title>" in svg and "<desc" in svg
+
+
+def test_photo_is_square_webp_without_metadata():
+    import io
+    from PIL import Image
+    from app.photos import SIZE, process
+    src = io.BytesIO()
+    exif = Image.Exif()
+    exif[0x8825] = {2: (48.0, 51.0, 24.0)}  # bloc GPS factice
+    Image.new("RGB", (900, 500), "orange").save(src, "JPEG", exif=exif)
+    out = Image.open(io.BytesIO(process(src.getvalue())))
+    assert out.format == "WEBP" and out.size == (SIZE, SIZE)
+    assert not out.getexif()
+
+
+def test_photo_rejects_non_images_and_big_files():
+    import pytest
+    from app.photos import MAX_UPLOAD_BYTES, player_key, process
+    with pytest.raises(ValueError):
+        process(b"pas une image")
+    with pytest.raises(ValueError):
+        process(b"x" * (MAX_UPLOAD_BYTES + 1))
+    assert player_key("  Max   Le Grand ") == "max le grand"
