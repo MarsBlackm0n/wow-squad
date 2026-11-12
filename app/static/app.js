@@ -188,8 +188,7 @@
           stroke: point.color, "stroke-width": 2, opacity: .42, fill: "none"
         });
         var dot = svg(plot, "circle", {cx: x(point.level), cy: y(point.gear), r: 7, fill: point.color});
-        var label = point.name + " · " + format.format(point.level) + " niv. · " + format.format(point.gear)
-          + " ilvl" + (current ? "" : " · " + axisFormat.format(point.days) + " j observés");
+        var label = point.name + " · " + format.format(point.level) + " niv. · " + (current ? "Niveau d’équipement " : "Gain de niveau d’équipement ") + format.format(point.gear) + (current ? "" : " · " + axisFormat.format(point.days) + " j observés");
         svg(dot, "title", {}, label);
         var item = document.createElement("li");
         var swatch = document.createElement("span");
