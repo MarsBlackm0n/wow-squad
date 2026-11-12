@@ -3,7 +3,7 @@
     <div class="field"><label for="map-zone">Zone</label><select name="zone" id="map-zone">
       {% for zone in zones %}<option value="{{ zone }}" data-background="{{ backgrounds.get(zone, '') }}" data-mobs="{{ mob_counts[zone] }}"{% if zone == active_zone %} selected{% endif %}>{{ zone }}{% if mob_counts[zone] %} · {{ mob_counts[zone] }} mob{{ 's' if mob_counts[zone] > 1 }}{% endif %}</option>{% endfor %}
     </select></div>
-    <div class="field" data-map-search-wrap hidden><label for="map-search">Rechercher dans la zone</label><input type="text" id="map-search" placeholder="Nom d’un repère"></div>
+    <div class="field" data-map-search-wrap hidden><label for="map-search">Rechercher dans toutes les zones</label><input type="text" id="map-search" placeholder="Nom d’un repère"></div>
     <fieldset class="map-filters" data-map-filters hidden>
       <legend>Afficher</legend>
       {% for key,label in kinds.items() %}<label data-map-kind="{{ key }}"><input type="checkbox" value="{{ key }}" checked> {{ label }}</label>{% endfor %}
@@ -24,13 +24,13 @@
     <p class="meta">Carte © Blizzard Entertainment · <a href="https://warcraftforever.games/maps/azeroth">Warcraft Forever</a></p>
   </div>
   <div class="world-map-places panel-block" aria-labelledby="map-places-title">
-    <h2 id="map-places-title" class="block-title">Repères de la zone</h2>
+    <h2 id="map-places-title" class="block-title" data-map-places-title>Repères de la zone</h2>
     <p class="meta" data-map-mobs hidden></p>
     <p class="meta" data-map-empty hidden>Aucun repère pour ces filtres.</p>
     <div class="map-places">
       {% for point in points %}
       <details id="map-{{ point.key }}" class="map-place" data-place="{{ point.key }}" data-zone="{{ point.zone }}" data-map-kind="{{ point.kind }}" data-map-name="{{ point.name }} {{ point.entries | default(()) | join(' ') }}" data-map-kinds="{{ ([point.kind] + (point.also | default(()) | list)) | join(' ') }}"{% if point.zone != active_zone %} hidden{% endif %}{% if selected and selected.key == point.key %} open{% endif %}>
-        <summary><span class="map-place-dot"></span> {{ point.name }} <span class="meta">{{ kinds[point.kind] }}</span></summary>
+        <summary><span class="map-place-dot"></span> {{ point.name }} <span class="meta">{{ kinds[point.kind] }}</span> <span class="meta" data-place-zone hidden>{{ point.zone }}</span></summary>
         <p>{{ point.detail }}</p>
         {% if point.entries is defined %}
         <ul>{% for entry in point.entries %}<li>{{ entry }}</li>{% endfor %}</ul>

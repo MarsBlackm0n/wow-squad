@@ -64,7 +64,9 @@
   document.querySelectorAll("[data-world-map]").forEach(function (map) {
     var zone = map.querySelector("#map-zone");
     var search = map.querySelector("#map-search");
-    function fold(value) { return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
+    function fold(value) {
+      return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[\u2019'-]/g, " ");
+    }
     var filters = Array.from(map.querySelectorAll("[data-map-filters] input"));
     var pins = Array.from(map.querySelectorAll("[data-point]"));
     var places = Array.from(map.querySelectorAll("[data-place]"));
@@ -82,18 +84,25 @@
     image.addEventListener("error", function () { unavailable.hidden = false; image.hidden = true; update(); });
     function update() {
       var kinds = filters.filter(function (filter) { return filter.checked; }).map(function (filter) { return filter.value; });
-      var query = fold(search.value.trim());
-      var visible = function (el) {
-        return el.dataset.zone === zone.value && el.dataset.mapKinds.split(" ").some(function (kind) { return kinds.includes(kind); }) && fold(el.dataset.mapName).includes(query);
+      var query = fold(search.value).trim();
+      var words = query ? query.split(/\s+/) : [];
+      var matches = function (el) {
+        var kindsMatch = el.dataset.mapKinds.split(" ").some(function (kind) { return kinds.includes(kind); });
+        var name = fold(el.dataset.mapName);
+        return kindsMatch && words.every(function (word) { return name.includes(word); });
       };
       pins.forEach(function (pin) {
-        pin.hidden = !visible(pin) || image.hidden || !image.complete || !image.naturalWidth;
+        pin.hidden = pin.dataset.zone !== zone.value || !matches(pin) || image.hidden || !image.complete || !image.naturalWidth;
         pin.setAttribute("aria-pressed", String(!pin.hidden && pin.dataset.point === active));
       });
-      places.forEach(function (place) { place.hidden = !visible(place); });
+      places.forEach(function (place) {
+        place.hidden = (!query && place.dataset.zone !== zone.value) || !matches(place);
+        place.querySelector("[data-place-zone]").hidden = !query;
+      });
+      map.querySelector("[data-map-places-title]").textContent = query ? "Résultats dans toutes les zones" : "Repères de la zone";
       var mobStatus = map.querySelector("[data-map-mobs]");
       var count = Number(zone.options[zone.selectedIndex].dataset.mobs);
-      mobStatus.hidden = !kinds.includes("mob");
+      mobStatus.hidden = Boolean(query) || !kinds.includes("mob");
       mobStatus.textContent = count ? count + (count === 1 ? " mob recensé dans cette zone." : " mobs recensés dans cette zone.")
         : "Aucun mob recensé dans cette zone. Les zones avec des repères de mobs sont signalées dans le sélecteur.";
       map.querySelector("[data-map-empty]").hidden = places.some(function (place) { return !place.hidden; });
@@ -112,11 +121,21 @@
     });
     places.forEach(function (place) {
       place.addEventListener("toggle", function () {
-        if (place.open && !place.hidden) { active = place.dataset.place; update(); }
+        if (!place.open || place.hidden) return;
+        active = place.dataset.place;
+        places.forEach(function (other) { if (other !== place) other.open = false; });
+        if (zone.value !== place.dataset.zone) {
+          zone.value = place.dataset.zone;
+          background();
+        }
+        update();
       });
     });
     zone.addEventListener("change", function () { background(); update(); });
     search.addEventListener("input", update);
+    search.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") event.preventDefault();
+    });
     filters.forEach(function (filter) { filter.addEventListener("change", update); });
     map.querySelector("[data-map-board]").hidden = false;
     map.querySelector("[data-map-filters]").hidden = false;
