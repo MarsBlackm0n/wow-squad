@@ -87,6 +87,66 @@ def parse_equipment(equipment: dict | None) -> float | None:
     return round(sum(levels) / len(levels), 1) if levels else None
 
 
+def equipped_items(data: dict | None) -> dict | None:
+    if data is None or "equipped_items" not in data:
+        return None
+    slots = {}
+    for item in data["equipped_items"] or []:
+        slot = item.get("slot") or {}
+        name = _name(item.get("name") or item.get("item"))
+        if slot.get("type") and name:
+            slots[slot["type"]] = {"name": name, "slot": _name(slot) or slot["type"],
+                                   "id": (item.get("item") or {}).get("id"), "level": _int(item.get("level"))}
+    return slots
+
+
+def character_build(data: dict | None) -> list | None:
+    if data is None or "specializations" not in data:
+        return None
+    builds = []
+    for spec in data["specializations"] or []:
+        name = _name(spec.get("specialization") or spec.get("talent_tree"))
+        trees = [spec, *(spec.get("loadouts") or spec.get("talent_loadouts") or [])]
+        for tree in trees:
+            talents = []
+            for talent in tree.get("talents") or tree.get("selected_talents") or []:
+                tooltip = talent.get("spell_tooltip") or {}
+                title = _name(talent.get("talent") or tooltip.get("spell") or talent.get("spell") or talent.get("name"))
+                if title:
+                    talents.append({"name": title, "rank": _int(talent.get("rank") or talent.get("points_spent"))})
+            if talents or (tree is spec and name and len(trees) == 1):
+                builds.append({"name": _name(tree.get("name")) or name, "talents": talents})
+    return builds
+
+
+def character_reputations(data: dict | None) -> list | None:
+    if data is None or "reputations" not in data:
+        return None
+    result = []
+    for row in data["reputations"] or []:
+        name = _name(row.get("faction"))
+        standing = row.get("standing") or {}
+        current, maximum = _int(standing.get("value")), _int(standing.get("max"))
+        remaining = maximum - current if current is not None and maximum is not None and 0 <= current < maximum else None
+        if name:
+            result.append({"name": name, "standing": _name(standing), "remaining": remaining})
+    return sorted(result, key=lambda row: (row["remaining"] is None, row["remaining"] or 0, row["name"].casefold()))
+
+
+def profession_recipes(data: dict | None) -> dict | None:
+    result = {}
+    available = False
+    for group in ("primaries", "secondaries"):
+        for profession in (data or {}).get(group) or []:
+            name = _name(profession.get("profession"))
+            for tier in [profession, *(profession.get("tiers") or [])]:
+                if "known_recipes" in tier:
+                    available = True
+                    if name:
+                        result.setdefault(name, set()).update(filter(None, map(_name, tier["known_recipes"] or [])))
+    return {name: sorted(recipes, key=str.casefold) for name, recipes in result.items()} if available else None
+
+
 def completed_quest_ids(data: dict | None) -> list[int] | None:
     if data is None or not ("quests" in data or "character" in data):
         return None
@@ -116,6 +176,8 @@ def encounter_counts(data: dict | None) -> dict | None:
                         counts[key] = {"count": count, "name": _name(encounter)}
                         if instance_name := _name(instance.get("instance")):
                             counts[key]["instance"] = instance_name
+                        if label := _name(mode.get("difficulty")):
+                            counts[key]["difficulty"] = label
     return counts
 
 
@@ -356,8 +418,9 @@ async def fetch_state(bz: Blizzard, char: Character) -> tuple[dict, str]:
     """Nouvel état du perso et son statut. Lève NotFound si l'API ne connaît pas (encore) le perso."""
     profile = parse_profile(await bz.character_profile(char.slug))
     parts = ("/equipment", "/character-media", "/achievements", "/statistics", "/professions",
-             "/collections/mounts", "/pvp-summary", "/achievements/statistics", "/quests/completed", "/encounters/dungeons", "/encounters/raids")
-    equipment, media, achievements, statistics, professions, mounts, pvp, achievement_stats, quests, dungeons, raids = await asyncio.gather(
+             "/collections/mounts", "/pvp-summary", "/achievements/statistics", "/quests/completed", "/encounters/dungeons", "/encounters/raids",
+             "/specializations", "/reputations", "/titles")
+    equipment, media, achievements, statistics, professions, mounts, pvp, achievement_stats, quests, dungeons, raids, specs, reputations, titles = await asyncio.gather(
         *(bz.character_part(char.slug, p) for p in parts))
     state = dict(profile)
     summary = (char.state or {}).get("account_summary") or {}
@@ -383,10 +446,25 @@ async def fetch_state(bz: Blizzard, char: Character) -> tuple[dict, str]:
 
 
 def apply_state(db: Session, char: Character, state: dict, status: str, message: str = "") -> list[Event]:
+    state["builds"] = character_build(specs)
+    state["reputations"] = character_reputations(reputations)
+    state["titles"] = (sorted({_name(title) for title in titles["titles"] or [] if _name(title)}, key=str.casefold)
+                       if titles is not None and "titles" in titles else None)
+    state["recipes"] = profession_recipes(professions)
+    state["equipped_items"] = equipped_items(equipment)
     old = dict(char.state or {})
+    state["equipment_changes"] = old.get("equipment_changes")
+    before, after = old.get("equipped_items"), state["equipped_items"]
+    if before is not None and after is not None:
+        changes = [{"before": before.get(slot), "after": after.get(slot)}
+                   for slot in sorted(before.keys() | after.keys())
+                   if before.get(slot) != after.get(slot)]
+        if changes:
+            state["equipment_changes"] = changes
     # On conserve les collections déjà connues si l'endpoint n'a pas répondu cette fois-ci.
     for key in ("achievements", "mounts", "professions", "deaths", "honorable_kills", "avatar_url",
-                "pvp_rank", "quests_completed", "completed_quest_ids", "dungeon_encounters", "raid_encounters"):
+                "pvp_rank", "quests_completed", "completed_quest_ids", "dungeon_encounters", "raid_encounters",
+                "builds", "reputations", "titles", "recipes", "equipped_items"):
         if state.get(key) is None and old.get(key) is not None:
             state[key] = old[key]
     if state.get("last_login") is None and old.get("last_login") is not None:

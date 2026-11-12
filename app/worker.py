@@ -13,6 +13,7 @@ from .blizzard import Blizzard
 from .collector import LIVE_KINDS, refresh_character, sync_account
 from .config import Settings
 from .db import Account, Character, Event, SessionLocal, kv_get, kv_set, select, utcnow
+from .guilds import refresh_rosters
 from .notify import Notifier, esc
 from .stats import event_message, recap_message
 
@@ -70,12 +71,14 @@ class Worker:
                         except Exception as exc:  # noqa: BLE001
                             db.rollback()
                             log.info("Synchro du compte %s impossible : %s", account.battletag, exc)
-                for char in db.scalars(select(Character)).all():
+                characters = db.scalars(select(Character)).all()
+                for char in characters:
                     await refresh_character(db, self.bz, char)
                     db.commit()
                     await asyncio.sleep(0.3)  # on reste poli avec l'API (36 000 requêtes/h max)
                 self.last_cycle = utcnow()
             await self.flush_events()
+            await refresh_rosters(self.bz, characters)
 
     def trigger_cycle(self) -> None:
         """Lance un passage complet en arrière-plan (sans faire attendre la requête HTTP)."""

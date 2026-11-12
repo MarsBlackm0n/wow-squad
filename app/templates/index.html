@@ -42,6 +42,25 @@
 </section>
 {% endif %}
 
+{% if chars %}
+<section class="members" aria-labelledby="crafting-title">
+  <h3 id="crafting-title" class="block-title">Artisans et recettes de la squad</h3>
+  {% for c in chars if c.state.get('professions') %}
+  <details class="panel-block">
+    <summary>{{ c.display_name }} <span class="meta">· {{ c.state.get('professions').keys() | join(', ') }}</span></summary>
+    {% set recipes = c.state.get('recipes') %}
+    {% for profession, skill in c.state.get('professions') | dictsort %}
+    <h4>{{ profession }} · {{ skill }}</h4>
+    {% if recipes and recipes.get(profession) %}
+    <ul>{% for recipe in recipes[profession] %}<li>{{ recipe }}</li>{% endfor %}</ul>
+    {% elif recipes is not none and profession in recipes %}<p class="meta">Aucune recette renvoyée.</p>
+    {% else %}<p class="meta">Liste de recettes indisponible.</p>{% endif %}
+    {% endfor %}
+  </details>
+  {% else %}<p class="empty">Aucun métier relevé dans la squad.</p>{% endfor %}
+</section>
+{% endif %}
+
 {% if accounts %}
 <section class="members" aria-labelledby="accounts-title">
   <h3 id="accounts-title" class="block-title">Comptes Battle.net liés <span class="count">{{ accounts | length }}</span></h3>

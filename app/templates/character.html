@@ -114,6 +114,61 @@
 </section>
 {% endif %}
 
+<section class="panel-block" aria-labelledby="armory-title">
+  <h2 id="armory-title" class="block-title">Armurerie détaillée</h2>
+  <div class="mission-grid">
+    <div>
+      <details>
+        <summary>Talents et spécialisations</summary>
+        {% for build in activity_state.get('builds') or [] %}
+        {% if build.name %}<h3>{{ build.name }}</h3>{% endif %}
+        {% if build.talents %}
+        <ul>{% for talent in build.talents %}<li>{{ talent.name }}{% if talent.rank is not none %} · Rang {{ talent.rank }}{% endif %}</li>{% endfor %}</ul>
+        {% else %}<p class="meta">Détail des talents indisponible.</p>{% endif %}
+        {% else %}<p class="meta">{{ 'Données indisponibles.' if activity_state.get('builds') is none else 'Aucune spécialisation renvoyée.' }}</p>{% endfor %}
+      </details>
+      <details>
+        <summary>Réputations</summary>
+        <ul class="group-list" role="list">
+        {% for rep in activity_state.get('reputations') or [] %}
+          <li>{{ rep.name }}{% if rep.standing %} · {{ rep.standing }}{% endif %}{% if rep.remaining is not none %} <span class="meta">· {{ rep.remaining | number }} pts avant le prochain palier</span>{% endif %}</li>
+        {% else %}<li class="meta">{{ 'Données indisponibles.' if activity_state.get('reputations') is none else 'Aucune réputation renvoyée.' }}</li>{% endfor %}
+        </ul>
+      </details>
+      <details>
+        <summary>Titres débloqués</summary>
+        <ul>{% for title in activity_state.get('titles') or [] %}<li>{{ title }}</li>
+        {% else %}<li class="meta">{{ 'Données indisponibles.' if activity_state.get('titles') is none else 'Aucun titre renvoyé.' }}</li>{% endfor %}</ul>
+      </details>
+    </div>
+    <div>
+      <details>
+        <summary>Dernières pièces d’équipement changées</summary>
+        <ul class="group-list" role="list">
+        {% for change in activity_state.get('equipment_changes') or [] %}
+          {% set item = change.after or change.before %}
+          <li><strong>{{ item.slot }}</strong> · {{ change.before.name if change.before else 'Emplacement vide' }} → {{ change.after.name if change.after else 'Emplacement vide' }}
+            {% if change.before and change.after and change.before.level is not none and change.after.level is not none %}
+            <span class="meta">(niv. {{ change.before.level }} → {{ change.after.level }})</span>{% endif %}</li>
+        {% else %}<li class="meta">Aucun changement relevé entre deux synchronisations.</li>{% endfor %}
+        </ul>
+      </details>
+      {% for key, label in [('dungeon_encounters', 'Boss de donjon'), ('raid_encounters', 'Boss de raid')] %}
+      <details>
+        <summary>{{ label }}{% if boss_totals[key] is not none %} · {{ boss_totals[key] }} victoires{% endif %}</summary>
+        {% set encounters = activity_state.get(key) %}
+        {% for instance, bosses in (encounters or {}).values() | groupby('instance', default='Instance inconnue') %}
+        <h3>{{ instance }}</h3>
+        <ul class="group-list" role="list">
+          {% for boss in bosses %}<li>{{ boss.name or 'Boss sans nom' }}{% if boss.difficulty %} <span class="meta">({{ boss.difficulty }})</span>{% endif %} · <strong>{{ boss.count }}</strong></li>{% endfor %}
+        </ul>
+        {% else %}<p class="meta">{{ 'Données indisponibles.' if encounters is none else 'Aucun boss relevé.' }}</p>{% endfor %}
+      </details>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
 <div class="split split-profile">
   <div class="split-main">
     <section aria-labelledby="progress-title">

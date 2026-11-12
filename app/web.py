@@ -324,9 +324,10 @@ async def guild_page(request: Request, char_id: int):
         slug = guilds.guild_slug(char)
         candidates = db.scalars(select(Character).where(Character.region == char.region, Character.guild != "")).all()
         tracked = [member for member in candidates if guilds.guild_slug(member) == slug]
+        movements = guilds.roster_movements(db, char.region, slug)
     bz = request.app.state.worker.bz
     guild = await guilds.fetch_guild(bz, slug) if bz and slug and bz.region == char.region else guilds.guild_details(None, None, None, None)
-    return render(request, "guild.html", char=char, guild=guild, tracked=tracked,
+    return render(request, "guild.html", char=char, guild=guild, tracked=tracked, movements=movements,
                   tracked_by_slug={member.slug: member for member in tracked})
 
 

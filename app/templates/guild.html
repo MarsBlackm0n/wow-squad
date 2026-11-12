@@ -20,6 +20,17 @@
   {% if guild.created %}<div class="panel-block"><dt>Fondée le</dt><dd><strong>{{ guild.created | localtime('%d/%m/%Y') }}</strong></dd></div>{% endif %}
   {% if guild.achievement_points is not none %}<div class="panel-block"><dt>Points de hauts faits</dt><dd><strong>{{ guild.achievement_points | number }}</strong></dd></div>{% endif %}
 </dl>
+{% if guild.levels_known %}
+<section class="panel-block" aria-labelledby="guild-levels">
+  <h2 id="guild-levels" class="block-title">Répartition par niveau</h2>
+  <ul class="professions" role="list">
+  {% for band, count in guild.level_bands %}
+    <li><label for="guild-level-{{ loop.index }}">Niv. {{ band }} · {{ count }}</label>
+      <progress id="guild-level-{{ loop.index }}" max="{{ guild.levels_known }}" value="{{ count }}"></progress></li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
 <div class="split split-profile">
   <div class="split-main">
     <section aria-labelledby="guild-roster">
@@ -47,6 +58,16 @@
       <ul class="mission-roster" role="list">
         {% for member in tracked %}<li>{{ avatar(member, 'xs') }} <a href="/perso/{{ member.id }}">{{ member.display_name }}</a></li>{% endfor %}
       </ul>
+    </section>
+    <section class="panel-block" aria-labelledby="guild-movements">
+      <h2 id="guild-movements" class="block-title">Arrivées et départs sur 7 jours</h2>
+      {% if movements %}
+      <ul class="group-list" role="list">
+        {% for item in movements %}<li class="group-item"><span>{{ item.name }} · {{ 'Arrivée' if item.joined else 'Départ' }}</span><span class="meta">{{ item.at | time_tag }}</span></li>{% endfor %}
+      </ul>
+      {% else %}
+      <p class="meta">Aucun mouvement relevé. Le suivi compare les listes complètes renvoyées par Blizzard au fil des synchronisations.</p>
+      {% endif %}
     </section>
     {% if guild.recent %}
     <section class="panel-block" aria-labelledby="guild-activity">
