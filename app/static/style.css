@@ -1234,3 +1234,23 @@ html { scroll-padding-top: 5.5rem; }
 .radar-mode select:hover { border-color: var(--teal); }
 .radar-mode select:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 .profession-radar [data-radar-plot] { width: min(100%, 39rem); height: auto; aspect-ratio: 620 / 485; }
+
+.squad-directory { display: grid; gap: 1.2rem; }
+.squad-directory > section { margin: 0; }
+.squad-section, .squad-directory > .profession-radar, .squad-connect {
+  --squad-tone: var(--teal);
+  border-top: 2px solid var(--squad-tone);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--squad-tone) 7%, var(--surface)), var(--surface) 65%);
+}
+.squad-directory > .profession-radar, .squad-accounts { --squad-tone: var(--violet); }
+.squad-crafting, .squad-connect { --squad-tone: var(--gold); }
+.squad-directory .member-list { gap: .7rem; }
+.squad-member-card { border-inline-start: 2px solid var(--teal); }
+.squad-member-card[data-faction="alliance"] { border-inline-start-color: #659aee; }
+.squad-member-card[data-faction="horde"] { border-inline-start-color: #e36f66; }
+.squad-member-tags { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.squad-artisans { display: grid; gap: .65rem; }
+.squad-artisan { border-inline-start: 2px solid var(--gold); }
+.squad-artisan summary { cursor: pointer; }
+.squad-connect { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .65rem 1rem; }
+.squad-connect h3, .squad-connect p { margin: 0; }

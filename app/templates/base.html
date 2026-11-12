@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&amp;family=Inter:opsz,wght@14..32,400..800&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=24">
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=25">
   <script>
     // Appliqué avant l'affichage pour éviter un flash du mauvais thème.
     try { var t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
@@ -35,17 +35,16 @@
         <ul>
           <li><a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>QG</a></li>
           {% if qg_access %}
-          <li><a href="/compte" {% if request.url.path == '/compte' %}aria-current="page"{% endif %}>Mes personnages</a></li>
+          {% if not account_connected %}<li><a href="/compte" {% if request.url.path == '/compte' %}aria-current="page"{% endif %}>Mes personnages</a></li>{% endif %}
           <li><a href="/#squad">La squad</a></li>
           {% if admin %}<li><a href="/administration" {% if request.url.path == "/administration" %}aria-current="page"{% endif %}>Administration</a></li>{% endif %}
           {% endif %}
         </ul>
       </nav>
       <div class="header-tools">
-        {% if settings.battlenet_login_enabled %}
-        <a class="button button-secondary button-small battlenet-link{% if not account_connected %} battlenet-invite{% endif %}" href="/auth/battlenet"
-           aria-label="{{ 'Synchroniser mes personnages avec Battle.net' if account_connected else 'Connexion Battle.net' }}">
-          <span class="battlenet-full">{{ 'Synchroniser Battle.net' if account_connected else 'Connexion Battle.net' }}</span>
+        {% if qg_access and settings.battlenet_login_enabled and not account_connected %}
+        <a class="button button-secondary button-small battlenet-link battlenet-invite" href="/auth/battlenet" aria-label="Connexion Battle.net">
+          <span class="battlenet-full">Connexion Battle.net</span>
           <span class="battlenet-short" aria-hidden="true">Battle.net</span>
         </a>
         {% endif %}

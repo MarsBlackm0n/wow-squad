@@ -9,6 +9,9 @@
   {% if account %}<p class="account-tag">{{ account.battletag }}</p>{% endif %}
 </section>
 
+{% if account and settings.battlenet_login_enabled %}
+<p><a class="button button-secondary" href="/auth/battlenet">Synchroniser Battle.net</a></p>
+{% endif %}
 {% if account %}<details class="account-identity"><summary>Identifiant Battle.net</summary><p><code>{{ account.battle_id }}</code></p></details>{% endif %}
 
 {% if chars %}
@@ -40,9 +43,6 @@
   {% if account %}
   <h2>Aucun personnage importé</h2>
   <p>Battle.net peut mettre du temps à afficher un perso Forever. Une fois le niveau 10 atteint, déconnecte-toi du jeu puis relance la synchronisation.</p>
-  {% if settings.battlenet_login_enabled %}
-  <a class="button button-primary" href="/auth/battlenet">Synchroniser Battle.net</a>
-  {% endif %}
   {% else %}
   <h2>Retrouve tes personnages Forever</h2>
   {% if settings.battlenet_login_enabled %}

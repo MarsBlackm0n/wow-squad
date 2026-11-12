@@ -4,33 +4,24 @@
 {% set AWARD_ICONS = {'rocket': 'trend', 'hunter': 'trophy', 'collector': 'horseshoe', 'graveyard': 'skull', 'dungeon': 'shield', 'raid': 'trophy'} %}
 
 {% macro squad_panel() %}
-<div class="squad-grid">
-  <div class="panel-block join-card join-card-link">
-    <h3>Personnages Battle.net</h3>
-    <p>Retrouve les personnages Forever importés depuis ton compte et ouvre leurs fiches depuis ton espace joueur.</p>
-    {% if settings.battlenet_login_enabled %}
-    {% if account_connected %}
-    <a class="button button-primary" href="/compte">Mes personnages</a>
-    {% else %}
-    <a class="button button-secondary battlenet-invite" href="/auth/battlenet">Importer mes personnages</a>
-    {% endif %}
-    {% else %}
-    <p class="hint">Pas encore disponible : il faut définir <code>PUBLIC_URL</code> et les identifiants API (voir le README).</p>
-    {% endif %}
-  </div>
-
+<div class="squad-directory">
+{% if not account_connected and settings.battlenet_login_enabled %}
+<div class="panel-block squad-connect">
+  <div><h3>Lier ton compte Battle.net</h3><p class="meta">Importe tes personnages Forever dans la squad.</p></div>
+  <a class="button button-secondary battlenet-invite" href="/auth/battlenet">Importer mes personnages</a>
 </div>
+{% endif %}
 {% if chars %}
-<section class="members" aria-labelledby="members-title">
+<section class="panel-block squad-section squad-members" aria-labelledby="members-title">
   <h3 id="members-title" class="block-title">Membres suivis <span class="count">{{ chars | length }}</span></h3>
   <ul class="member-list" role="list">
     {% for c in chars | sort(attribute='name') %}
-    <li class="member">
+    <li class="member squad-member-card" data-faction="{{ c.faction | faction_key }}">
       {{ avatar(c, 'sm') }}
       <div class="member-body">
         <a href="/perso/{{ c.id }}" class="member-name">{{ c.display_name }}</a>
         <span class="meta">{% if c.player %}{{ c.player }} · {% endif %}{% if c.battletag %}compte lié{% else %}ajouté à la main{% endif %}</span>
-        {{ ruleset_badge(c) }}
+        <span class="squad-member-tags">{{ faction_badge(c.faction) }} {{ ruleset_badge(c) }}</span>
       </div>
       <span class="status status-{{ c.status }}">{{ {'ok': 'Suivi', 'pending': 'En attente', 'error': 'Erreur'}[c.status] }}</span>
     </li>
@@ -43,11 +34,12 @@
 {% endif %}
 
 {% if chars %}
-<section class="members" aria-labelledby="crafting-title">
-  <h3 id="crafting-title" class="block-title">Artisans et recettes de la squad</h3>
-  {% with radar_chars = chars %}{% include "_profession_radar.html" %}{% endwith %}
+{% with radar_chars = chars %}{% include "_profession_radar.html" %}{% endwith %}
+<section class="panel-block squad-section squad-crafting" aria-labelledby="crafting-title">
+  <h3 id="crafting-title" class="block-title">Artisans et recettes</h3>
+  <div class="squad-artisans">
   {% for c in chars if c.state.get('professions') %}
-  <details class="panel-block">
+  <details class="panel-block squad-artisan">
     <summary>{{ c.display_name }} <span class="meta">· {{ c.state.get('professions').keys() | join(', ') }}</span></summary>
     {% set recipes = c.state.get('recipes') %}
     {% for profession, skill in c.state.get('professions') | dictsort %}
@@ -59,11 +51,12 @@
     {% endfor %}
   </details>
   {% else %}<p class="empty">Aucun métier relevé dans la squad.</p>{% endfor %}
+  </div>
 </section>
 {% endif %}
 
 {% if accounts %}
-<section class="members" aria-labelledby="accounts-title">
+<section class="panel-block squad-section squad-accounts" aria-labelledby="accounts-title">
   <h3 id="accounts-title" class="block-title">Comptes Battle.net liés <span class="count">{{ accounts | length }}</span></h3>
   <ul class="account-list" role="list">
     {% for a in accounts %}
@@ -72,6 +65,13 @@
   </ul>
 </section>
 {% endif %}
+{% if account_connected %}
+<div class="panel-block squad-connect">
+  <div><h3>Mon compte Battle.net</h3><p class="meta">Consulte ou synchronise tes personnages Forever.</p></div>
+  <a class="button button-secondary" href="/compte">Mes personnages</a>
+</div>
+{% endif %}
+</div>
 {% endmacro %}
 
 {% block content %}
