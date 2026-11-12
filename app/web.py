@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 from . import expedition, guilds, insights, photos, squad, worldmap
 from .instances import DUNGEON_CATALOG, INSTANCE_CATALOG, RAID_CATALOG
 from .blizzard import BlizzardCredentialsError, BlizzardError, character_slug, split_slug
-from .collector import apply_account_characters
+from .collector import account_entry_slug, apply_account_characters
 from .config import settings
 from .db import Account, Character, EveningAvailability, Event, MissionMemory, MissionPreparation, MissionSignup, PlayerPhoto, SessionLocal, Snapshot, SquadMission, kv_get, kv_set, select, utcnow
 from .stats import compute_week, leaderboard
@@ -818,9 +818,10 @@ async def send_recap(request: Request, csrf: str = Form("")):
 @router.get("/auth/battlenet")
 async def battlenet_login(request: Request):
     worker = request.app.state.worker
+    return_to = "/compte" if is_authenticated(request) else "/connexion"
     if not settings.battlenet_login_enabled or not worker.bz:
         flash(request, "La connexion Battle.net n'est pas configurée (PUBLIC_URL et identifiants API).", "error")
-        return back("/compte")
+        return back(return_to)
     state = secrets.token_urlsafe(16)
     request.session["oauth_state"] = state
     return RedirectResponse(worker.bz.authorize_url(settings.oauth_redirect_uri, state), status_code=302)
@@ -829,12 +830,14 @@ async def battlenet_login(request: Request):
 @router.get("/auth/callback")
 async def battlenet_callback(request: Request, code: str = "", state: str = "", error: str = ""):
     worker = request.app.state.worker
+    direct_login = not is_authenticated(request)
+    return_to = "/connexion" if direct_login else "/compte"
     expected_state = request.session.pop("oauth_state", "")
     if error or not code or not expected_state or not hmac.compare_digest(
         state.encode("utf-8"), expected_state.encode("utf-8")
-    ) or not worker.bz:
+    ) or not settings.battlenet_login_enabled or not worker.bz:
         flash(request, "Connexion Battle.net annulée ou expirée.", "error")
-        return back("/compte")
+        return back(return_to)
     try:
         token = await worker.bz.exchange_code(code, settings.oauth_redirect_uri)
         info = await worker.bz.userinfo(token["access_token"])
@@ -843,6 +846,20 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         message = (str(exc) if isinstance(exc, BlizzardCredentialsError)
                    else f"Battle.net a refusé la connexion ({exc}).")
         flash(request, message, "error")
+        return back(return_to)
+
+    if direct_login:
+        with SessionLocal() as db:
+            account = db.scalar(select(Account).where(Account.battle_id == int(info["id"])))
+            if account is None:
+                flash(request, "Première connexion ? Entre le mot de passe du QG puis lie ton compte Battle.net.", "info")
+                return back("/connexion")
+            account_id = account.id
+            battle_id = account.battle_id
+        request.session.clear()
+        request.session.update(auth=True, account_id=account_id)
+        worker.remember_user_token(battle_id, token["access_token"], int(token.get("expires_in", 86400)))
+        worker.trigger_cycle()
         return back("/compte")
 
     try:
@@ -858,6 +875,8 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
             db.add(account)
         account.battletag = info.get("battletag", account.battletag)
         db.flush()
+        removed = (kv_get(db, "removed_characters") or {}).get("items", {})
+        blocked = sum(bool(removed.get(f"{worker.bz.region}:{account_entry_slug(entry)}")) for entry in (entries or []))
         added = apply_account_characters(db, worker.bz.region, account, entries, True) if entries is not None else -1
         db.commit()
         photos.refresh(db)
@@ -868,10 +887,12 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         worker.trigger_cycle()
     if added > 0:
         flash(request, f"Compte lié : {added} perso(s) Forever ajouté(s). Ils seront suivis en continu, sans reconnexion.")
-    elif added == 0:
+    elif added == 0 and not blocked:
         flash(request, "Compte lié. Aucun nouveau perso : ils sont déjà suivis, ou pas encore niveau 10.", "info")
-    else:
+    elif added < 0:
         flash(request, "Compte lié, mais Battle.net ne renvoie pas encore tes persos Forever. Ajoute-les à la main en attendant.", "error")
+    if blocked:
+        flash(request, f"{blocked} perso(s) retiré(s) de la squad. L’admin peut les ajouter de nouveau depuis Administration.", "info")
     return back("/compte")
 
 

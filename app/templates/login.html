@@ -6,6 +6,9 @@
 <section class="login card" aria-labelledby="login-title">
   <svg class="login-mark" aria-hidden="true" focusable="false"><use href="#logo"/></svg>
   <h1 id="login-title">Entrer au QG</h1>
+  {% if settings.battlenet_login_enabled %}
+  <p><a class="button button-secondary button-block" href="/auth/battlenet">Se connecter avec Battle.net</a></p>
+  {% endif %}
   <p>Ce QG est réservé à {{ settings.squad_name }}. Saisis le mot de passe partagé par la bande.</p>
   <form method="post" action="/connexion" novalidate>
     <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -13,7 +16,7 @@
     <div class="field">
       <label for="password">Mot de passe du QG</label>
       {% if error %}<p id="password-error" class="field-error"><span aria-hidden="true">!</span> {{ error }}</p>{% endif %}
-      <input id="password" name="password" type="password" required autocomplete="current-password" autofocus
+      <input id="password" name="password" type="password" required autocomplete="current-password"{% if error or not settings.battlenet_login_enabled %} autofocus{% endif %}
              {% if error %}aria-invalid="true" aria-describedby="password-error"{% endif %}>
     </div>
     <button type="submit" class="button button-primary button-block">Entrer</button>

@@ -26,6 +26,7 @@ from .worker import Worker
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 OPEN_PATHS = ("/connexion", "/static/", "/healthz")
+OAUTH_PATHS = {"/auth/battlenet", "/auth/callback"}
 
 
 @asynccontextmanager
@@ -51,7 +52,7 @@ app.include_router(router)
 @app.middleware("http")
 async def guard(request: Request, call_next):
     path = request.url.path
-    if not is_authenticated(request) and not path.startswith(OPEN_PATHS):
+    if not is_authenticated(request) and path not in OAUTH_PATHS and not path.startswith(OPEN_PATHS):
         return RedirectResponse(f"/connexion?suite={quote(path)}", status_code=303)
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
