@@ -152,6 +152,116 @@
     update();
   });
 
+  document.querySelectorAll("[data-profession-radar]").forEach(function (radar) {
+    var series = JSON.parse(radar.querySelector("[data-radar-data]").textContent);
+    var controls = radar.querySelector("[data-radar-series]");
+    var note = radar.querySelector("[data-radar-note]");
+    var plot = radar.querySelector("[data-radar-plot]");
+    var tableWrap = radar.querySelector("[data-radar-table]");
+    var colors = ["var(--teal)", "var(--violet)", "var(--gold)", "#df6384", "#5d9de8", "#85ad49"];
+    var mode = radar.querySelector("[data-radar-mode]");
+    var axes = [];
+    mode.addEventListener("change", draw);
+    var inputs = series.map(function (row, index) {
+      var label = document.createElement("label");
+      label.className = "tag";
+      label.style.borderColor = colors[index % colors.length];
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = index < 2;
+      input.addEventListener("change", draw);
+      label.append(input, document.createTextNode(row.name));
+      controls.appendChild(label);
+      return input;
+    });
+    plot.setAttribute("viewBox", "0 0 620 485");
+    radar.hidden = false;
+    radar.querySelector("fieldset").hidden = !series.length;
+    radar.querySelector("details").hidden = !series.length;
+    function shape(tag, attrs, text) {
+      var node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      Object.entries(attrs).forEach(function (pair) { node.setAttribute(pair[0], pair[1]); });
+      if (text !== undefined) node.textContent = text;
+      plot.appendChild(node);
+    }
+    function point(index, radius) {
+      var angle = index * 2 * Math.PI / axes.length - Math.PI / 2;
+      return [310 + Math.cos(angle) * radius, 235 + Math.sin(angle) * radius];
+    }
+    function draw() {
+      var group = mode.value;
+      var isSkills = group === "skills";
+      axes = Array.from(new Set(series.flatMap(function (row) { return Object.keys(row[group]); })));
+      if (isSkills) axes.sort(function (a, b) { return a.localeCompare(b, "fr"); });
+      var limits = axes.map(function (axis) {
+        var values = series.flatMap(function (row) { return isSkills ? Object.values(row.skills) : [row.activity[axis] ?? 0]; });
+        return Math.max(isSkills ? 300 : axis === "Niveau" ? 60 : 1, ...values);
+      });
+      var selected = series.map(function (row, i) {
+        return {row: row, color: colors[i % colors.length], checked: inputs[i].checked};
+      }).filter(function (item) { return item.checked; });
+      plot.replaceChildren();
+      tableWrap.replaceChildren();
+      plot.hidden = axes.length < 3 || !selected.length;
+      note.textContent = !series.length ? "Aucun personnage suivi pour ce groupe."
+        : !selected.length ? "Sélectionne au moins un personnage."
+        : axes.length < 3 ? "Le radar apparaît à partir de trois métiers relevés. Les niveaux restent dans le tableau."
+        : isSkills ? "Les axes de métier partagent une échelle de 0 à " + limits[0] + ". Les valeurs non relevées laissent un espace."
+        : "Chaque axe a sa propre échelle. Le tableau indique les valeurs brutes et le maximum de chaque axe. Plus loin du centre ne signifie pas toujours mieux.";
+      if (!selected.length) return;
+      var table = document.createElement("table");
+      var header = table.createTHead().insertRow();
+      [isSkills ? "Métier" : "Indicateur", "Bord du radar"].concat(selected.map(function (item) { return item.row.name; })).forEach(function (name) {
+        var th = document.createElement("th");
+        th.scope = "col";
+        th.textContent = name;
+        header.appendChild(th);
+      });
+      var body = table.createTBody();
+      axes.forEach(function (axis, index) {
+        var row = body.insertRow();
+        var th = document.createElement("th");
+        th.scope = "row";
+        th.textContent = axis;
+        row.appendChild(th);
+        row.insertCell().textContent = limits[index];
+        selected.forEach(function (item) {
+          row.insertCell().textContent = item.row[group][axis] ?? "Non relevé";
+        });
+      });
+      tableWrap.appendChild(table);
+      if (plot.hidden) return;
+      [35, 70, 105, 140, 175].forEach(function (radius) {
+        shape("polygon", {points: axes.map(function (_, i) { return point(i, radius).join(","); }).join(" "),
+                          fill: "none", stroke: "var(--line)"});
+      });
+      axes.forEach(function (axis, i) {
+        var edge = point(i, 175);
+        var label = point(i, 195);
+        shape("line", {x1: 310, y1: 235, x2: edge[0], y2: edge[1], stroke: "var(--line)"});
+        shape("text", {x: label[0], y: label[1], "text-anchor": "middle", "dominant-baseline": "middle",
+                       "font-size": 15, fill: "var(--text)"}, axis);
+      });
+      selected.forEach(function (item) {
+        var dots = axes.map(function (axis, i) {
+          var value = item.row[group][axis];
+          return typeof value === "number" ? point(i, value / limits[i] * 175) : null;
+        });
+        if (dots.every(Boolean)) {
+          shape("polygon", {points: dots.map(function (dot) { return dot.join(","); }).join(" "),
+                            fill: item.color, "fill-opacity": .12, stroke: item.color, "stroke-width": 2});
+        }
+        dots.forEach(function (dot, i) {
+          if (!dot) return;
+          var next = dots[(i + 1) % dots.length];
+          if (next && !dots.every(Boolean)) shape("line", {x1: dot[0], y1: dot[1], x2: next[0], y2: next[1], stroke: item.color, "stroke-width": 2});
+          shape("circle", {cx: dot[0], cy: dot[1], r: 4.5, fill: item.color});
+        });
+      });
+    }
+    draw();
+  });
+
   document.querySelectorAll("[data-squad-replay]").forEach(function (replay) {
     var frames = JSON.parse(replay.querySelector("[data-replay-data]").textContent);
     var range = replay.querySelector("input");

@@ -1170,3 +1170,42 @@ html { scroll-padding-top: 5.5rem; }
 .evening-status[data-status="yes"] { --availability-color: #459767; }
 .evening-status[data-status="no"] { --availability-color: #c45559; }
 .evening-status[data-status="maybe"] { --availability-color: #b78d4a; }
+
+.stats-metrics { gap: .9rem; }
+.stats-metrics .panel-block {
+  --stat-tone: var(--teal);
+  border-top: 2px solid var(--stat-tone);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--stat-tone) 9%, var(--surface)), var(--surface) 75%);
+}
+.stats-metrics .panel-block:nth-child(3n + 2) { --stat-tone: var(--violet); }
+.stats-metrics .panel-block:nth-child(3n) { --stat-tone: var(--gold); }
+.stats-metrics dd strong { color: var(--stat-tone); }
+
+.guild-level-chart, .character-armory { margin-block: 1.25rem; }
+.guild-level-bands { list-style: none; padding: 0; margin: 0; display: grid; gap: .65rem; }
+.guild-level-bands li { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr) 2.5rem; align-items: center; gap: .75rem; }
+.guild-level-bands strong { text-align: right; font-variant-numeric: tabular-nums; }
+.guild-level-bands progress {
+  width: 100%; height: .55rem; border: 0; border-radius: 1rem; overflow: hidden;
+  appearance: none; background: var(--line); accent-color: var(--teal);
+}
+.guild-level-bands progress::-webkit-progress-bar { background: var(--line); }
+.guild-level-bands progress::-webkit-progress-value { background: linear-gradient(90deg, var(--teal), var(--violet)); border-radius: 1rem; }
+.guild-level-bands progress::-moz-progress-bar { background: linear-gradient(90deg, var(--teal), var(--violet)); border-radius: 1rem; }
+
+.armory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: .75rem; }
+.armory-grid > div { display: grid; align-content: start; gap: .75rem; }
+.armory-grid details { padding: .6rem .85rem; border: 1px solid var(--line); border-inline-start: 2px solid var(--violet); border-radius: .65rem; }
+.armory-grid > div:nth-child(2) details { border-inline-start-color: var(--teal); }
+.armory-grid summary { cursor: pointer; }
+.armory-grid summary .meta { display: inline-block; margin-inline-start: .35rem; }
+
+.profession-radar { margin-block: 1rem; }
+.profession-radar fieldset { border: 0; padding: 0; margin: 0; }
+.profession-radar legend { margin-bottom: .5rem; }
+.profession-radar label { display: inline-flex; gap: .45rem; align-items: center; }
+.profession-radar [data-radar-plot] { width: min(100%, 28rem); margin-inline: auto; display: block; }
+.profession-radar [data-radar-plot][hidden] { display: none; }
+.radar-table { overflow-x: auto; }
+.radar-table table { width: 100%; border-collapse: collapse; text-align: start; }
+.radar-table th, .radar-table td { text-align: start; padding: .35rem .55rem; border-bottom: 1px solid var(--line); }

@@ -1,0 +1,23 @@
+<section class="panel-block profession-radar" data-profession-radar hidden aria-label="Comparaison des personnages">
+  <h3 class="block-title">Comparer les personnages</h3>
+  <script type="application/json" data-radar-data>[
+    {% for c in radar_chars %}
+    {% set state = c.state or {} %}
+    {% set dungeons = state.get('dungeon_encounters') %}
+    {% set raids = state.get('raid_encounters') %}
+    {{ {'name': c.display_name, 'skills': state.get('professions') or {}, 'activity': {
+      'Niveau': c.level or none, 'Niv. d’équipement': c.ilvl or none, 'Morts': c.deaths,
+      'Boss de donjon': dungeons.values() | sum(attribute='count') if dungeons is not none else none,
+      'Boss de raid': raids.values() | sum(attribute='count') if raids is not none else none,
+      'Quêtes': state.get('quests_completed'), 'Victoires honorables': state.get('honorable_kills')
+    }} | tojson }}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]</script>
+  <label>Indicateurs
+    <select data-radar-mode><option value="skills">Métiers</option><option value="activity">Progression et activité</option></select>
+  </label>
+  <fieldset><legend>Personnages à comparer</legend><div class="tag-list" data-radar-series></div></fieldset>
+  <p class="meta" data-radar-note aria-live="polite"></p>
+  <svg data-radar-plot viewBox="0 0 400 400" aria-hidden="true" hidden></svg>
+  <details><summary>Voir les valeurs exactes</summary><div class="radar-table" data-radar-table></div></details>
+</section>

@@ -83,43 +83,36 @@
 {% set dungeons = boss_totals.dungeon_encounters %}
 {% set raids = boss_totals.raid_encounters %}
 {% set pvp_rank = activity_state.get('pvp_rank') %}
-{% if quests is not none or dungeons is not none or raids is not none or honorable_kills is not none or pvp_rank is not none %}
 <section class="character-activity" aria-labelledby="character-activity-title">
   <h2 id="character-activity-title" class="block-title">Activité de {{ char.name }}</h2>
-  <dl class="activity-metrics">
-    {% if quests is not none %}
+  <dl class="activity-metrics stats-metrics">
     <div class="panel-block">
       <dt>Quêtes terminées</dt>
-      <dd><strong>{{ quests | number }}</strong></dd>
+      {% if quests is not none %}<dd><strong>{{ quests | number }}</strong></dd>{% else %}<dd class="meta">Données indisponibles</dd>{% endif %}
       {% if activity.quests %}<dd class="meta">+{{ activity.quests | number }} relevées sur 7 j</dd>{% endif %}
     </div>
-    {% endif %}
-    {% if dungeons is not none or raids is not none %}
     <div class="panel-block">
       <dt>Boss vaincus</dt>
-      {% if dungeons is not none %}<dd><strong>{{ dungeons | number }}</strong> en donjon</dd>{% endif %}
-      {% if raids is not none %}<dd><strong>{{ raids | number }}</strong> en raid</dd>{% endif %}
+      {% if dungeons is not none %}<dd><strong>{{ dungeons | number }}</strong> en donjon</dd>{% else %}<dd class="meta">Donjon · données indisponibles</dd>{% endif %}
+      {% if raids is not none %}<dd><strong>{{ raids | number }}</strong> en raid</dd>{% else %}<dd class="meta">Raid · données indisponibles</dd>{% endif %}
       {% if activity.encounter %}<dd class="meta">+{{ activity.encounter | number }} relevés sur 7 j</dd>{% endif %}
     </div>
-    {% endif %}
-    {% if honorable_kills is not none or pvp_rank is not none %}
     <div class="panel-block">
       <dt>PvP</dt>
       {% if honorable_kills is not none %}<dd><strong>{{ honorable_kills | number }}</strong> victoires honorables</dd>{% endif %}
       {% if pvp_rank is not none %}<dd>Rang {{ pvp_rank }}</dd>{% endif %}
+      {% if honorable_kills is none %}<dd class="meta">Victoires honorables indisponibles</dd>{% endif %}
       {% if activity.pvp %}<dd class="meta">+{{ activity.pvp | number }} relevées sur 7 j</dd>{% endif %}
     </div>
-    {% endif %}
   </dl>
 </section>
-{% endif %}
 
-<section class="panel-block" aria-labelledby="armory-title">
+<section class="panel-block character-armory" aria-labelledby="armory-title">
   <h2 id="armory-title" class="block-title">Armurerie détaillée</h2>
-  <div class="mission-grid">
+  <div class="armory-grid">
     <div>
       <details>
-        <summary>Talents et spécialisations</summary>
+        <summary>Talents et spécialisations{% if activity_state.get('builds') is none %} <span class="meta">Données indisponibles</span>{% elif not activity_state.get('builds') %} <span class="meta">Aucun relevé</span>{% endif %}</summary>
         {% for build in activity_state.get('builds') or [] %}
         {% if build.name %}<h3>{{ build.name }}</h3>{% endif %}
         {% if build.talents %}
@@ -128,7 +121,7 @@
         {% else %}<p class="meta">{{ 'Données indisponibles.' if activity_state.get('builds') is none else 'Aucune spécialisation renvoyée.' }}</p>{% endfor %}
       </details>
       <details>
-        <summary>Réputations</summary>
+        <summary>Réputations{% if activity_state.get('reputations') is none %} <span class="meta">Données indisponibles</span>{% elif not activity_state.get('reputations') %} <span class="meta">Aucun relevé</span>{% endif %}</summary>
         <ul class="group-list" role="list">
         {% for rep in activity_state.get('reputations') or [] %}
           <li>{{ rep.name }}{% if rep.standing %} · {{ rep.standing }}{% endif %}{% if rep.remaining is not none %} <span class="meta">· {{ rep.remaining | number }} pts avant le prochain palier</span>{% endif %}</li>
@@ -136,26 +129,26 @@
         </ul>
       </details>
       <details>
-        <summary>Titres débloqués</summary>
+        <summary>Titres débloqués{% if activity_state.get('titles') is none %} <span class="meta">Données indisponibles</span>{% elif not activity_state.get('titles') %} <span class="meta">Aucun relevé</span>{% endif %}</summary>
         <ul>{% for title in activity_state.get('titles') or [] %}<li>{{ title }}</li>
         {% else %}<li class="meta">{{ 'Données indisponibles.' if activity_state.get('titles') is none else 'Aucun titre renvoyé.' }}</li>{% endfor %}</ul>
       </details>
     </div>
     <div>
       <details>
-        <summary>Dernières pièces d’équipement changées</summary>
+        <summary>Dernières pièces d’équipement changées{% if not activity_state.get('equipment_changes') %} <span class="meta">{{ 'Données indisponibles' if activity_state.get('equipped_items') is none else 'Aucun changement relevé' }}</span>{% endif %}</summary>
         <ul class="group-list" role="list">
         {% for change in activity_state.get('equipment_changes') or [] %}
           {% set item = change.after or change.before %}
           <li><strong>{{ item.slot }}</strong> · {{ change.before.name if change.before else 'Emplacement vide' }} → {{ change.after.name if change.after else 'Emplacement vide' }}
             {% if change.before and change.after and change.before.level is not none and change.after.level is not none %}
             <span class="meta">(niv. {{ change.before.level }} → {{ change.after.level }})</span>{% endif %}</li>
-        {% else %}<li class="meta">Aucun changement relevé entre deux synchronisations.</li>{% endfor %}
+        {% else %}<li class="meta">{{ 'Données d’équipement indisponibles.' if activity_state.get('equipped_items') is none else 'Aucun changement relevé entre deux synchronisations.' }}</li>{% endfor %}
         </ul>
       </details>
       {% for key, label in [('dungeon_encounters', 'Boss de donjon'), ('raid_encounters', 'Boss de raid')] %}
       <details>
-        <summary>{{ label }}{% if boss_totals[key] is not none %} · {{ boss_totals[key] }} victoires{% endif %}</summary>
+        <summary>{{ label }}{% if boss_totals[key] is not none %} · {{ boss_totals[key] }} victoire{{ "s" if boss_totals[key] != 1 }}{% else %} <span class="meta">Données indisponibles</span>{% endif %}</summary>
         {% set encounters = activity_state.get(key) %}
         {% for instance, bosses in (encounters or {}).values() | groupby('instance', default='Instance inconnue') %}
         <h3>{{ instance }}</h3>

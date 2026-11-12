@@ -45,6 +45,7 @@
 {% if chars %}
 <section class="members" aria-labelledby="crafting-title">
   <h3 id="crafting-title" class="block-title">Artisans et recettes de la squad</h3>
+  {% with radar_chars = chars %}{% include "_profession_radar.html" %}{% endwith %}
   {% for c in chars if c.state.get('professions') %}
   <details class="panel-block">
     <summary>{{ c.display_name }} <span class="meta">· {{ c.state.get('professions').keys() | join(', ') }}</span></summary>

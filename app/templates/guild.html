@@ -10,7 +10,7 @@
   <p class="lead">{{ faction_badge(guild.faction or char.faction) }}
     {% if guild.ruleset or char.ruleset %}<span class="pill">{{ (guild.ruleset or char.ruleset) | ruleset_label }}</span>{% endif %}</p>
 </header>
-<dl class="activity-metrics character-activity">
+<dl class="activity-metrics stats-metrics">
   <div class="panel-block"><dt>Membres de la guilde</dt><dd><strong>{{ (guild.count if guild.count is not none else (guild.members | length if guild.roster_available else none)) | number }}</strong></dd></div>
   <div class="panel-block"><dt>Persos suivis par la squad</dt><dd><strong>{{ tracked | length }}</strong></dd></div>
   {% if guild.levels_known %}
@@ -21,16 +21,18 @@
   {% if guild.achievement_points is not none %}<div class="panel-block"><dt>Points de hauts faits</dt><dd><strong>{{ guild.achievement_points | number }}</strong></dd></div>{% endif %}
 </dl>
 {% if guild.levels_known %}
-<section class="panel-block" aria-labelledby="guild-levels">
+<section class="panel-block guild-level-chart" aria-labelledby="guild-levels">
   <h2 id="guild-levels" class="block-title">Répartition par niveau</h2>
-  <ul class="professions" role="list">
+  <ul class="guild-level-bands" role="list">
   {% for band, count in guild.level_bands %}
-    <li><label for="guild-level-{{ loop.index }}">Niv. {{ band }} · {{ count }}</label>
-      <progress id="guild-level-{{ loop.index }}" max="{{ guild.levels_known }}" value="{{ count }}"></progress></li>
+    <li><label for="guild-level-{{ loop.index }}">Niv. {{ band }}</label>
+      <progress id="guild-level-{{ loop.index }}" max="{{ guild.levels_known }}" value="{{ count }}"></progress>
+      <strong>{{ count }}</strong></li>
   {% endfor %}
   </ul>
 </section>
 {% endif %}
+{% with radar_chars = tracked %}{% include "_profession_radar.html" %}{% endwith %}
 <div class="split split-profile">
   <div class="split-main">
     <section aria-labelledby="guild-roster">
