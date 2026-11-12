@@ -137,6 +137,7 @@
     var date = replay.querySelector("[data-replay-date]");
     var plot = replay.querySelector("[data-replay-plot]");
     var legend = replay.querySelector("[data-replay-legend]");
+    var current = Boolean(frames[0].current);
     var observations = frames.flatMap(function (frame) { return frame.points; });
     var lowX = Math.floor(Math.min(0, ...observations.map(function (p) { return p.level; })));
     var highX = Math.max(lowX + 4, Math.ceil(Math.max(0, ...observations.map(function (p) { return p.level; }))));
@@ -145,6 +146,7 @@
     var timer;
     var format = new Intl.NumberFormat("fr-FR", {signDisplay: "exceptZero", maximumFractionDigits: 1});
     var axisFormat = new Intl.NumberFormat("fr-FR", {maximumFractionDigits: 1});
+    if (current) format = axisFormat;
     var ns = "http://www.w3.org/2000/svg";
     function svg(parent, tag, attrs, label) {
       var node = document.createElementNS(ns, tag);
@@ -164,8 +166,8 @@
       plot.replaceChildren();
       legend.replaceChildren();
       date.textContent = frame.date;
-      svg(plot, "text", {x: 43, y: 15}, "Équipement gagné (ilvl)");
-      svg(plot, "text", {x: width - 15, y: 263, "text-anchor": "end"}, "Niveaux gagnés");
+      svg(plot, "text", {x: 43, y: 15}, current ? "Niveau moyen d’équipement" : "Équipement gagné (ilvl)");
+      svg(plot, "text", {x: width - 15, y: 263, "text-anchor": "end"}, current ? "Niveau du personnage" : "Niveaux gagnés");
       for (var tick = 0; tick <= 4; tick += 1) {
         var yValue = lowY + (highY - lowY) * tick / 4;
         var xValue = Math.round(lowX + (highX - lowX) * tick / 4);
@@ -187,7 +189,7 @@
         });
         var dot = svg(plot, "circle", {cx: x(point.level), cy: y(point.gear), r: 7, fill: point.color});
         var label = point.name + " · " + format.format(point.level) + " niv. · " + format.format(point.gear)
-          + " ilvl · " + axisFormat.format(point.days) + " j observés";
+          + " ilvl" + (current ? "" : " · " + axisFormat.format(point.days) + " j observés");
         svg(dot, "title", {}, label);
         var item = document.createElement("li");
         var swatch = document.createElement("span");

@@ -229,12 +229,17 @@ def _race_chart(db, chars: list[Character]):
     charts = []
     series = []
     histories = []
-    for c in sorted(chars, key=lambda char: char.id):
+    current_points = []
+    for index, c in enumerate(sorted(chars, key=lambda char: char.id)):
         if c.status == "pending":
             continue
         snaps = db.scalars(select(Snapshot).where(Snapshot.character_id == c.id)
                            .order_by(Snapshot.taken_at)).all()
         points, launch_anchor = progression_points(snaps, "level")
+        comparison_color = squad_chart_color(index)
+        if c.level > 0 and c.ilvl > 0:
+            current_points.append({"name": c.display_name, "color": comparison_color,
+                                   "level": c.level, "gear": round(c.ilvl, 1)})
         if not points:
             continue
         observed = points[1:] if launch_anchor else points
@@ -246,22 +251,25 @@ def _race_chart(db, chars: list[Character]):
         chart = line_chart([Series(c.display_name, class_color(c.class_name), points)],
                            f"Niveau de {c.display_name}", desc, f"race-{c.id}",
                            y_label="Niveau", y_min=0, step=False, tz_name=settings.timezone)
-        comparison_color = squad_chart_color(len(series))
         series.append(Series(c.display_name, comparison_color, points))
         histories.append((c.display_name, comparison_color, snaps))
         charts.append({"color": comparison_color, "id": c.id, "name": c.display_name, "last": last, "first": first,
                        "gain": gain, "launch": launch_anchor, "svg": chart})
     charts.sort(key=lambda item: -item["last"])
     rows = [(item["name"], item["first"], item["last"], item["gain"]) for item in charts]
+    now = utcnow()
+    replay = progression_replay(histories, now, settings.timezone)
+    if not replay and len(current_points) >= 2:
+        replay = [{"date": localtime(now, "%d/%m"), "points": current_points, "current": True}]
     if not series:
-        return charts, rows, None, None, 0, []
+        return charts, rows, None, None, 0, replay
     comparison = line_chart(series, "Comparer les personnages", "Une courbe de niveau par personnage.",
                             "race-comparison", y_label="Niveau", y_min=0, step=False, tz_name=settings.timezone)
     cumulative = sum_progression(series)
     total = line_chart([Series("Total de la squad", "#f8cf65", cumulative)], "Niveaux cumulés",
                        "Somme des niveaux des personnages suivis à chaque date.", "race-total",
                        y_label="Total des niveaux", y_min=0, step=False, tz_name=settings.timezone)
-    return charts, rows, comparison, total, int(cumulative[-1][1]), progression_replay(histories, utcnow(), settings.timezone)
+    return charts, rows, comparison, total, int(cumulative[-1][1]), replay
 
 
 

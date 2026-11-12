@@ -206,14 +206,24 @@
     {% if race_replay %}
     <section class="panel-block squad-replay" aria-labelledby="squad-replay-title" data-squad-replay hidden>
       <div class="chart-toolbar">
-        <div><h3 id="squad-replay-title">Niveaux et équipement</h3><p class="meta">Gains mesurés dans les sept jours précédant la date sélectionnée.</p></div>
+        <div>
+          <h3 id="squad-replay-title">Niveaux et équipement</h3>
+          {% if race_replay[0].current %}
+          <p class="meta">Dernières valeurs connues. La comparaison des gains s’activera lorsque deux persos auront au moins 24 h de relevés dans la même fenêtre de sept jours.</p>
+          {% else %}<p class="meta">Gains mesurés dans les sept jours précédant la date sélectionnée.</p>{% endif %}
+        </div>
         {% if race_replay | length > 1 %}<button class="button button-secondary" type="button" data-replay-play>Lire</button>{% endif %}
       </div>
-      <label for="replay-date">Date du relevé · <output data-replay-date></output></label>
+      <label for="replay-date"{% if race_replay[0].current %} hidden{% endif %}>Date de comparaison · <output data-replay-date></output></label>
       <input type="range" id="replay-date" min="0" max="{{ race_replay | length - 1 }}" value="{{ race_replay | length - 1 }}"{% if race_replay | length == 1 %} hidden{% endif %}>
-      <svg data-replay-plot role="img" aria-label="Nuage de points des gains de niveau et d’équipement"></svg>
+      <svg data-replay-plot role="img" aria-label="{{ 'Niveau et équipement actuels des personnages' if race_replay[0].current else 'Gains de niveau et d’équipement des personnages' }}"></svg>
       <ul class="legend replay-legend" data-replay-legend role="list"></ul>
       <script type="application/json" data-replay-data>{{ race_replay | tojson }}</script>
+    </section>
+    {% else %}
+    <section class="panel-block squad-replay" aria-labelledby="squad-replay-empty">
+      <h3 id="squad-replay-empty">Niveaux et équipement</h3>
+      <p class="meta">Le nuage de points apparaîtra lorsque Blizzard aura fourni le niveau d’équipement d’au moins deux personnages.</p>
     </section>
     {% endif %}
     <div class="split">
