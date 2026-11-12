@@ -173,14 +173,23 @@
   });
 
   document.querySelectorAll("[data-player-filter]").forEach(function (filter) {
-    var select = filter.querySelector("[data-player-select]");
+    var all = filter.querySelector("[data-player-all]");
+    var toggles = Array.from(filter.querySelectorAll("[data-player-toggle]"));
     var cards = filter.closest(".squad-members").querySelectorAll("[data-squad-player]");
+    var empty = filter.querySelector("[data-player-empty]");
     function update() {
-      cards.forEach(function (card) {
-        card.hidden = Boolean(select.value) && card.dataset.squadPlayer !== select.value;
-      });
+      var visible = new Set(toggles.filter(function (toggle) { return toggle.checked; })
+        .map(function (toggle) { return toggle.value; }));
+      cards.forEach(function (card) { card.hidden = !visible.has(card.dataset.squadPlayer); });
+      all.checked = visible.size === toggles.length;
+      all.indeterminate = visible.size > 0 && !all.checked;
+      empty.hidden = visible.size > 0;
     }
-    select.addEventListener("change", update);
+    all.addEventListener("change", function () {
+      toggles.forEach(function (toggle) { toggle.checked = all.checked; });
+      update();
+    });
+    toggles.forEach(function (toggle) { toggle.addEventListener("change", update); });
     filter.hidden = false;
     update();
   });

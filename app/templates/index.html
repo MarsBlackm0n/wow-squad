@@ -29,13 +29,16 @@
 {% if chars %}
 <section class="panel-block squad-section squad-members" aria-labelledby="members-title">
   <h3 id="members-title" class="block-title">Membres suivis <span class="count">{{ chars | length }}</span></h3>
-  <div class="field squad-player-filter" data-player-filter hidden>
-    <label for="squad-player">Filtrer par joueur</label>
-    <select id="squad-player" data-player-select>
-      <option value="">Tous les joueurs</option>
-      {% for group in player_groups %}<option value="{{ group.key }}">{{ group.name }}</option>{% endfor %}
-    </select>
-  </div>
+  <fieldset class="squad-player-filter" data-player-filter hidden>
+    <legend>Filtrer par joueur</legend>
+    <div class="tag-list">
+      <label class="tag race-series-label"><input type="checkbox" data-player-all checked> Tous</label>
+      {% for group in player_groups %}
+      <label class="tag race-series-label"><input type="checkbox" data-player-toggle value="{{ group.key }}" checked> {{ group.name }}</label>
+      {% endfor %}
+    </div>
+    <p class="meta" data-player-empty role="status" hidden>Sélectionne au moins un joueur.</p>
+  </fieldset>
   <div class="squad-player-grid">
     {% for group in player_groups %}
     {% set featured = group.main or group.characters[0] %}
