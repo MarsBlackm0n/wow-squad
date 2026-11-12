@@ -8,7 +8,7 @@
   <h1 id="login-title">Entrer au QG</h1>
   {% if settings.battlenet_login_enabled %}
   <p>Connecte-toi avec Battle.net pour entrer au QG et importer tes personnages Forever.</p>
-  <p><a class="button button-secondary button-block battlenet-invite" href="/auth/battlenet">Se connecter avec Battle.net</a></p>
+  <p><a class="button button-secondary button-block battlenet-invite" href="/auth/battlenet?suite={{ suite | urlencode }}">Se connecter avec Battle.net</a></p>
   {% endif %}
   <p>{{ 'Tu peux aussi entrer avec le mot de passe du QG.' if settings.battlenet_login_enabled else 'Entre avec le mot de passe du QG.' }}</p>
   <form method="post" action="/connexion" novalidate>

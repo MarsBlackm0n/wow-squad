@@ -53,7 +53,13 @@ app.include_router(router)
 async def guard(request: Request, call_next):
     path = request.url.path
     if not is_authenticated(request) and path not in OAUTH_PATHS and not path.startswith(OPEN_PATHS):
-        return RedirectResponse(f"/connexion?suite={quote(path)}", status_code=303)
+        destination = path
+        repere = request.query_params.get("repere")
+        if repere and path in {"/", "/carte"}:
+            destination += f"?repere={quote(repere, safe='')}"
+            if path == "/":
+                destination += "#carte"
+        return RedirectResponse(f"/connexion?suite={quote(destination)}", status_code=303)
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "same-origin")

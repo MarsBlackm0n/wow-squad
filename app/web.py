@@ -837,7 +837,7 @@ async def send_recap(request: Request, csrf: str = Form("")):
 # --- Connexion Battle.net (ajoute automatiquement ses persos Forever) ----------------------------
 
 @router.get("/auth/battlenet")
-async def battlenet_login(request: Request):
+async def battlenet_login(request: Request, suite: str = ""):
     worker = request.app.state.worker
     return_to = "/compte" if is_authenticated(request) else "/connexion"
     if not settings.battlenet_login_enabled or not worker.bz:
@@ -845,6 +845,7 @@ async def battlenet_login(request: Request):
         return back(return_to)
     state = secrets.token_urlsafe(16)
     request.session["oauth_state"] = state
+    request.session["oauth_map_destination"] = suite if suite.startswith(("/?repere=", "/carte?repere=")) else ""
     return RedirectResponse(worker.bz.authorize_url(settings.oauth_redirect_uri, state), status_code=302)
 
 
@@ -854,6 +855,7 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
     direct_login = not is_authenticated(request)
     return_to = "/connexion" if direct_login else "/compte"
     expected_state = request.session.pop("oauth_state", "")
+    map_destination = request.session.pop("oauth_map_destination", "")
     if error or not code or not expected_state or not hmac.compare_digest(
         state.encode("utf-8"), expected_state.encode("utf-8")
     ) or not settings.battlenet_login_enabled or not worker.bz:
@@ -899,7 +901,7 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         flash(request, "Compte lié. Aucun nouveau perso : ils sont déjà suivis, ou pas encore niveau 10.", "info")
     else:
         flash(request, "Compte lié, mais Battle.net ne renvoie pas encore tes persos Forever. Relance la synchronisation dans Mes personnages.", "error")
-    return back("/compte")
+    return back(map_destination or "/compte")
 
 
 @router.get("/healthz")
