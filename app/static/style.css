@@ -1098,3 +1098,19 @@ html { scroll-padding-top: 5.5rem; }
 .squad-replay svg line { stroke: var(--chart-grid); }
 .squad-replay svg circle { stroke: #161c26; stroke-width: 1.5; }
 .replay-legend { margin: .65rem 0 0; color: var(--text); }
+
+.battlenet-invite {
+  border-color: #b78d4a;
+  box-shadow: 0 0 0 2px rgb(183 141 74 / 24%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .battlenet-invite {
+    animation: battlenet-glow 2.8s ease-in-out infinite;
+  }
+}
+
+@keyframes battlenet-glow {
+  0%, 100% { box-shadow: 0 0 0 1px rgb(183 141 74 / 22%), 0 0 6px rgb(183 141 74 / 12%); }
+  50% { box-shadow: 0 0 0 3px rgb(183 141 74 / 29%), 0 0 16px rgb(183 141 74 / 34%); }
+}

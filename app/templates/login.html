@@ -7,7 +7,7 @@
   <svg class="login-mark" aria-hidden="true" focusable="false"><use href="#logo"/></svg>
   <h1 id="login-title">Entrer au QG</h1>
   {% if settings.battlenet_login_enabled %}
-  <p><a class="button button-secondary button-block" href="/auth/battlenet">Se connecter avec Battle.net</a></p>
+  <p><a class="button button-secondary button-block battlenet-invite" href="/auth/battlenet">Se connecter avec Battle.net</a></p>
   {% endif %}
   <p>Ce QG est réservé à {{ settings.squad_name }}. Saisis le mot de passe partagé par la bande.</p>
   <form method="post" action="/connexion" novalidate>

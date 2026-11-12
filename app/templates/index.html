@@ -9,7 +9,11 @@
     <h3>Personnages Battle.net</h3>
     <p>Retrouve les personnages Forever importés depuis ton compte et ouvre leurs fiches depuis ton espace joueur.</p>
     {% if settings.battlenet_login_enabled %}
+    {% if account_connected %}
     <a class="button button-primary" href="/compte">Mes personnages</a>
+    {% else %}
+    <a class="button button-secondary battlenet-invite" href="/auth/battlenet">Importer mes personnages</a>
+    {% endif %}
     {% else %}
     <p class="hint">Pas encore disponible : il faut définir <code>PUBLIC_URL</code> et les identifiants API (voir le README).</p>
     {% endif %}
@@ -74,7 +78,7 @@
 <section class="onboarding" aria-labelledby="onboarding-title">
   <h2 id="onboarding-title">Bienvenue au QG</h2>
   <ol class="steps">
-    <li><strong>Ajoutez vos persos.</strong> Liez votre compte Battle.net ou saisissez prénom et nom ci-dessous.</li>
+    <li><strong>Ajoutez vos persos.</strong> Liez votre compte Battle.net pour importer vos personnages Forever.</li>
     <li><strong>Jouez.</strong> Un perso apparaît dans l'API à partir du niveau 10, après une déconnexion.</li>
     <li><strong>Revenez.</strong> Le journal, la course au niveau et les idées de groupe se remplissent tout seuls.</li>
   </ol>
