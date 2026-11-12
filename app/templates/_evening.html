@@ -20,7 +20,12 @@
         <fieldset class="checkbox-group"><legend>Personnages que tu peux jouer</legend>
           <ul role="list">{% for c in mission_chars %}<li><label class="check"><input type="checkbox" name="persos" value="{{ c.id }}"{% if (my_availability and c.id in my_availability.character_ids) or (not my_availability and mission_chars | length == 1) %} checked{% endif %}> {{ avatar(c, 'xs') }} {{ c.display_name }}</label></li>{% endfor %}</ul>
         </fieldset>
-        <button class="button button-primary" type="submit">Enregistrer</button>
+        <div class="field-row">
+          <button class="button button-primary" type="submit">Enregistrer</button>
+          {% if my_availability %}
+          <button class="button button-secondary" type="submit" name="action" value="withdraw">Retirer ma disponibilité</button>
+          {% endif %}
+        </div>
       </form>
     </details>
     {% elif account_id %}

@@ -146,7 +146,11 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
         missions, completed_missions = squad.mission_rosters(db, pace_by_char, utcnow().astimezone(ZoneInfo(tz)).date())
         account_id = request.session.get("account_id")
         mission_chars = [c for c in chars if account_id is not None and c.account_id == account_id]
-        availability = db.scalars(select(EveningAvailability).where(EveningAvailability.day == today)).all()
+        owners_by_character = {c.id: c.account_id for c in chars}
+        availability = [
+            row for row in db.scalars(select(EveningAvailability).where(EveningAvailability.day == today))
+            if row.status == "no" or any(owners_by_character.get(cid) == row.account_id for cid in row.character_ids)
+        ]
         my_availability = next((row for row in availability if row.account_id == account_id), None)
         availability_names = {a.id: a.battletag.split("#")[0] for a in accounts}
         suggested_instance = INSTANCE_CATALOG.get(suggestion)
@@ -392,6 +396,15 @@ async def delete_character(request: Request, char_id: int, csrf: str = Form(""))
         if char is None:
             raise HTTPException(404, "Personnage introuvable.")
         name = char.display_name
+        if char.account_id is not None:
+            today = utcnow().astimezone(ZoneInfo(settings.timezone)).date()
+            availability = db.get(EveningAvailability, (today, char.account_id))
+            if availability and char_id in availability.character_ids:
+                remaining = [cid for cid in availability.character_ids if cid != char_id]
+                if remaining:
+                    availability.character_ids = remaining
+                else:
+                    db.delete(availability)
         for signup in db.scalars(select(MissionSignup).where(MissionSignup.character_id == char.id)):
             db.delete(signup)
         removed = dict((kv_get(db, "removed_characters") or {}).get("items", {}))
@@ -460,11 +473,17 @@ def mission_account(db, request: Request) -> int:
 
 @router.post("/disponibilite")
 async def save_availability(request: Request, statut: str = Form(""), role: str = Form("flex"),
-                            persos: list[int] = Form([]), csrf: str = Form("")):
+                            persos: list[int] = Form([]), csrf: str = Form(""), action: str = Form("")):
     check_csrf(request, csrf)
     today = utcnow().astimezone(ZoneInfo(settings.timezone)).date()
     with SessionLocal() as db:
         account_id = mission_account(db, request)
+        if action == "withdraw":
+            row = db.get(EveningAvailability, (today, account_id))
+            if row is not None:
+                db.delete(row)
+                db.commit()
+            return back("/#ce-soir")
         if statut not in expedition.AVAILABILITY or role not in squad.MISSION_ROLES:
             raise HTTPException(400, "Disponibilité invalide.")
         ids = list(dict.fromkeys(persos)) if statut != "no" else []
