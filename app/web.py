@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 from . import expedition, guilds, insights, photos, squad, worldmap
 from .instances import DUNGEON_CATALOG, INSTANCE_CATALOG, RAID_CATALOG
 from .blizzard import BlizzardCredentialsError, BlizzardError, character_slug, split_slug
-from .collector import account_entry_slug, apply_account_characters
+from .collector import apply_account_characters
 from .config import settings
 from .db import Account, Character, EveningAvailability, Event, MissionMemory, MissionPreparation, MissionSignup, PlayerPhoto, SessionLocal, Snapshot, SquadMission, kv_get, kv_set, select, utcnow
 from .stats import compute_week, leaderboard
@@ -875,9 +875,10 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
             db.add(account)
         account.battletag = info.get("battletag", account.battletag)
         db.flush()
-        removed = (kv_get(db, "removed_characters") or {}).get("items", {})
-        blocked = sum(bool(removed.get(f"{worker.bz.region}:{account_entry_slug(entry)}")) for entry in (entries or []))
-        added = apply_account_characters(db, worker.bz.region, account, entries, True) if entries is not None else -1
+        added = -1
+        if entries is not None:
+            added = apply_account_characters(db, worker.bz.region, account, entries, add_missing=True,
+                                             reimport_removed=True)
         db.commit()
         photos.refresh(db)
     worker.remember_user_token(account.battle_id, token["access_token"], int(token.get("expires_in", 86400)))
@@ -887,12 +888,10 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         worker.trigger_cycle()
     if added > 0:
         flash(request, f"Compte lié : {added} perso(s) Forever ajouté(s). Ils seront suivis en continu, sans reconnexion.")
-    elif added == 0 and not blocked:
+    elif added == 0:
         flash(request, "Compte lié. Aucun nouveau perso : ils sont déjà suivis, ou pas encore niveau 10.", "info")
-    elif added < 0:
+    else:
         flash(request, "Compte lié, mais Battle.net ne renvoie pas encore tes persos Forever. Ajoute-les à la main en attendant.", "error")
-    if blocked:
-        flash(request, f"{blocked} perso(s) retiré(s) de la squad. L’admin peut les ajouter de nouveau depuis Administration.", "info")
     return back("/compte")
 
 

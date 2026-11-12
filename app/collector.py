@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from . import photos
 from .blizzard import Blizzard, NotFound, character_slug
-from .db import Account, Character, Event, PlayerPhoto, Snapshot, kv_get, select, utcnow
+from .db import Account, Character, Event, PlayerPhoto, Snapshot, kv_get, kv_set, select, utcnow
 from .ui import _fold, class_key
 
 log = logging.getLogger(__name__)
@@ -481,13 +481,15 @@ async def sync_account(db: Session, bz: Blizzard, account: Account, user_token: 
 
 
 def apply_account_characters(db: Session, region: str, account: Account, entries: list[dict],
-                             add_missing: bool = False) -> int:
+                             add_missing: bool = False, *, reimport_removed: bool = False) -> int:
     added = 0
-    removed = (kv_get(db, "removed_characters") or {}).get("items", {})
+    removed = dict((kv_get(db, "removed_characters") or {}).get("items", {}))
+    restored = False
     first_import = add_missing and db.scalar(select(Character.id).where(Character.account_id == account.id).limit(1)) is None
     for entry in entries:
         slug = account_entry_slug(entry)
-        if not slug or removed.get(f"{region}:{slug}"):
+        removal_key = f"{region}:{slug}"
+        if not slug or (removed.get(removal_key) and not (add_missing and reimport_removed)):
             continue
         char = db.scalars(select(Character).where(Character.region == region, Character.slug == slug)).first()
         summary = account_entry_summary(entry)
@@ -521,5 +523,9 @@ def apply_account_characters(db: Session, region: str, account: Account, entries
         state = dict(char.state or {})
         state["account_summary"] = summary
         char.state = state
+        if reimport_removed and removed.pop(removal_key, None):
+            restored = True
+    if restored:
+        kv_set(db, "removed_characters", {"items": removed})
     account.last_sync_at = utcnow()
     return added
