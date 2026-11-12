@@ -487,6 +487,8 @@ async def save_availability(request: Request, statut: str = Form(""), role: str 
         if statut not in expedition.AVAILABILITY or role not in squad.MISSION_ROLES:
             raise HTTPException(400, "Disponibilité invalide.")
         ids = list(dict.fromkeys(persos)) if statut != "no" else []
+        if action == "switch" and statut == "yes":
+            ids = list(db.scalars(select(Character.id).where(Character.account_id == account_id)))
         if statut != "no" and not ids:
             flash(request, "Choisis au moins un personnage pour ce soir.", "error")
             return back("/#ce-soir")

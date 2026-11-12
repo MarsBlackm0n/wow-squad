@@ -5,8 +5,20 @@
       {% if availability %}<p class="meta">{{ availability | selectattr('status', 'equalto', 'yes') | list | length }} disponibles · {{ availability | selectattr('status', 'equalto', 'maybe') | list | length }} peut-être</p>{% endif %}
     </div>
     {% if mission_chars %}
+    {% set available = my_availability and my_availability.status == 'yes' %}
+    <div class="evening-controls">
+    <form method="post" action="/disponibilite">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="switch">
+      <input type="hidden" name="role" value="{{ my_availability.role if my_availability else 'flex' }}">
+      <button class="evening-switch" type="submit" name="statut" value="{{ 'no' if available else 'yes' }}"
+              role="switch" aria-checked="{{ 'true' if available else 'false' }}" aria-label="Disponible ce soir">
+        <span class="evening-switch-track" aria-hidden="true"></span>
+        <span>{{ 'Disponible' if available else ('Peut-être' if my_availability and my_availability.status == 'maybe' else ('Indisponible' if my_availability else 'Non renseigné')) }}</span>
+      </button>
+    </form>
     <details class="evening-declare">
-      <summary class="button button-secondary">{{ 'Modifier ma disponibilité' if my_availability else 'Indiquer ma disponibilité' }}</summary>
+      <summary class="button button-secondary">{{ 'Options de disponibilité' }}</summary>
       <form class="mission-form" method="post" action="/disponibilite">
         <input type="hidden" name="csrf" value="{{ csrf }}">
         <div class="field-row">
@@ -28,6 +40,7 @@
         </div>
       </form>
     </details>
+    </div>
     {% elif account_id %}
     <a class="button button-secondary" href="/compte">Voir mes personnages</a>
     {% elif settings.battlenet_login_enabled %}

@@ -1114,3 +1114,48 @@ html { scroll-padding-top: 5.5rem; }
   0%, 100% { box-shadow: 0 0 0 1px rgb(183 141 74 / 22%), 0 0 6px rgb(183 141 74 / 12%); }
   50% { box-shadow: 0 0 0 3px rgb(183 141 74 / 29%), 0 0 16px rgb(183 141 74 / 34%); }
 }
+
+.evening-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: .65rem;
+}
+
+.evening-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 44px;
+  padding: .25rem .55rem;
+  border: 0;
+  border-radius: 2rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.evening-switch-track {
+  display: inline-flex;
+  align-items: center;
+  width: 2.55rem;
+  height: 1.45rem;
+  padding: .18rem;
+  border-radius: 2rem;
+  background: #a83439;
+}
+
+.evening-switch-track::before {
+  content: "";
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.evening-switch[aria-checked="true"] .evening-switch-track {
+  justify-content: end;
+  background: #277a4f;
+}
