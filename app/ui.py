@@ -7,6 +7,7 @@ Les graphiques sont du SVG statique (pas de JS) avec un titre, une description t
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -150,6 +151,40 @@ def progression_points(snapshots, field: str) -> tuple[list[tuple[datetime, floa
     if points[0][0] <= FOREVER_LAUNCH:
         return points, False
     return [(FOREVER_LAUNCH, 0), *points], True
+
+
+SQUAD_CHART_COLORS = ("#67c9ff", "#ff946c", "#a6dc71", "#d3a4ff", "#f8cf65",
+                      "#f98eba", "#64dac8", "#a8aaff", "#f2ae72", "#dce988")
+
+
+def squad_chart_color(index: int) -> str:
+    if index < len(SQUAD_CHART_COLORS):
+        return SQUAD_CHART_COLORS[index]
+    return f"hsl({index * 137.508 % 360:.2f} 78% 72%)"
+
+
+def sum_progression(series) -> list[tuple[datetime, float]]:
+    """Additionne les courbes linéaires sur une chronologie commune."""
+    timelines = []
+    for item in series:
+        if item.points:
+            points = dict(sorted(item.points, key=lambda point: point[0]))
+            timelines.append((list(points), list(points.values())))
+    dates = sorted({at for times, _ in timelines for at in times})
+    total_points = []
+    for at in dates:
+        total = 0.0
+        for times, values in timelines:
+            index = bisect_right(times, at) - 1
+            if index < 0:
+                continue
+            if index == len(times) - 1:
+                total += values[index]
+                continue
+            fraction = (at - times[index]) / (times[index + 1] - times[index])
+            total += values[index] + fraction * (values[index + 1] - values[index])
+        total_points.append((at, total))
+    return total_points
 
 
 def number(value, digits: int = 0) -> str:

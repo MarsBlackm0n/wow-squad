@@ -23,7 +23,7 @@ from .collector import apply_account_characters
 from .config import settings
 from .db import Account, Character, EveningAvailability, Event, MissionMemory, MissionPreparation, MissionSignup, PlayerPhoto, SessionLocal, Snapshot, SquadMission, kv_get, kv_set, select, utcnow
 from .stats import compute_week, leaderboard
-from .ui import Series, class_color, class_key, faction_key, frdate, line_chart, progression_points, make_formatters, number, ruleset_label, xp_progress
+from .ui import Series, class_color, class_key, faction_key, frdate, line_chart, progression_points, make_formatters, number, ruleset_label, squad_chart_color, sum_progression, xp_progress
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -136,7 +136,7 @@ async def home(request: Request, priorite: str = "group", suggestion: str = ""):
         chars = leaderboard(db)
         week = compute_week(db)
         events = insights.load_events(db, days=30)
-        race_charts, race_rows = _race_chart(db, chars)
+        race_charts, race_rows, race_comparison, race_total, race_total_level = _race_chart(db, chars)
         firsts = insights.firsts(db)
         accounts = db.scalars(select(Account).order_by(Account.battletag)).all()
         goal_cfg, groups = squad.get_goal(db), squad.get_groups(db)
@@ -155,6 +155,7 @@ async def home(request: Request, priorite: str = "group", suggestion: str = ""):
                        for gain in week.gains if gain.character.id in pace_by_char
                        and pace_by_char[gain.character.id].weekly_estimate is not None)
     return render(request, "index.html", chars=chars, week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
+                  race_comparison=race_comparison, race_total=race_total, race_total_level=race_total_level,
                   days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
                   goal=insights.squad_goal(chars, goal_cfg.target, goal_cfg.deadline, pace_by_char),
                   goal_cfg=goal_cfg, groups=groups, plans=insights.group_plans(groups, chars),
@@ -221,7 +222,8 @@ async def account_page(request: Request):
 
 def _race_chart(db, chars: list[Character]):
     charts = []
-    for c in chars:
+    series = []
+    for c in sorted(chars, key=lambda char: char.id):
         if c.status == "pending":
             continue
         snaps = db.scalars(select(Snapshot).where(Snapshot.character_id == c.id)
@@ -238,10 +240,21 @@ def _race_chart(db, chars: list[Character]):
         chart = line_chart([Series(c.display_name, class_color(c.class_name), points)],
                            f"Niveau de {c.display_name}", desc, f"race-{c.id}",
                            y_label="Niveau", y_min=0, step=False, tz_name=settings.timezone)
-        charts.append({"id": c.id, "name": c.display_name, "last": last, "first": first,
+        comparison_color = squad_chart_color(len(series))
+        series.append(Series(c.display_name, comparison_color, points))
+        charts.append({"color": comparison_color, "id": c.id, "name": c.display_name, "last": last, "first": first,
                        "gain": gain, "launch": launch_anchor, "svg": chart})
     charts.sort(key=lambda item: -item["last"])
-    return charts, [(item["name"], item["first"], item["last"], item["gain"]) for item in charts]
+    rows = [(item["name"], item["first"], item["last"], item["gain"]) for item in charts]
+    if not series:
+        return charts, rows, None, None, 0
+    comparison = line_chart(series, "Comparer les personnages", "Une courbe de niveau par personnage.",
+                            "race-comparison", y_label="Niveau", y_min=0, step=False, tz_name=settings.timezone)
+    cumulative = sum_progression(series)
+    total = line_chart([Series("Total de la squad", "#f8cf65", cumulative)], "Niveaux cumulés",
+                       "Somme des niveaux des personnages suivis à chaque date.", "race-total",
+                       y_label="Total des niveaux", y_min=0, step=False, tz_name=settings.timezone)
+    return charts, rows, comparison, total, int(cumulative[-1][1])
 
 
 
