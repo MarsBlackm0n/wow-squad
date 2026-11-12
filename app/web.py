@@ -507,7 +507,7 @@ def _map_context(missions, zone: str = "", repere: str = "") -> dict:
     points = worldmap.points()
     zones = sorted({point["zone"] for point in points})
     selected = next((point for point in points if point["key"] == repere), None)
-    active_zone = selected["zone"] if selected else zone if zone in zones else "Marche de l’Ouest"
+    active_zone = selected["zone"] if selected else zone if zone in zones else worldmap.ZONES["deadmines"]
     mob_counts = {name: sum(point["kind"] == "mob" and point["zone"] == name for point in points) for name in zones}
     objectives = {}
     for mission in missions:

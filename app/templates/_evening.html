@@ -47,7 +47,7 @@
     <a class="button button-secondary" href="/auth/battlenet">Connecter Battle.net</a>
     {% endif %}
   </header>
-  <p><a href="/carte">Carte des donjons, raids, quêtes et mobs</a></p>
+  <p><a href="{{ '#carte' if chars else '/carte' }}">Carte des donjons, raids, quêtes et mobs</a></p>
   {% if availability %}
   <ul class="tag-list" role="list">
     {% for row in availability %}<li class="tag evening-status" data-status="{{ row.status }}"><strong>{{ availability_names.get(row.account_id, 'Joueur') }}</strong> · {{ availability_labels[row.status] }}</li>{% endfor %}
@@ -64,6 +64,7 @@
     <article class="mission-card" data-objective="dungeon">
       <div class="mission-card-meta"><span class="objective-badge">Donjon</span><span class="meta">{{ idea.mode }} · {{ 'Horde' if idea.side == 'horde' else 'Alliance' }}</span></div>
       <h4>{{ idea.instance.name }}</h4>
+      <a href="/?repere={{ idea.instance.key }}#carte">Voir sur la carte</a>
       <p><strong>{{ idea.score[1] }}/5 disponibles</strong>{% if idea.score[0] > idea.score[1] %} · {{ idea.score[0] - idea.score[1] }} à confirmer{% endif %}</p>
       <ol class="lineup" aria-label="Composition proposée">
         {% for slot in idea.team %}

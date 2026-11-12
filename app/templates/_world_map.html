@@ -42,6 +42,9 @@
           <div><dt>Composition conseillée</dt><dd>{{ point.composition }}</dd></div>
         </dl>
         {% endif %}
+        {% for key, name in point.nearby_quests | default(()) %}
+        <p>Quête liée au donjon <a href="?repere={{ key }}#carte">{{ name }}</a></p>
+        {% endfor %}
         {% for mission in map_objectives.get(point.key, []) %}
         <p><a href="/objectifs/{{ mission.id }}/preparation">{{ mission.title }}</a>
           <span class="meta">· niv. {{ mission.min_level }} minimum · {{ mission.target_size }} places</span></p>

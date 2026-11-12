@@ -47,6 +47,7 @@ def points():
         result.append({"key": item.key, "name": item.name, "kind": item.kind, "zone": ZONES[item.key], "xy": xy,
                        "detail": item.access, "level": item.level, "size": item.size,
                        "composition": item.composition,
+                       "nearby_quests": (("defias", "La Confrérie défias"),) if item.key == "deadmines" else (),
                        "guide": "https://wowfdb.com/zones/onyxia-s-lair/" if item.key == "onyxia" else item.guide})
     result.extend([
         {"key": "arugal-quest", "name": "Arugal doit mourir", "kind": "quest", "zone": "Forêt des Pins-Argentés",
@@ -76,7 +77,7 @@ def points():
                    "detail": f"{detail}. Position documentée, susceptible de varier.",
                    "guide": f"https://azeroth.wiki/forever/map/{guide}"}
                   for key, name, zone, x, y, detail, guide in mobs)
-    westfall = "Marche de l'Ouest"
+    westfall = ZONES["deadmines"]
     npc_guide = "https://azeroth.wiki/forever/map/westfall/"
     pet_guide = "https://foreverbase.org/en/start/companion-pets/"
     locations = (
