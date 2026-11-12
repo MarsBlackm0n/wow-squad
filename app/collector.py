@@ -56,13 +56,12 @@ def _int(value) -> int | None:
 
 def parse_profile(profile: dict) -> dict:
     ilvl = profile.get("equipped_item_level") or profile.get("average_item_level") or 0
-    last_login = profile.get("last_login_timestamp")
+    last_login = _int(profile.get("last_login_timestamp"))
     return {
         "name": _name(profile.get("name")),
         "surname": _name(profile.get("surname")),
         "level": _int(profile.get("level")) or 0,
         "experience": _int(profile.get("experience")),
-        "experience_to_next_level": _int(profile.get("experience_to_next_level")),
         "class_name": _name(profile.get("character_class") or profile.get("playable_class")),
         "race": _name(profile.get("race") or profile.get("playable_race")),
         "faction": _name(profile.get("faction")),
@@ -70,7 +69,7 @@ def parse_profile(profile: dict) -> dict:
         "ruleset": _ruleset_name(profile.get("ruleset")),
         "achievement_points": _int(profile.get("achievement_points")) or 0,
         "ilvl": float(ilvl or 0),
-        "last_login": int(last_login) if last_login else None,
+        "last_login": last_login if last_login and last_login > 0 else None,
     }
 
 
@@ -278,14 +277,20 @@ def diff_events(who: str, old: dict, new: dict) -> list[NewEvent]:
 
 def slug_from_href(href: str) -> str:
     path = urlparse(href or "").path
-    return unquote(path.rsplit("/character/", 1)[-1]).lower() if "/character/" in path else ""
+    prefix = "/profile/wow/character/"
+    if not path.startswith(prefix):
+        return ""
+    slug = unquote(path.removeprefix(prefix).strip("/")).lower()
+    return slug if "-" in slug and 1 < len(slug) <= 80 and "/" not in slug else ""
 
 
 def account_entry_slug(entry: dict) -> str:
-    surname = _name(entry.get("surname"))
-    if surname:
-        return character_slug(_name(entry.get("name")), surname)
-    return slug_from_href((entry.get("character") or {}).get("href", "")) or character_slug(_name(entry.get("name")))
+    href = (entry.get("character") or {}).get("href", "")
+    slug = slug_from_href(href)
+    if slug:
+        return slug
+    slug = character_slug(_name(entry.get("name")), _name(entry.get("surname")))
+    return slug if "-" in slug else ""
 
 
 def _ruleset_name(value) -> str:
@@ -295,15 +300,10 @@ def _ruleset_name(value) -> str:
 
 
 def account_entry_summary(entry: dict) -> dict:
-    return {
-        "name": _name(entry.get("name")),
-        "surname": _name(entry.get("surname")),
-        "level": _int(entry.get("level")) or 0,
-        "class_name": _name(entry.get("playable_class")),
-        "race": _name(entry.get("playable_race")),
-        "faction": _name(entry.get("faction")),
-        "ruleset": _ruleset_name(entry.get("ruleset")),
-    }
+    summary = parse_profile(entry)
+    return {key: summary[key] for key in
+            ("name", "surname", "level", "class_name", "race", "faction", "ruleset", "experience", "last_login")}
+
 
 
 # --- Orchestration (réseau + base) ------------------------------------------------------------------
@@ -316,6 +316,11 @@ async def fetch_state(bz: Blizzard, char: Character) -> tuple[dict, str]:
     equipment, media, achievements, statistics, professions, mounts, pvp, quests, dungeons, raids = await asyncio.gather(
         *(bz.character_part(char.slug, p) for p in parts))
     state = dict(profile)
+    summary = (char.state or {}).get("account_summary") or {}
+    if summary.get("level") == profile["level"] and profile["experience"] is None:
+        state["experience"] = summary.get("experience")
+    if profile["last_login"] is None:
+        state["last_login"] = summary.get("last_login")
     state["ilvl"] = parse_equipment(equipment) or profile["ilvl"]
     state["avatar_url"] = parse_media(media)
     state.update(parse_statistics(statistics))
@@ -338,6 +343,10 @@ def apply_state(db: Session, char: Character, state: dict, status: str, message:
                 "pvp_rank", "quests_completed", "dungeon_encounters", "raid_encounters"):
         if state.get(key) is None and old.get(key) is not None:
             state[key] = old[key]
+    if state.get("last_login") is None and old.get("last_login") is not None:
+        state["last_login"] = old["last_login"]
+    if state.get("level") == old.get("level") and state.get("experience") is None:
+        state["experience"] = old.get("experience")
     state["synced"] = True
     if old.get("account_summary"):
         state["account_summary"] = old["account_summary"]
@@ -391,11 +400,20 @@ async def refresh_character(db: Session, bz: Blizzard, char: Character) -> list[
         return apply_state(db, char, state, status)
     except NotFound:
         summary = (char.state or {}).get("account_summary")
-        if summary:  # l'endpoint public ne répond pas mais le compte Battle.net du pote, si
-            state = {k: v for k, v in (char.state or {}).items() if k not in ("synced",)}
-            state.update(summary)
-            state["synced"] = (char.state or {}).get("synced", False)
-            return apply_state(db, char, state, "ok", "Données issues du compte Battle.net (profil public indisponible)")
+        if summary:
+            old = char.state or {}
+            state = dict(old)
+            if summary.get("level", 0) >= char.level:
+                if summary["level"] > char.level:
+                    state["experience"] = None
+                state.update({key: value for key, value in summary.items() if value is not None and value != ""})
+            if 0 < state.get("level", 0) < 10:
+                message = ("Blizzard a renvoyé le résumé du compte. Le profil détaillé devient accessible "
+                           "à partir du niveau 10, après une déconnexion du jeu.")
+            else:
+                message = ("Profil public Blizzard indisponible. Les informations détaillées peuvent manquer "
+                           "ou dater du dernier relevé.")
+            return apply_state(db, char, state, "ok", message)
         char.status = "pending"
         char.status_message = ("Pas encore visible dans l'API : il faut être niveau 10 et s'être déconnecté. "
                                "Vérifie aussi l'orthographe nom-surnom.")
@@ -425,6 +443,13 @@ def apply_account_characters(db: Session, region: str, account: Account, entries
             continue
         char = db.scalars(select(Character).where(Character.region == region, Character.slug == slug)).first()
         summary = account_entry_summary(entry)
+        if char is None:
+            legacy_slug = character_slug(summary["name"], summary["surname"])
+            if legacy_slug and legacy_slug != slug:
+                char = db.scalar(select(Character).where(Character.region == region, Character.slug == legacy_slug,
+                                                        Character.account_id == account.id))
+                if char is not None:
+                    char.slug = slug
         if char is None:
             if not add_missing:
                 continue

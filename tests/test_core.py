@@ -271,3 +271,26 @@ def test_mission_roster_counts_roles_and_flags_preparation():
     assert mission_level_dates(roster, {low.id: Pace(2.0, 4, None, False, 2)}, today) == {
         low.id: today + timedelta(days=3),
     }
+
+
+def test_forever_xp_progress_requires_a_valid_reading():
+    from app.ui import xp_progress
+
+    xp = xp_progress(21, 3656)
+    assert xp["required"] == 25200 and xp["remaining"] == 21544
+    assert round(xp["percent"], 1) == 14.5
+    assert xp_progress(4, 0)["percent"] == 0
+    assert xp_progress(4, None) is None
+    assert xp_progress(4, 2101) is None
+    assert xp_progress(60, 0) is None
+
+
+def test_account_entry_prefers_public_profile_href():
+    from app.collector import account_entry_summary
+
+    entry = {"name": "Johnny", "surname": "Alias", "level": 4, "experience": 0,
+             "character": {"href": "https://eu.api.blizzard.com/profile/wow/character/johnny-surname/?namespace=profile-forever-eu"}}
+    assert account_entry_slug(entry) == "johnny-surname"
+    assert account_entry_slug({"name": "Johnny"}) == ""
+    assert account_entry_summary(entry)["experience"] == 0
+    assert account_entry_summary(entry)["last_login"] is None

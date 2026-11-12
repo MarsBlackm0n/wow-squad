@@ -19,7 +19,7 @@
     <ul class="profile-facts" role="list">
       {% if char.player %}<li><span class="fact-label">Joueur</span> {{ char.player }}</li>{% endif %}
       {% if char.guild %}<li><span class="fact-label">Guilde</span> &lt;{{ char.guild }}&gt;</li>{% endif %}
-      <li><span class="fact-label">Vu en jeu</span> {{ char.last_login | time_tag }}</li>
+      <li><span class="fact-label">Vu en jeu</span> {{ char.last_login | time_tag if char.last_login else 'Date indisponible' }}</li>
     </ul>
   </div>
   <form method="post" action="/perso/{{ char.id }}/rafraichir" class="profile-action">
@@ -27,6 +27,20 @@
     <button type="submit" class="button button-secondary">{{ icon('refresh') }} Rafraîchir</button>
     <p class="meta">Mis à jour {{ char.refreshed_at | time_tag }}</p>
   </form>
+  <div class="profile-xp">
+    {% if xp %}
+    <div class="profile-xp-label">
+      <label for="profile-xp-bar">Niveau {{ char.level }} → {{ char.level + 1 }}</label>
+      <strong>{{ xp.percent | number(1) }} %</strong>
+    </div>
+    <progress id="profile-xp-bar" value="{{ xp.current }}" max="{{ xp.required }}"></progress>
+    <p class="meta">{{ xp.remaining | number }} XP avant le niveau {{ char.level + 1 }}</p>
+    {% elif char.level >= max_level %}
+    <p class="meta">Niveau maximum atteint</p>
+    {% else %}
+    <p class="meta">Progression d’XP indisponible</p>
+    {% endif %}
+  </div>
 </section>
 
 {% if char.status != 'ok' or char.status_message %}
@@ -59,41 +73,46 @@
       </dd>
     </div>
     <div class="kpi"><dt>Niveau d'objet</dt><dd><span class="kpi-value">{{ char.ilvl | number(1) if char.ilvl else '—' }}</span></dd></div>
-    <div class="kpi"><dt>Hauts faits</dt><dd><span class="kpi-value">{{ char.achievement_points | number }}</span><span class="kpi-note">points</span></dd></div>
+    <div class="kpi"><dt>Hauts faits</dt><dd><span class="kpi-value">{{ (char.achievement_points if activity_state.get("achievement_points") is not none else none) | number }}</span><span class="kpi-note">points</span></dd></div>
     <div class="kpi"><dt>Montures</dt><dd><span class="kpi-value">{{ mounts | length if mounts is not none else '—' }}</span></dd></div>
     <div class="kpi"><dt>Morts</dt><dd><span class="kpi-value">{{ char.deaths | number }}</span></dd></div>
   </dl>
 </section>
 
+{% set quests = activity_state.get('quests_completed') %}
+{% set dungeons = boss_totals.dungeon_encounters %}
+{% set raids = boss_totals.raid_encounters %}
+{% set pvp_rank = activity_state.get('pvp_rank') %}
+{% if quests is not none or dungeons is not none or raids is not none or honorable_kills is not none or pvp_rank is not none %}
 <section class="character-activity" aria-labelledby="character-activity-title">
   <h2 id="character-activity-title" class="block-title">Activité de {{ char.name }}</h2>
   <dl class="activity-metrics">
-    <div class="panel-block">
-      <dt>XP dans le niveau</dt>
-      <dd><strong>{{ activity_state.get('experience') | number }}</strong> XP</dd>
-      {% if activity_state.get('experience_to_next_level') is not none %}
-      <dd class="meta">{{ activity_state.experience_to_next_level | number }} XP avant le prochain niveau</dd>
-      {% endif %}
-    </div>
+    {% if quests is not none %}
     <div class="panel-block">
       <dt>Quêtes terminées</dt>
-      <dd><strong>{{ activity_state.get('quests_completed') | number }}</strong></dd>
+      <dd><strong>{{ quests | number }}</strong></dd>
       {% if activity.quests %}<dd class="meta">+{{ activity.quests | number }} relevées sur 7 j</dd>{% endif %}
     </div>
+    {% endif %}
+    {% if dungeons is not none or raids is not none %}
     <div class="panel-block">
       <dt>Boss vaincus</dt>
-      <dd><strong>{{ boss_totals.dungeon_encounters | number }}</strong> en donjon</dd>
-      <dd><strong>{{ boss_totals.raid_encounters | number }}</strong> en raid</dd>
+      {% if dungeons is not none %}<dd><strong>{{ dungeons | number }}</strong> en donjon</dd>{% endif %}
+      {% if raids is not none %}<dd><strong>{{ raids | number }}</strong> en raid</dd>{% endif %}
       {% if activity.encounter %}<dd class="meta">+{{ activity.encounter | number }} relevés sur 7 j</dd>{% endif %}
     </div>
+    {% endif %}
+    {% if honorable_kills is not none or pvp_rank is not none %}
     <div class="panel-block">
       <dt>PvP</dt>
-      <dd><strong>{{ honorable_kills | number }}</strong> victoires honorables</dd>
-      {% if activity_state.get('pvp_rank') is not none %}<dd>Rang {{ activity_state.pvp_rank }}</dd>{% endif %}
+      {% if honorable_kills is not none %}<dd><strong>{{ honorable_kills | number }}</strong> victoires honorables</dd>{% endif %}
+      {% if pvp_rank is not none %}<dd>Rang {{ pvp_rank }}</dd>{% endif %}
       {% if activity.pvp %}<dd class="meta">+{{ activity.pvp | number }} relevées sur 7 j</dd>{% endif %}
     </div>
+    {% endif %}
   </dl>
 </section>
+{% endif %}
 
 <div class="split split-profile">
   <div class="split-main">

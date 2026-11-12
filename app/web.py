@@ -19,7 +19,7 @@ from .collector import apply_account_characters
 from .config import settings
 from .db import Account, Character, Event, MissionSignup, PlayerPhoto, SessionLocal, Snapshot, SquadMission, select, utcnow
 from .stats import compute_week, leaderboard
-from .ui import Series, class_color, class_key, faction_key, frdate, line_chart, make_formatters, number, ruleset_label
+from .ui import Series, class_color, class_key, faction_key, frdate, line_chart, make_formatters, number, ruleset_label, xp_progress
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -207,6 +207,7 @@ async def character_page(request: Request, char_id: int):
                   mounts=state.get("mounts"), achievements=state.get("achievements"),
                   honorable_kills=state.get("honorable_kills"), can_manage=can_manage_character(request, char),
                   activity=insights.activity_totals(events), activity_state=state,
+                  xp=xp_progress(char.level, state.get("experience")),
                   boss_totals={key: sum(row["count"] for row in state[key].values()) if state.get(key) is not None else None
                                for key in ("dungeon_encounters", "raid_encounters")})
 
@@ -535,9 +536,10 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
     worker.remember_user_token(account.battle_id, token["access_token"], int(token.get("expires_in", 86400)))
     request.session["account_id"] = account.id
     request.session.pop("battletag", None)
+    if added >= 0:
+        worker.trigger_cycle()
     if added > 0:
         flash(request, f"Compte lié : {added} perso(s) Forever ajouté(s). Ils seront suivis en continu, sans reconnexion.")
-        worker.trigger_cycle()
     elif added == 0:
         flash(request, "Compte lié. Aucun nouveau perso : ils sont déjà suivis, ou pas encore niveau 10.", "info")
     else:
