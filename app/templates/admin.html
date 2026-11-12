@@ -3,6 +3,29 @@
 {% block title %}Administration{% endblock %}
 {% block content %}
 <header class="panel-head"><h1>Administration de la squad</h1></header>
+<section id="admin-objectifs" class="panel-block" aria-labelledby="admin-objectifs-title">
+  <h2 id="admin-objectifs-title">Objectifs et sorties</h2>
+  {% if admin_missions %}
+  <ul class="group-list" role="list">
+    {% for mission in admin_missions %}
+    <li class="group-item">
+      <div>
+        <strong>{{ mission.title }}</strong>
+        <p class="meta">{{ mission_kinds[mission.kind] }} · {{ 'Terminé' if mission.completed_at else 'En cours' }}</p>
+      </div>
+      <details>
+        <summary>Supprimer</summary>
+        <form method="post" action="/objectifs/{{ mission.id }}/supprimer">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <p>Les inscriptions, la préparation et les souvenirs de cette sortie seront retirés.</p>
+          <button class="button button-danger" type="submit">Confirmer la suppression</button>
+        </form>
+      </details>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="meta">Aucun objectif ni sortie.</p>{% endif %}
+</section>
 <section class="panel-block" aria-labelledby="challenge-title">
   <h2 id="challenge-title">Défis communs</h2>
   <form method="post" action="/administration/defis" class="mission-form">

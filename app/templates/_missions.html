@@ -87,6 +87,8 @@
     {% endif %}
   </div>
 
+    {% if admin %}<a class="button button-ghost button-small" href="/administration#admin-objectifs">Administrer les objectifs</a>{% endif %}
+
   {% if missions %}
   <div class="mission-grid">
     {% for roster in missions %}

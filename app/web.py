@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
@@ -176,7 +177,10 @@ async def home(request: Request, priorite: str = "group", suggestion: str = ""):
 async def admin_page(request: Request):
     require_admin(request)
     with SessionLocal() as db:
+        admin_missions = db.scalars(select(SquadMission)
+                                   .order_by(SquadMission.completed_at.is_not(None), SquadMission.id.desc())).all()
         return render(request, "admin.html", chars=leaderboard(db), groups=squad.get_groups(db),
+                      admin_missions=admin_missions, mission_kinds=squad.MISSION_KINDS,
                       goal_cfg=squad.get_goal(db), targets=squad.community_targets(db),
                       metrics=squad.COMMUNITY_METRICS, add_form=request.session.pop("add_form", None) or {})
 
@@ -678,6 +682,22 @@ async def mission_participation(request: Request, mission_id: int, personnage: i
         db.commit()
     flash(request, "Participation retirée." if action == "retirer" else "Participation enregistrée.")
     return back("/#ce-soir")
+
+
+@router.post("/objectifs/{mission_id}/supprimer")
+async def delete_mission(request: Request, mission_id: int, csrf: str = Form("")):
+    require_admin(request)
+    check_csrf(request, csrf)
+    with SessionLocal() as db:
+        mission = db.get(SquadMission, mission_id, with_for_update=True)
+        if mission is None:
+            raise HTTPException(404, "Objectif introuvable.")
+        for model in (MissionMemory, MissionPreparation, MissionSignup):
+            db.execute(delete(model).where(model.mission_id == mission_id))
+        db.delete(mission)
+        db.commit()
+    flash(request, "Objectif supprimé.")
+    return back("/administration#admin-objectifs")
 
 
 @router.post("/objectifs/{mission_id}/terminer")
