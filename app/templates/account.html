@@ -28,6 +28,9 @@
       </select>
     </div>
     <button class="button button-secondary" type="submit">{{ 'Modifier le principal' if main_id else 'Confirmer le principal' }}</button>
+    {% if main_id %}
+    <button class="button button-ghost" type="submit" name="action" value="remove" formnovalidate>Retirer le principal</button>
+    {% endif %}
   </form>
 </section>
 <ul class="roster" role="list" aria-label="Mes personnages Forever">

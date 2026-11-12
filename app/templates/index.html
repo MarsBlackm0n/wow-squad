@@ -141,13 +141,13 @@
 <div class="tabs" data-tabs>
   <nav class="tablist-wrap" aria-label="Sections du QG">
     <ul class="tablist" data-tablist>
-      <li><a class="tab" href="#ce-soir" data-tab>Ce soir{% if ideas %} <span class="tab-count">{{ ideas | length }}</span>{% endif %}</a></li>
-      <li><a class="tab" href="#progression" data-tab>Progression</a></li>
-      <li><a class="tab" href="#journal" data-tab>Journal</a></li>
-      <li><a class="tab" href="#carte" data-tab>Carte</a></li>
-      <li><a class="tab" href="#palmares" data-tab>Palmarès</a></li>
-      <li><a class="tab" href="#guildes" data-tab>Guildes{% if guild_directory %} <span class="tab-count">{{ guild_directory | length }}</span>{% endif %}</a></li>
-      <li><a class="tab" href="#squad" data-tab>La squad <span class="tab-count">{{ chars | length }}</span></a></li>
+      <li><a class="tab" href="#ce-soir" data-tab>{{ icon('moon', "tab-icon") }} Ce soir{% if ideas %} <span class="tab-count">{{ ideas | length }}</span>{% endif %}</a></li>
+      <li><a class="tab" href="#squad" data-tab>{{ icon('users', "tab-icon") }} La squad <span class="tab-count">{{ chars | length }}</span></a></li>
+      <li><a class="tab" href="#palmares" data-tab>{{ icon('trophy', "tab-icon") }} Palmarès</a></li>
+      <li><a class="tab" href="#progression" data-tab>{{ icon('trend', "tab-icon") }} Progression</a></li>
+      <li><a class="tab" href="#journal" data-tab>{{ icon('banner', "tab-icon") }} Journal</a></li>
+      <li><a class="tab" href="#carte" data-tab>{{ icon('flag', "tab-icon") }} Carte</a></li>
+      <li><a class="tab" href="#guildes" data-tab>{{ icon('shield', "tab-icon") }} Guildes{% if guild_directory %} <span class="tab-count">{{ guild_directory | length }}</span>{% endif %}</a></li>
     </ul>
   </nav>
 

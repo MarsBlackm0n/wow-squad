@@ -236,18 +236,24 @@ async def account_page(request: Request):
 
 
 @router.post("/compte/personnage-principal")
-async def set_main_character(request: Request, personnage: int = Form(...), csrf: str = Form("")):
+async def set_main_character(request: Request, personnage: int = Form(0), csrf: str = Form(""),
+                             action: str = Form("save")):
     check_csrf(request, csrf)
     with SessionLocal() as db:
         account_id = mission_account(db, request)
         account = db.get(Account, account_id, with_for_update=True)
-        char = db.get(Character, personnage)
-        if char is None or char.account_id != account_id:
-            raise HTTPException(403, "Choisis un personnage de ton compte.")
-        account.main_character_id = char.id
+        if action == "remove":
+            account.main_character_id = None
+        elif action == "save":
+            char = db.get(Character, personnage)
+            if char is None or char.account_id != account_id:
+                raise HTTPException(403, "Choisis un personnage de ton compte.")
+            account.main_character_id = char.id
+        else:
+            raise HTTPException(400, "Action inconnue.")
         db.commit()
-    flash(request, "Personnage principal enregistré.")
-    return back("/compte")
+    flash(request, "Personnage principal retiré." if action == "remove" else "Personnage principal enregistré.")
+    return back("/compte#personnage-principal")
 
 
 def _squad_players(chars, accounts):
