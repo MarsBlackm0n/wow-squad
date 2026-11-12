@@ -2,6 +2,21 @@
 (function () {
   "use strict";
 
+  document.querySelectorAll("[data-chart-picker]").forEach(function (picker) {
+    var control = picker.querySelector("[data-chart-control]");
+    var select = picker.querySelector("[data-chart-select]");
+    if (!control || !select) return;
+    var panels = picker.querySelectorAll("[data-chart-panel]");
+    function updateChart() {
+      panels.forEach(function (panel) {
+        panel.hidden = panel.dataset.chartPanel !== select.value;
+      });
+    }
+    select.addEventListener("change", updateChart);
+    updateChart();
+    control.hidden = false;
+  });
+
   // Bascule de thème : respecte le réglage système tant que la personne n'a rien choisi.
   var toggle = document.querySelector("[data-theme-toggle]");
   if (toggle) {

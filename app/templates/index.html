@@ -206,18 +206,26 @@
     {% endif %}
     <div class="split">
       <div class="split-main">
-        {% if race_chart %}
-        <section aria-labelledby="race-title">
-          <h3 id="race-title" class="block-title">Course au niveau</h3>
-          <figure class="chart-frame">
-            {{ race_chart }}
-            <figcaption>
-              <ul class="legend" role="list">
-                {% for s in race_series %}<li><span class="legend-swatch" style="background: {{ s.color }}" aria-hidden="true"></span>{{ s.label }} <strong>{{ s.points[-1][1] | int }}</strong></li>{% endfor %}
-              </ul>
-              {% if race_has_launch %}<p class="meta">Pour les persos avec un seul relevé, le niveau 1 au lancement de Forever sert de repère. Les gains du tableau sont calculés entre les relevés Blizzard.</p>{% endif %}
-            </figcaption>
-          </figure>
+        {% if race_charts %}
+          <section class="chart-module" aria-labelledby="race-title" data-chart-picker>
+            <div class="chart-toolbar">
+              <h3 id="race-title">Course au niveau</h3>
+              {% if race_charts | length > 1 %}
+              <div class="chart-control" data-chart-control hidden>
+                <label for="race-picker">Personnage</label>
+                <select id="race-picker" data-chart-select>
+                  {% for c in race_charts %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                </select>
+              </div>
+              {% endif %}
+            </div>
+            {% for c in race_charts %}
+            <figure class="chart-frame" data-chart-panel="{{ c.id }}"{% if not loop.first %} hidden{% endif %}>
+              <div class="chart-current"><strong>{{ c.last }}</strong><span>Niveau relevé</span></div>
+              {{ c.svg }}
+              {% if c.launch %}<figcaption>Le niveau 1 au lancement de Forever sert de repère. Les gains du tableau sont calculés entre relevés Blizzard.</figcaption>{% endif %}
+            </figure>
+            {% endfor %}
           {{ chart_table(race_rows, ['Perso', 'Premier niveau relevé', 'Dernier niveau relevé', 'Gain observé'], 'Course au niveau sur 30 jours') }}
         </section>
         {% else %}

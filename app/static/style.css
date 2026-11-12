@@ -938,3 +938,17 @@ html { scroll-padding-top: 5.5rem; }
 .account-identity { margin: 1rem 0; }
 #contenu:has(#challenge-title) .panel-block { margin-block: .85rem; }
 @media (max-width: 680px) { .site-nav ul { flex-wrap: wrap; } }
+
+
+.chart-toolbar { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: .65rem 1rem; margin-bottom: .75rem; }
+.chart-toolbar h2, .chart-toolbar h3 { margin: 0; }
+.chart-control { max-width: 100%; }
+.chart-control label { display: block; margin-bottom: .25rem; color: var(--muted); font-size: .82rem; }
+.chart-control select { min-height: 44px; max-width: 100%; padding: .45rem .75rem; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); font: inherit; }
+.chart-frame { border: 1px solid #394354; padding: .9rem .85rem .6rem; }
+.chart-current { display: flex; flex-wrap: wrap; gap: .25rem .7rem; align-items: baseline; padding: 0 .35rem; color: #b9c4d8; font-size: .86rem; }
+.chart-current strong { color: #f0f4fb; font-size: 1.8rem; font-variant-numeric: tabular-nums; }
+.chart-frame figcaption { color: #b9c4d8; font-size: .82rem; }
+.chart-module .chart-frame { margin-top: 0; }
+.chart-frame[hidden] { display: none; }
+@media (max-width: 640px) { .chart-frame { padding-inline: .4rem; } }

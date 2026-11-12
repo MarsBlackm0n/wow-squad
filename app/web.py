@@ -131,7 +131,7 @@ async def home(request: Request):
         chars = leaderboard(db)
         week = compute_week(db)
         events = insights.load_events(db, days=30)
-        race_chart, race_rows, race_series, race_has_launch = _race_chart(db, chars)
+        race_charts, race_rows = _race_chart(db, chars)
         firsts = insights.firsts(db)
         accounts = db.scalars(select(Account).order_by(Account.battletag)).all()
         goal_cfg, groups = squad.get_goal(db), squad.get_groups(db)
@@ -142,8 +142,8 @@ async def home(request: Request):
         mission_chars = [c for c in chars if account_id is not None and c.account_id == account_id]
     worker = request.app.state.worker
     by_pace = sorted((c for c in chars if c.id in pace_by_char), key=lambda c: -pace_by_char[c.id].per_day)
-    return render(request, "index.html", chars=chars, week=week, race_chart=race_chart, race_rows=race_rows,
-                  race_series=race_series, race_has_launch=race_has_launch, days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
+    return render(request, "index.html", chars=chars, week=week, race_charts=race_charts, race_rows=race_rows,
+                  days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
                   goal=insights.squad_goal(chars, goal_cfg.target, goal_cfg.deadline, pace_by_char),
                   goal_cfg=goal_cfg, groups=groups, plans=insights.group_plans(groups, chars),
                   paces=pace_by_char, by_pace=by_pace, firsts=firsts, records=insights.records(events, tz),
@@ -204,9 +204,7 @@ async def account_page(request: Request):
 
 def _race_chart(db, chars: list[Character]):
     since = utcnow() - timedelta(days=30)
-    series = []
-    rows = {}
-    has_launch = False
+    charts = []
     for c in chars:
         if c.status == "pending":
             continue
@@ -218,22 +216,19 @@ def _race_chart(db, chars: list[Character]):
             launch_anchor = False
         if not points:
             continue
-        label = c.display_name
-        series.append(Series(label, class_color(c.class_name), points))
         observed = points[1:] if launch_anchor else points
         first, last = observed[0][1], observed[-1][1]
-        rows[label] = (label, first, last, f"{last - first:+d}" if len(observed) > 1 else "—")
-        has_launch |= launch_anchor
-    if not series:
-        return None, [], [], False
-    ranked = sorted(series, key=lambda s: -s.points[-1][1])
-    leader = ranked[0]
-    desc = (f"Évolution du niveau de {len(series)} personnages sur les 30 derniers jours. "
-            f"En tête : {leader.label}, niveau {int(leader.points[-1][1])}.")
-    if has_launch:
-        desc += " Pour les personnages avec un seul relevé, le niveau 1 au lancement sert de repère."
-    chart = line_chart(series, "Course au niveau", desc, "race", y_label="Niveau", tz_name=settings.timezone)
-    return chart, [rows[s.label] for s in ranked], ranked, has_launch
+        gain = f"{last - first:+d}" if len(observed) > 1 else "—"
+        desc = f"Évolution du niveau de {c.display_name}. Dernier niveau relevé : {last}."
+        if launch_anchor:
+            desc += " Le niveau 1 au lancement sert de repère."
+        chart = line_chart([Series(c.display_name, class_color(c.class_name), points)],
+                           f"Niveau de {c.display_name}", desc, f"race-{c.id}",
+                           y_label="Niveau", y_min=1, tz_name=settings.timezone)
+        charts.append({"id": c.id, "name": c.display_name, "last": last, "first": first,
+                       "gain": gain, "launch": launch_anchor, "svg": chart})
+    charts.sort(key=lambda item: -item["last"])
+    return charts, [(item["name"], item["first"], item["last"], item["gain"]) for item in charts]
 
 
 
@@ -259,9 +254,9 @@ async def character_page(request: Request, char_id: int):
         ilvl_points = [(s.taken_at, s.ilvl) for s in snaps if s.ilvl]
         if len(ilvl_points) > 1:
             ilvl_chart = line_chart([Series(char.display_name, color, ilvl_points)],
-                                    f"Niveau d'objet de {char.display_name}",
+                                    f"Niveau moyen de l’équipement de {char.display_name}",
                                     f"De {number(ilvl_points[0][1], 1)} à {number(ilvl_points[-1][1], 1)} "
-                                    f"de niveau d'objet moyen.", "ilvl", y_label="ilvl", step=False,
+                                    f"de niveau d'objet moyen.", "ilvl", y_label="Équipement", step=False,
                                     tz_name=settings.timezone)
     state = char.state or {}
     with SessionLocal() as db:

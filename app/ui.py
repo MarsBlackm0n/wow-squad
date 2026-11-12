@@ -218,10 +218,20 @@ def line_chart(series: list[Series], title: str, desc: str, chart_id: str, y_lab
             else:
                 d.append(f"H{x:.1f}V{y:.1f}" if step else f"L{x:.1f},{y:.1f}")
             prev_y = y
-        end_x = pad_l + plot_w
-        d.append(f"H{end_x:.1f}")
+        end_x = sx(pts[-1][0])
+        if len(series) == 1 and len(pts) > 1:
+            fill_id = f"{chart_id}-area"
+            start_x = sx(pts[0][0])
+            floor = pad_t + plot_h
+            parts.append(f'<defs><linearGradient id="{fill_id}" x1="0%" y1="0%" x2="0%" y2="100%">'
+                         f'<stop stop-color="{s.color}" stop-opacity=".24"/>'
+                         f'<stop offset="1" stop-color="{s.color}" stop-opacity=".015"/>'
+                         '</linearGradient></defs>')
+            parts.append(f'<path d="{" ".join(d)}V{floor:.1f}H{start_x:.1f}Z" '
+                         f'fill="url(#{fill_id})" aria-hidden="true"/>')
         parts.append(f'<path class="chart-line" d="{" ".join(d)}" stroke="{s.color}" aria-hidden="true"/>')
-        parts.append(f'<circle cx="{end_x:.1f}" cy="{prev_y:.1f}" r="4" fill="{s.color}" aria-hidden="true"/>')
+        parts.append(f'<circle cx="{end_x:.1f}" cy="{prev_y:.1f}" r="4.5" fill="{s.color}" '
+                     'stroke="var(--chart-bg)" stroke-width="1.5" aria-hidden="true"/>')
 
     # Pas d'étiquettes dans le SVG : la légende est une liste HTML à côté (lisible, zoomable, traduisible).
     parts.append("</svg>")
