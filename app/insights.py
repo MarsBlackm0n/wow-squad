@@ -203,6 +203,7 @@ class Pace:
     reached: bool
     observed_days: float
     estimated: bool = False
+    weekly_estimate: int | None = None
 
 
 def paces(db: Session, chars: list[Character], target: int, tz_name: str, days: int = 7) -> dict[int, Pace]:
@@ -221,10 +222,14 @@ def paces(db: Session, chars: list[Character], target: int, tz_name: str, days: 
             continue
         elapsed = (_aware(latest.taken_at) - _aware(base.taken_at)).total_seconds() / 86400
         estimated = elapsed < 1
+        weekly_estimate = None
         if estimated:
             elapsed = (_aware(latest.taken_at) - FOREVER_LAUNCH).total_seconds() / 86400
             if elapsed <= 0:
                 continue
+            # Projette la portion de la progression estimée qui tombe dans la fenêtre.
+            covered = (_aware(latest.taken_at) - max(since, FOREVER_LAUNCH)).total_seconds() / 86400
+            weekly_estimate = round(latest.level * min(max(covered / elapsed, 0), 1))
             elapsed = max(elapsed, 1)
             gained = latest.level
         else:
@@ -234,7 +239,7 @@ def paces(db: Session, chars: list[Character], target: int, tz_name: str, days: 
         eta = None
         if not reached and per_day > 0.05:
             eta = today + timedelta(days=round((target - c.level) / per_day))
-        out[c.id] = Pace(round(per_day, 1), gained, eta, reached, elapsed, estimated)
+        out[c.id] = Pace(round(per_day, 1), gained, eta, reached, elapsed, estimated, weekly_estimate)
     return out
 
 
@@ -251,6 +256,8 @@ class SquadGoal:
     stalled: int             # persos sous l’objectif sans gain de niveau observé
     fastest: Character | None
     fastest_pace: float
+    average_estimated: bool
+    fastest_estimated: bool
 
     @property
     def days_left(self) -> int | None:
@@ -269,7 +276,7 @@ def squad_goal(chars: list[Character], target: int, deadline: date | None,
     if not active:
         return None
     total = sum(min(c.level, target) for c in active)
-    rated = [(c, pace_by_char[c.id]) for c in active if c.id in pace_by_char and not pace_by_char[c.id].estimated]
+    rated = [(c, pace_by_char[c.id]) for c in active if c.id in pace_by_char]
     pending = [p for c, p in rated if not p.reached]
     etas = [p.eta for p in pending if p.eta]
     fastest = max(rated, key=lambda cp: cp[1].per_day, default=(None, None))
@@ -280,9 +287,11 @@ def squad_goal(chars: list[Character], target: int, deadline: date | None,
         at_target=sum(1 for c in active if c.level >= target),
         average_pace=round(sum(p.per_day for _, p in rated) / len(rated), 1) if rated else None,
         projected=max(etas) if etas and len(etas) == sum(c.level < target for c in active) else None,
-        stalled=sum(1 for p in pending if p.gained == 0),
+        stalled=sum(1 for p in pending if not p.estimated and p.gained == 0),
         fastest=fastest[0] if fastest[1] and fastest[1].per_day > 0 else None,
         fastest_pace=fastest[1].per_day if fastest[1] else 0.0,
+        average_estimated=any(p.estimated for _, p in rated),
+        fastest_estimated=bool(fastest[1] and fastest[1].estimated),
     )
 
 

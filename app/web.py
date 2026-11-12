@@ -142,7 +142,10 @@ async def home(request: Request):
         mission_chars = [c for c in chars if account_id is not None and c.account_id == account_id]
     worker = request.app.state.worker
     by_pace = sorted((c for c in chars if c.id in pace_by_char), key=lambda c: -pace_by_char[c.id].per_day)
-    return render(request, "index.html", chars=chars, week=week, race_charts=race_charts, race_rows=race_rows,
+    weekly_extra = sum(max(0, pace_by_char[gain.character.id].weekly_estimate - gain.levels)
+                       for gain in week.gains if gain.character.id in pace_by_char
+                       and pace_by_char[gain.character.id].weekly_estimate is not None)
+    return render(request, "index.html", chars=chars, week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
                   days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
                   goal=insights.squad_goal(chars, goal_cfg.target, goal_cfg.deadline, pace_by_char),
                   goal_cfg=goal_cfg, groups=groups, plans=insights.group_plans(groups, chars),

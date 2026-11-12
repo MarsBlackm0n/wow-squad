@@ -185,22 +185,22 @@
           <span class="kpi-note">
             {%- if goal.at_target == goal.members %}tout le monde y est
             {%- elif goal.deadline and goal.days_left is not none and goal.days_left < 0 %}échéance passée
-            {%- elif goal.deadline %}J-{{ goal.days_left }}{% if goal.on_track is true %} · dans les temps{% elif goal.on_track is false %} · en retard{% endif %}
+            {%- elif goal.deadline %}J-{{ goal.days_left }}{% if goal.average_estimated and goal.projected %} · projection estimée{% elif goal.on_track is true %} · dans les temps{% elif goal.on_track is false %} · en retard{% endif %}
             {%- elif goal.projected %}tous là vers le {{ goal.projected.strftime('%d/%m') }}
             {%- else %}{{ goal.at_target }}/{{ goal.members }} arrivés{% endif -%}
           </span></dd>
       </div>
       <div class="kpi">
         <dt>Rythme de la squad</dt>
-        <dd><span class="kpi-value">{{ ('+' ~ (goal.average_pace | number(1))) if goal.average_pace is not none else '—' }}</span><span class="kpi-note">niv. par jour par perso mesuré{% if goal.stalled %} · {{ goal.stalled }} sans gain observé{% endif %}</span></dd>
+        <dd><span class="kpi-value">{{ ('+' ~ (goal.average_pace | number(1))) if goal.average_pace is not none else '—' }}</span><span class="kpi-note">niv. par jour par perso{% if goal.average_estimated %} · estimation incluse{% endif %}{% if goal.stalled %} · {{ goal.stalled }} sans gain observé{% endif %}</span></dd>
       </div>
       <div class="kpi">
         <dt>Cette semaine</dt>
-        <dd><span class="kpi-value">+{{ week.total_levels }}</span><span class="kpi-note">niveaux à vous tous</span></dd>
+        <dd><span class="kpi-value">+{{ week.total_levels + weekly_extra }}</span><span class="kpi-note">niveaux à vous tous{% if weekly_extra %} · dont {{ weekly_extra }} estimés{% endif %}</span></dd>
       </div>
       <div class="kpi">
         <dt>Meilleur rythme</dt>
-        <dd>{% if goal.fastest %}<a class="kpi-value kpi-link" href="/perso/{{ goal.fastest.id }}">{{ goal.fastest.name }}</a><span class="kpi-note">+{{ goal.fastest_pace | number(1) }} niv. par jour</span>{% else %}<span class="kpi-value">—</span><span class="kpi-note">aucun rythme positif mesuré</span>{% endif %}</dd>
+        <dd>{% if goal.fastest %}<a class="kpi-value kpi-link" href="/perso/{{ goal.fastest.id }}">{{ goal.fastest.name }}</a><span class="kpi-note">+{{ goal.fastest_pace | number(1) }} niv. par jour{% if goal.fastest_estimated %} · estimé{% endif %}</span>{% else %}<span class="kpi-value">—</span><span class="kpi-note">aucun rythme positif disponible</span>{% endif %}</dd>
       </div>
     </dl>
     {% endif %}
