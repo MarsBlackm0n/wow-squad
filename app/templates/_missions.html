@@ -41,14 +41,17 @@
 
 <section class="mission-board" aria-labelledby="mission-heading">
   <div class="mission-board-head">
-    <h3 id="mission-heading">Objectifs de la squad</h3>
+    <div class="mission-heading">
+      <span class="mission-heading-icon">{{ icon('flag') }}</span>
+      <h3 id="mission-heading">Objectifs de la squad</h3>
+    </div>
     {% if account_id %}
     <details class="mission-create">
-      <summary>{{ icon('chevron', 'summary-chevron') }} Proposer un objectif</summary>
+      <summary class="button button-primary mission-create-button"><span aria-hidden="true">+</span> Proposer un objectif</summary>
       {{ mission_form() }}
     </details>
     {% elif settings.battlenet_login_enabled %}
-    <a class="button button-secondary button-small" href="/auth/battlenet">Connecter Battle.net pour participer</a>
+    <a class="button button-primary mission-create-button" href="/auth/battlenet">Connecter Battle.net</a>
     {% endif %}
   </div>
 
@@ -59,7 +62,9 @@
     {% set signup = roster.signups | selectattr('account_id', 'equalto', account_id) | first | default(none) %}
     <article class="mission-card" aria-labelledby="mission-title-{{ m.id }}">
       <header>
-        <p class="meta">{{ mission_kinds[m.kind] }} · {% if m.starts_at %}{{ m.starts_at | localtime('%d/%m à %H:%M') }}{% else %}Date à convenir{% endif %}</p>
+        <div class="mission-card-meta"><span class="pill">{{ mission_kinds[m.kind] }}</span>
+          <span class="meta">{% if m.starts_at %}<time datetime="{{ m.starts_at.isoformat() }}">{{ m.starts_at | localtime('%d/%m à %H:%M') }}</time>{% else %}Date à convenir{% endif %}</span>
+        </div>
         <h4 id="mission-title-{{ m.id }}">{{ m.title }}</h4>
         {% if m.notes %}<p class="mission-notes">{{ m.notes }}</p>{% endif %}
       </header>
@@ -131,7 +136,7 @@
     {% endfor %}
   </div>
   {% else %}
-  <p class="quiet">Aucun objectif ouvert.</p>
+  <p class="mission-empty">Aucun objectif ouvert. Proposez un raid, un donjon ou une sortie PvP.</p>
   {% endif %}
 
   {% if completed_missions %}

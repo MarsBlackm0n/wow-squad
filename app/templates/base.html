@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&amp;family=Inter:opsz,wght@14..32,400..800&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=10">
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=11">
   <script>
     // Appliqué avant l'affichage pour éviter un flash du mauvais thème.
     try { var t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
@@ -43,8 +43,9 @@
       <div class="header-tools">
         {% if settings.battlenet_login_enabled %}
         <a class="button button-secondary button-small battlenet-link" href="/auth/battlenet"
-           {% if account_connected %}aria-label="Synchroniser mes personnages avec Battle.net"{% endif %}>
-          {{ 'Synchroniser Battle.net' if account_connected else 'Connexion Battle.net' }}
+           aria-label="{{ 'Synchroniser mes personnages avec Battle.net' if account_connected else 'Connexion Battle.net' }}">
+          <span class="battlenet-full">{{ 'Synchroniser Battle.net' if account_connected else 'Connexion Battle.net' }}</span>
+          <span class="battlenet-short" aria-hidden="true">Battle.net</span>
         </a>
         {% endif %}
         <button type="button" class="icon-button" data-theme-toggle aria-pressed="false" hidden>
@@ -55,7 +56,7 @@
         {% if logged_in or account_connected %}
         <form method="post" action="/deconnexion">
           <input type="hidden" name="csrf" value="{{ csrf }}">
-          <button type="submit" class="button button-ghost button-small">Se déconnecter</button>
+          <button type="submit" class="button button-ghost button-small logout-button" aria-label="Se déconnecter"><span class="logout-full">Se déconnecter</span><span class="logout-short" aria-hidden="true">Quitter</span></button>
         </form>
         {% endif %}
       </div>
