@@ -258,7 +258,7 @@ def _race_chart(db, chars: list[Character]):
         points, launch_anchor = progression_points(snaps, "level")
         comparison_color = squad_chart_color(index)
         if c.level > 0 and c.ilvl > 0:
-            current_points.append({"name": c.display_name, "color": comparison_color,
+            current_points.append({"id": c.id, "name": c.display_name, "color": comparison_color,
                                    "level": c.level, "gear": round(c.ilvl, 1)})
         if not points:
             continue
@@ -272,7 +272,7 @@ def _race_chart(db, chars: list[Character]):
                            f"Niveau de {c.display_name}", desc, f"race-{c.id}",
                            y_label="Niveau", y_min=0, step=False, tz_name=settings.timezone)
         series.append(Series(c.display_name, comparison_color, points, character_id=c.id))
-        histories.append((c.display_name, comparison_color, snaps))
+        histories.append((c.id, c.display_name, comparison_color, snaps))
         charts.append({"color": comparison_color, "id": c.id, "name": c.display_name, "last": last, "first": first,
                        "gain": gain, "launch": launch_anchor, "svg": chart})
     charts.sort(key=lambda item: -item["last"])

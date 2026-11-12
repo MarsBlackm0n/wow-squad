@@ -289,13 +289,34 @@
 
   document.querySelectorAll("[data-squad-replay]").forEach(function (replay) {
     var frames = JSON.parse(replay.querySelector("[data-replay-data]").textContent);
-    var range = replay.querySelector("input");
+    var range = replay.querySelector("input[type=range]");
     var play = replay.querySelector("[data-replay-play]");
     var date = replay.querySelector("[data-replay-date]");
     var plot = replay.querySelector("[data-replay-plot]");
     var legend = replay.querySelector("[data-replay-legend]");
     var current = Boolean(frames[0].current);
     var observations = frames.flatMap(function (frame) { return frame.points; });
+    var selected = new Set(JSON.parse(replay.dataset.mainIds));
+    var filters = replay.querySelector("[data-replay-filters]");
+    var empty = replay.querySelector("[data-replay-empty]");
+    var characters = new Map(observations.map(function (point) { return [point.id, point]; }));
+    characters.forEach(function (point, id) {
+      var item = document.createElement("li");
+      var label = document.createElement("label");
+      label.className = "tag race-series-label";
+      label.style.borderColor = point.color;
+      var toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.checked = selected.has(id);
+      toggle.addEventListener("change", function () {
+        if (toggle.checked) selected.add(id);
+        else selected.delete(id);
+        draw();
+      });
+      label.append(toggle, document.createTextNode(point.name));
+      item.appendChild(label);
+      filters.appendChild(item);
+    });
     var lowX = Math.floor(Math.min(0, ...observations.map(function (p) { return p.level; })));
     var highX = Math.max(lowX + 4, Math.ceil(Math.max(0, ...observations.map(function (p) { return p.level; }))));
     var lowY = Math.floor(Math.min(0, ...observations.map(function (p) { return p.gear; })));
@@ -333,10 +354,17 @@
         svg(plot, "line", {x1: x(xValue), x2: x(xValue), y1: 26, y2: 233});
         svg(plot, "text", {x: x(xValue), y: 249, "text-anchor": "middle"}, xValue);
       }
-      frame.points.forEach(function (point) {
+      var visible = frame.points.filter(function (point) { return selected.has(point.id); });
+      empty.hidden = visible.length > 0;
+      if (!empty.hidden) {
+        empty.textContent = Array.from(characters.keys()).some(function (id) { return selected.has(id); })
+          ? "Aucun relevé pour les personnages sélectionnés à cette date."
+          : "Sélectionne au moins un personnage.";
+      }
+      visible.forEach(function (point) {
         var trail = [point];
         for (var i = index - 1; i >= Math.max(0, index - 3); i -= 1) {
-          var previous = frames[i].points.find(function (item) { return item.name === point.name; });
+          var previous = frames[i].points.find(function (item) { return item.id === point.id; });
           if (!previous) break;
           trail.unshift(previous);
         }

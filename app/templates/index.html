@@ -229,7 +229,7 @@
     </dl>
     {% endif %}
     {% if race_replay %}
-    <section class="panel-block squad-replay" aria-labelledby="squad-replay-title" data-squad-replay hidden>
+    <section class="panel-block squad-replay" aria-labelledby="squad-replay-title" data-squad-replay data-main-ids='{{ main_character_ids | list | tojson }}' hidden>
       <div class="chart-toolbar">
         <div>
           <h3 id="squad-replay-title">Niveaux et équipement</h3>
@@ -242,6 +242,8 @@
       <label for="replay-date"{% if race_replay[0].current %} hidden{% endif %}>Date de comparaison · <output data-replay-date></output></label>
       <input type="range" id="replay-date" min="0" max="{{ race_replay | length - 1 }}" value="{{ race_replay | length - 1 }}"{% if race_replay | length == 1 %} hidden{% endif %}>
       <svg data-replay-plot role="img" aria-label="{{ 'Niveau et équipement actuels des personnages' if race_replay[0].current else 'Gains de niveau et d’équipement des personnages' }}"></svg>
+      <ul class="legend replay-legend" data-replay-filters aria-label="Personnages à comparer" role="list"></ul>
+      <p class="meta" data-replay-empty role="status" hidden></p>
       <ul class="legend replay-legend" data-replay-legend role="list"></ul>
       <script type="application/json" data-replay-data>{{ race_replay | tojson }}</script>
     </section>
