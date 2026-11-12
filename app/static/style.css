@@ -1159,3 +1159,12 @@ html { scroll-padding-top: 5.5rem; }
   justify-content: end;
   background: #277a4f;
 }
+
+.tag.evening-status {
+  border-color: var(--availability-color);
+  background: color-mix(in srgb, var(--availability-color) 13%, transparent);
+}
+
+.evening-status[data-status="yes"] { --availability-color: #459767; }
+.evening-status[data-status="no"] { --availability-color: #c45559; }
+.evening-status[data-status="maybe"] { --availability-color: #b78d4a; }
