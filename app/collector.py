@@ -442,19 +442,19 @@ async def fetch_state(bz: Blizzard, char: Character) -> tuple[dict, str]:
     state["achievements"] = parse_achievements(achievements)
     state["mounts"] = parse_mounts(mounts)
     state["professions"] = parse_professions(professions)
-    return state, "ok"
-
-
-def apply_state(db: Session, char: Character, state: dict, status: str, message: str = "") -> list[Event]:
     state["builds"] = character_build(specs)
     state["reputations"] = character_reputations(reputations)
     state["titles"] = (sorted({_name(title) for title in titles["titles"] or [] if _name(title)}, key=str.casefold)
                        if titles is not None and "titles" in titles else None)
     state["recipes"] = profession_recipes(professions)
     state["equipped_items"] = equipped_items(equipment)
+    return state, "ok"
+
+
+def apply_state(db: Session, char: Character, state: dict, status: str, message: str = "") -> list[Event]:
     old = dict(char.state or {})
     state["equipment_changes"] = old.get("equipment_changes")
-    before, after = old.get("equipped_items"), state["equipped_items"]
+    before, after = old.get("equipped_items"), state.get("equipped_items")
     if before is not None and after is not None:
         changes = [{"before": before.get(slot), "after": after.get(slot)}
                    for slot in sorted(before.keys() | after.keys())
