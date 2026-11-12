@@ -70,6 +70,7 @@
 
 {% if not chars %}
 <div id="ce-soir">{% include "_evening.html" %}{% include "_community.html" %}{% include "_missions.html" %}</div>
+<p><a href="/carte">Carte d’Azeroth</a></p>
 <section class="onboarding" aria-labelledby="onboarding-title">
   <h2 id="onboarding-title">Bienvenue au QG</h2>
   <ol class="steps">
@@ -91,6 +92,7 @@
       <li><a class="tab" href="#ce-soir" data-tab>Ce soir{% if ideas %} <span class="tab-count">{{ ideas | length }}</span>{% endif %}</a></li>
       <li><a class="tab" href="#progression" data-tab>Progression</a></li>
       <li><a class="tab" href="#journal" data-tab>Journal</a></li>
+      <li><a class="tab" href="#carte" data-tab>Carte</a></li>
       <li><a class="tab" href="#palmares" data-tab>Palmarès</a></li>
       <li><a class="tab" href="#squad" data-tab>La squad <span class="tab-count">{{ chars | length }}</span></a></li>
     </ul>
@@ -367,6 +369,11 @@
     {% else %}
     <p class="empty">Le journal se remplit dès que quelqu'un gagne un niveau, un haut fait ou une monture.</p>
     {% endif %}
+  </section>
+
+  <section id="carte" class="panel" data-panel aria-labelledby="map-title">
+    <header class="panel-head"><h2 id="map-title">Carte d’Azeroth</h2></header>
+    {% include "_world_map.html" %}
   </section>
 
   <section id="palmares" class="panel" data-panel aria-labelledby="palmares-title">

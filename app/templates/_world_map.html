@@ -1,0 +1,53 @@
+<section class="world-map-layout" data-world-map data-selected="{{ selected.key if selected else '' }}">
+  <form method="get" action="/carte" class="map-controls panel-block">
+    <div class="field"><label for="map-zone">Zone</label><select name="zone" id="map-zone">
+      {% for zone in zones %}<option value="{{ zone }}" data-background="{{ backgrounds.get(zone, '') }}" data-mobs="{{ mob_counts[zone] }}"{% if zone == active_zone %} selected{% endif %}>{{ zone }}{% if mob_counts[zone] %} · {{ mob_counts[zone] }} mob{{ 's' if mob_counts[zone] > 1 }}{% endif %}</option>{% endfor %}
+    </select></div>
+    <div class="field" data-map-search-wrap hidden><label for="map-search">Rechercher dans la zone</label><input type="text" id="map-search" placeholder="Nom d’un repère"></div>
+    <fieldset class="map-filters" data-map-filters hidden>
+      <legend>Afficher</legend>
+      {% for key,label in kinds.items() %}<label data-map-kind="{{ key }}"><input type="checkbox" value="{{ key }}" checked> {{ label }}</label>{% endfor %}
+    </fieldset>
+    <button class="button button-secondary button-small" type="submit" data-map-submit>Afficher la zone</button>
+    <a class="button button-ghost button-small" href="https://forever.azerpug.com/">Ouvrir la carte détaillée d’Azeroth</a>
+  </form>
+  <div class="world-map-board" data-map-board>
+    <div class="map-plot" aria-label="Carte de zone et repères">
+      <img data-map-image src="{{ backgrounds.get(active_zone, '') }}" alt="Carte de la zone {{ active_zone }}" referrerpolicy="no-referrer">
+      {% for point in points if point.xy %}
+      <button type="button" class="map-pin" data-point="{{ point.key }}" data-zone="{{ point.zone }}" data-map-kind="{{ point.kind }}" data-map-name="{{ point.name }}"
+              style="--x:{{ point.xy[0] }}%;--y:{{ point.xy[1] }}%" aria-label="{{ point.name }} · {{ point.xy | join(', ') }}"
+              aria-pressed="false" title="{{ point.name }}" hidden></button>
+      {% endfor %}
+    </div>
+    <p class="meta" data-map-unavailable hidden>Fond de carte indisponible. Les repères restent accessibles dans la liste.</p>
+    <p class="meta">Carte © Blizzard Entertainment · <a href="https://warcraftforever.games/maps/azeroth">Warcraft Forever</a></p>
+  </div>
+  <div class="world-map-places panel-block" aria-labelledby="map-places-title">
+    <h2 id="map-places-title" class="block-title">Repères de la zone</h2>
+    <p class="meta" data-map-mobs hidden></p>
+    <p class="meta" data-map-empty hidden>Aucun repère pour ces filtres.</p>
+    <div class="map-places">
+      {% for point in points %}
+      <details id="map-{{ point.key }}" class="map-place" data-place="{{ point.key }}" data-zone="{{ point.zone }}" data-map-kind="{{ point.kind }}" data-map-name="{{ point.name }}"{% if point.zone != active_zone %} hidden{% endif %}{% if selected and selected.key == point.key %} open{% endif %}>
+        <summary><span class="map-place-dot"></span> {{ point.name }} <span class="meta">{{ kinds[point.kind] }}</span></summary>
+        <p>{{ point.detail }}</p>
+        {% if point.level is defined %}
+        <dl class="instance-guide map-objective-guide">
+          <div><dt>Niveau conseillé</dt><dd>{{ point.level }}</dd></div>
+          <div><dt>Effectif</dt><dd>{{ point.size }} joueurs</dd></div>
+          <div><dt>Composition conseillée</dt><dd>{{ point.composition }}</dd></div>
+        </dl>
+        {% endif %}
+        {% for mission in map_objectives.get(point.key, []) %}
+        <p><a href="/objectifs/{{ mission.id }}/preparation">{{ mission.title }}</a>
+          <span class="meta">· niv. {{ mission.min_level }} minimum · {{ mission.target_size }} places</span></p>
+        {% endfor %}
+        {% if point.xy %}<p><code>{{ point.xy | join(', ') }}</code> <button type="button" class="button button-secondary button-small" data-copy-coordinate="{{ point.xy | join(' ') }}" hidden>Copier</button></p>
+        {% else %}<p class="meta">Coordonnées non documentées dans le catalogue.</p>{% endif %}
+        <p><a href="{{ point.guide }}">Ouvrir le guide de ce repère</a></p>
+      </details>
+      {% endfor %}
+    </div>
+  </div>
+</section>

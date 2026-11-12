@@ -44,7 +44,8 @@ def points():
         if item.key == "onyxia":
             xy = [52.3, 76.1]
         result.append({"key": item.key, "name": item.name, "kind": item.kind, "zone": ZONES[item.key], "xy": xy,
-                       "detail": item.access,
+                       "detail": item.access, "level": item.level, "size": item.size,
+                       "composition": item.composition,
                        "guide": "https://wowfdb.com/zones/onyxia-s-lair/" if item.key == "onyxia" else item.guide})
     result.extend([
         {"key": "arugal-quest", "name": "Arugal doit mourir", "kind": "quest", "zone": "Forêt des Pins-Argentés",
@@ -63,4 +64,18 @@ def points():
          "xy": [45.1, 69.3], "detail": "Un point de passage relevé. Plusieurs positions sont documentées.",
          "guide": "https://azeroth.wiki/forever/map/westfall/foe-reaper-4000"},
     ])
+    mobs = (
+        ("takk", "Takk le bondisseur", "wailing", 59.6, 8.3, "Rare · niveau 19", "the-barrens/takk-the-leaper"),
+        ("humar", "Humar le Fier", "wailing", 62.1, 33.3, "Rare · niveau 23", "the-barrens/humar-the-pridelord"),
+        ("son-of-arugal", "Fils d’Arugal", "shadowfang", 44.8, 34.5, "Créature · niveaux 24–25", "silverpine-forest/son-of-arugal"),
+        ("timber", "Timber", "gnomeregan", 34.1, 42.6, "Rare · niveau 10", "dun-morogh/timber"),
+        ("vagash", "Vagash", "gnomeregan", 62.6, 46.1, "Créature · niveau 11", "dun-morogh/vagash"),
+        ("mist-howler", "Hurleur des brumes", "blackfathom", 26.8, 18.4, "Rare", "ashenvale/mist-howler"),
+        ("bayne", "Bayne", "lordaeron", 39.9, 42.2, "Rare", "tirisfal-glades/bayne"),
+        ("coast-strider", "Coast Strider", "zul-farrak", 68.5, 59.7, "Créature", "tanaris/coast-strider"),
+    )
+    result.extend({"key": key, "name": name, "kind": "mob", "zone": ZONES[zone], "xy": [x, y],
+                   "detail": f"{detail}. Position documentée, susceptible de varier.",
+                   "guide": f"https://azeroth.wiki/forever/map/{guide}"}
+                  for key, name, zone, x, y, detail, guide in mobs)
     return result

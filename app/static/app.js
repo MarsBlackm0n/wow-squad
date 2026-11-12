@@ -91,6 +91,11 @@
         pin.setAttribute("aria-pressed", String(!pin.hidden && pin.dataset.point === active));
       });
       places.forEach(function (place) { place.hidden = !visible(place); });
+      var mobStatus = map.querySelector("[data-map-mobs]");
+      var count = Number(zone.options[zone.selectedIndex].dataset.mobs);
+      mobStatus.hidden = !kinds.includes("mob");
+      mobStatus.textContent = count ? count + (count === 1 ? " mob recensé dans cette zone." : " mobs recensés dans cette zone.")
+        : "Aucun mob recensé dans cette zone. Les zones avec des repères de mobs sont signalées dans le sélecteur.";
       map.querySelector("[data-map-empty]").hidden = places.some(function (place) { return !place.hidden; });
     }
     pins.forEach(function (pin) {

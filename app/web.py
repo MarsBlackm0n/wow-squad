@@ -129,7 +129,7 @@ async def logout(request: Request, csrf: str = Form("")):
 # --- Pages ---------------------------------------------------------------------------------------
 
 @router.get("/", response_class=HTMLResponse)
-async def home(request: Request, priorite: str = "group", suggestion: str = ""):
+async def home(request: Request, priorite: str = "group", suggestion: str = "", zone: str = "", repere: str = ""):
     tz = settings.timezone
     today = utcnow().astimezone(ZoneInfo(tz)).date()
     priority = priorite if priorite in expedition.PREFERENCES else "group"
@@ -170,7 +170,8 @@ async def home(request: Request, priorite: str = "group", suggestion: str = ""):
                   priority=priority, suggested_instance=suggested_instance,
                   dungeon_catalog=DUNGEON_CATALOG, raid_catalog=RAID_CATALOG, instance_catalog=INSTANCE_CATALOG,
                   activity=insights.activity_totals(events), last_cycle=worker.last_cycle,
-                  blizzard_ready=settings.blizzard_enabled, add_form=request.session.pop("add_form", None) or {})
+                  blizzard_ready=settings.blizzard_enabled, add_form=request.session.pop("add_form", None) or {},
+                  **_map_context([roster.mission for roster in missions], zone, repere))
 
 
 @router.get("/administration", response_class=HTMLResponse)
@@ -473,14 +474,25 @@ async def save_availability(request: Request, statut: str = Form(""), role: str 
     return back("/#ce-soir")
 
 
-@router.get("/carte", response_class=HTMLResponse)
-async def world_map(request: Request, zone: str = "", repere: str = ""):
+def _map_context(missions, zone: str = "", repere: str = "") -> dict:
     points = worldmap.points()
     zones = sorted({point["zone"] for point in points})
     selected = next((point for point in points if point["key"] == repere), None)
     active_zone = selected["zone"] if selected else zone if zone in zones else "Marche de l’Ouest"
-    return render(request, "world_map.html", points=points, zones=zones, active_zone=active_zone,
-                  selected=selected, kinds=worldmap.KINDS, backgrounds=worldmap.map_backgrounds())
+    mob_counts = {name: sum(point["kind"] == "mob" and point["zone"] == name for point in points) for name in zones}
+    objectives = {}
+    for mission in missions:
+        if mission.instance_key:
+            objectives.setdefault(mission.instance_key, []).append(mission)
+    return dict(points=points, zones=zones, active_zone=active_zone, selected=selected, kinds=worldmap.KINDS,
+                backgrounds=worldmap.map_backgrounds(), mob_counts=mob_counts, map_objectives=objectives)
+
+
+@router.get("/carte", response_class=HTMLResponse)
+async def world_map(request: Request, zone: str = "", repere: str = ""):
+    with SessionLocal() as db:
+        missions = db.scalars(select(SquadMission).where(SquadMission.completed_at.is_(None))).all()
+    return render(request, "world_map.html", **_map_context(missions, zone, repere))
 
 
 @router.get("/objectifs/{mission_id}/preparation")
