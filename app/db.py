@@ -113,6 +113,7 @@ class SquadMission(Base):
     title: Mapped[str] = mapped_column(String(80))
     kind: Mapped[str] = mapped_column(String(16))
     instance_key: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    proposed_lineup: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     notes: Mapped[str] = mapped_column(String(320), default="")
     starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     target_size: Mapped[int] = mapped_column(Integer)
@@ -201,6 +202,8 @@ def init_db() -> None:
         missions = inspect(connection).get_columns("squad_missions")
         if not any(column["name"] == "instance_key" for column in missions):
             connection.execute(text("ALTER TABLE squad_missions ADD COLUMN instance_key VARCHAR(40)"))
+        if not any(column["name"] == "proposed_lineup" for column in missions):
+            connection.execute(text("ALTER TABLE squad_missions ADD COLUMN proposed_lineup JSON"))
 
 
 def kv_get(db: Session, key: str) -> dict | None:

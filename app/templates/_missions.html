@@ -94,6 +94,7 @@
     {% for roster in missions %}
     {% set m = roster.mission %}
     {% set signup = roster.signups | selectattr('account_id', 'equalto', account_id) | first | default(none) %}
+    {% set proposal = (m.proposed_lineup or {}).get(account_id | string) %}
     <article class="mission-card" data-objective="{{ m.kind }}" aria-labelledby="mission-title-{{ m.id }}">
       <header>
         <div class="mission-card-meta"><span class="objective-badge">{{ icon({'raid': 'trophy', 'dungeon': 'shield', 'pvp': 'bolt'}.get(m.kind, 'flag')) }} {{ mission_kinds[m.kind] }}</span>
@@ -109,6 +110,19 @@
           <span class="meta">Niv. {{ m.min_level }} minimum</span></label>
         <progress id="mission-progress-{{ m.id }}" max="{{ m.target_size }}" value="{{ [roster.signups | length, m.target_size] | min }}"></progress>
       </div>
+      {% if m.proposed_lineup %}
+      <details class="instance-prep">
+        <summary>Composition proposée</summary>
+        <ul class="group-list" role="list">
+          {% for entry in m.proposed_lineup.values() %}
+          {% set c = chars | selectattr('id', 'equalto', entry.character_id) | first | default(none) %}
+          {% if c %}
+          <li><a href="/perso/{{ c.id }}">{{ c.display_name }}</a> · {{ mission_roles[entry.role] }}</li>
+          {% endif %}
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
       {% if m.kind in ('raid', 'dungeon') %}
       <p class="meta">{{ roster.roles.tank or 0 }} tank · {{ roster.roles.heal or 0 }} soins · {{ roster.roles.damage or 0 }} dégâts{% if roster.roles.flex %} · {{ roster.roles.flex }} flexible{% endif %}</p>
       {% endif %}
@@ -159,13 +173,13 @@
         <div class="field">
           <label for="signup-char-{{ m.id }}">Mon personnage</label>
           <select id="signup-char-{{ m.id }}" name="personnage">
-            {% for c in mission_chars %}<option value="{{ c.id }}"{% if signup and signup.character_id == c.id %} selected{% endif %}>{{ c.display_name }}</option>{% endfor %}
+            {% for c in mission_chars %}<option value="{{ c.id }}"{% if (signup and signup.character_id == c.id) or (not signup and proposal and proposal.character_id == c.id) %} selected{% endif %}>{{ c.display_name }}</option>{% endfor %}
           </select>
         </div>
         <div class="field">
           <label for="signup-role-{{ m.id }}">Rôle</label>
           <select id="signup-role-{{ m.id }}" name="role">
-            {% for key, label in mission_roles.items() %}<option value="{{ key }}"{% if (signup.role if signup else 'flex') == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            {% for key, label in mission_roles.items() %}<option value="{{ key }}"{% if (signup.role if signup else (proposal.role if proposal else 'flex')) == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
           </select>
         </div>
         <button class="button button-primary button-small" name="action" value="inscrire" type="submit">{{ 'Enregistrer' if signup else 'Confirmer' }}</button>

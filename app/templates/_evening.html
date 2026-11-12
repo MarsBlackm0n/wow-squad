@@ -94,7 +94,23 @@
           {% endfor %}
         </ul>
       </details>
-      {% if account_id %}<a class="button button-primary" href="/?suggestion={{ idea.instance.key }}#proposer-objectif">Proposer cette sortie</a>{% endif %}
+      {% if account_id %}
+      <details class="instance-prep">
+        <summary class="button button-primary">Lancer cette sortie</summary>
+        <form class="mission-form" method="post" action="/objectifs">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input type="hidden" name="instance_key" value="{{ idea.instance.key }}">
+          <input type="hidden" name="suggestion_side" value="{{ idea.side }}">
+          <input type="hidden" name="suggestion_mode" value="{{ idea.mode }}">
+          <input type="hidden" name="suggestion_priority" value="{{ priority }}">
+          <div class="field">
+            <label for="departure-{{ idea.instance.key }}">Date et heure de départ ({{ settings.timezone }})</label>
+            <input id="departure-{{ idea.instance.key }}" type="datetime-local" name="date_prevue" required>
+          </div>
+          <button class="button button-primary" type="submit">Publier la sortie</button>
+        </form>
+      </details>
+      {% endif %}
     </article>
     {% endfor %}
   </div>

@@ -659,7 +659,8 @@ async def memory_image(mission_id: int, memory_id: int):
 async def create_mission(request: Request, titre: str = Form(""), type_objectif: str = Form(""),
                          date_prevue: str = Form(""), effectif: int = Form(5), niveau: int = Form(1),
                          notes: str = Form(""), csrf: str = Form(""), objectif: int = Form(0),
-                         instance_key: str = Form("")):
+                         instance_key: str = Form(""), suggestion_side: str = Form(""),
+                         suggestion_mode: str = Form(""), suggestion_priority: str = Form("group")):
     check_csrf(request, csrf)
     try:
         starts_at = datetime.fromisoformat(date_prevue) if date_prevue else None
@@ -671,6 +672,12 @@ async def create_mission(request: Request, titre: str = Form(""), type_objectif:
         flash(request, "Choisis une date et une heure valides.", "error")
         return back("/#ce-soir")
     instance = INSTANCE_CATALOG.get(instance_key)
+    if suggestion_side:
+        if (objectif or not instance or instance.kind != "dungeon" or starts_at is None
+                or starts_at <= utcnow() or suggestion_priority not in expedition.PREFERENCES):
+            flash(request, "Choisis une heure de départ à venir pour cette sortie.", "error")
+            return back("/#ce-soir")
+        effectif, niveau = instance.size, instance.level
     if instance_key and instance is None:
         raise HTTPException(400, "Cette instance n’est pas dans le catalogue.")
     if instance:
@@ -690,13 +697,34 @@ async def create_mission(request: Request, titre: str = Form(""), type_objectif:
                 raise HTTPException(403, "Seul le créateur peut modifier cet objectif.")
         else:
             mission = SquadMission(creator_id=account_id)
+            if suggestion_side:
+                db.get(Account, account_id, with_for_update=True)
+                existing = db.scalar(select(SquadMission.id).where(
+                    SquadMission.creator_id == account_id, SquadMission.instance_key == instance_key,
+                    SquadMission.starts_at == starts_at, SquadMission.completed_at.is_(None)))
+                if existing is not None:
+                    return back(f"/#mission-title-{existing}")
+                today = utcnow().astimezone(ZoneInfo(settings.timezone)).date()
+                rows = db.scalars(select(EveningAvailability).where(EveningAvailability.day == today)).all()
+                ideas = expedition.evening_suggestions(rows, leaderboard(db), suggestion_priority)
+                idea = next((i for i in ideas if i["instance"].key == instance_key
+                             and i["side"] == suggestion_side and i["mode"] == suggestion_mode), None)
+                if idea is None:
+                    flash(request, "Les disponibilités ont changé. Choisis une suggestion à jour.", "error")
+                    return back("/#ce-soir")
+                mission.proposed_lineup = {
+                    str(slot.character.account_id): {"character_id": slot.character.id, "role": slot.role}
+                    for slot in idea["team"] if slot
+                }
             db.add(mission)
+        if objectif and mission.instance_key != instance_key:
+            mission.proposed_lineup = None
         mission.instance_key = instance.key if instance else None
         mission.title, mission.kind, mission.notes = titre.strip(), type_objectif, notes.strip()
         mission.starts_at, mission.target_size, mission.min_level = starts_at, effectif, niveau
         db.commit()
     flash(request, "Objectif mis à jour." if objectif else "Objectif publié dans « Ce soir ».")
-    return back("/#ce-soir")
+    return back(f"/#mission-title-{mission.id}" if suggestion_side else "/#ce-soir")
 
 
 @router.post("/objectifs/{mission_id}/participation")
