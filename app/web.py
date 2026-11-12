@@ -20,7 +20,7 @@ from .collector import apply_account_characters
 from .config import settings
 from .db import Account, Character, Event, MissionSignup, PlayerPhoto, SessionLocal, Snapshot, SquadMission, kv_get, kv_set, select, utcnow
 from .stats import compute_week, leaderboard
-from .ui import Series, class_color, class_key, faction_key, frdate, level_history, line_chart, make_formatters, number, ruleset_label, xp_progress
+from .ui import Series, class_color, class_key, faction_key, frdate, line_chart, progression_points, make_formatters, number, ruleset_label, xp_progress
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -203,17 +203,13 @@ async def account_page(request: Request):
 
 
 def _race_chart(db, chars: list[Character]):
-    since = utcnow() - timedelta(days=30)
     charts = []
     for c in chars:
         if c.status == "pending":
             continue
-        snaps = db.scalars(select(Snapshot).where(Snapshot.character_id == c.id, Snapshot.taken_at >= since)
+        snaps = db.scalars(select(Snapshot).where(Snapshot.character_id == c.id)
                            .order_by(Snapshot.taken_at)).all()
-        points, launch_anchor = level_history(snaps)
-        if launch_anchor and points[0][0] < since:
-            points.pop(0)
-            launch_anchor = False
+        points, launch_anchor = progression_points(snaps, "level")
         if not points:
             continue
         observed = points[1:] if launch_anchor else points
@@ -221,10 +217,10 @@ def _race_chart(db, chars: list[Character]):
         gain = f"{last - first:+d}" if len(observed) > 1 else "—"
         desc = f"Évolution du niveau de {c.display_name}. Dernier niveau relevé : {last}."
         if launch_anchor:
-            desc += " Le niveau 1 au lancement sert de repère."
+            desc += " Le zéro au lancement sert de repère."
         chart = line_chart([Series(c.display_name, class_color(c.class_name), points)],
                            f"Niveau de {c.display_name}", desc, f"race-{c.id}",
-                           y_label="Niveau", y_min=1, tz_name=settings.timezone)
+                           y_label="Niveau", y_min=0, step=False, tz_name=settings.timezone)
         charts.append({"id": c.id, "name": c.display_name, "last": last, "first": first,
                        "gain": gain, "launch": launch_anchor, "svg": chart})
     charts.sort(key=lambda item: -item["last"])
@@ -244,20 +240,18 @@ async def character_page(request: Request, char_id: int):
                             .order_by(Event.at.desc()).limit(60)).all()
     color = class_color(char.class_name)
     level_chart = ilvl_chart = None
-    level_points, level_has_launch = level_history(snaps)
+    level_points, level_has_launch = progression_points(snaps, "level")
     if len(level_points) > 1:
         level_chart = line_chart([Series(char.display_name, color, level_points)],
                                  f"Niveau de {char.display_name}",
-                                 "Niveaux observés par Wow Squad." + (" Niveau 1 au lancement comme repère." if level_has_launch else ""),
-                                 "level", y_label="Niveau", y_min=1, tz_name=settings.timezone)
-    if len(snaps) > 1:
-        ilvl_points = [(s.taken_at, s.ilvl) for s in snaps if s.ilvl]
-        if len(ilvl_points) > 1:
-            ilvl_chart = line_chart([Series(char.display_name, color, ilvl_points)],
-                                    f"Niveau moyen de l’équipement de {char.display_name}",
-                                    f"De {number(ilvl_points[0][1], 1)} à {number(ilvl_points[-1][1], 1)} "
-                                    f"de niveau d'objet moyen.", "ilvl", y_label="Équipement", step=False,
-                                    tz_name=settings.timezone)
+                                 "Niveaux observés par Wow Squad." + (" Zéro au lancement comme repère." if level_has_launch else ""),
+                                 "level", y_label="Niveau", y_min=0, step=False, tz_name=settings.timezone)
+    ilvl_points, ilvl_has_launch = progression_points(snaps, "ilvl")
+    if len(ilvl_points) > 1:
+        ilvl_chart = line_chart([Series(char.display_name, color, ilvl_points)],
+                                f"Niveau moyen de l’équipement de {char.display_name}",
+                                "Niveaux moyens de l’équipement relevés. Le zéro au lancement sert de repère.",
+                                "ilvl", y_label="Équipement", y_min=0, step=False, tz_name=settings.timezone)
     state = char.state or {}
     with SessionLocal() as db:
         goal_cfg = squad.get_goal(db)
@@ -267,7 +261,7 @@ async def character_page(request: Request, char_id: int):
                   mounts=state.get("mounts"), achievements=state.get("achievements"),
                   honorable_kills=state.get("honorable_kills"), can_manage=can_manage_character(request, char),
                   activity=insights.activity_totals(events), activity_state=state,
-                  xp=xp_progress(char.level, state.get("experience")), level_has_launch=level_has_launch,
+                  xp=xp_progress(char.level, state.get("experience")), level_has_launch=level_has_launch, ilvl_has_launch=ilvl_has_launch,
                   boss_totals={key: sum(row["count"] for row in state[key].values()) if state.get(key) is not None else None
                                for key in ("dungeon_encounters", "raid_encounters")})
 

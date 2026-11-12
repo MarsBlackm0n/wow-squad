@@ -141,12 +141,15 @@ def xp_progress(level: int, experience: int | None) -> dict | None:
 FOREVER_LAUNCH = datetime(2026, 11, 4, 23, tzinfo=timezone.utc)
 
 
-def level_history(snapshots) -> tuple[list[tuple[datetime, int]], bool]:
-    points = [(_aware(s.taken_at), s.level) for s in snapshots if s.level and _aware(s.taken_at) >= FOREVER_LAUNCH]
-    launch_anchor = len(points) == 1 and points[0][0] > FOREVER_LAUNCH
-    if launch_anchor:
-        points.insert(0, (FOREVER_LAUNCH, 1))
-    return points, launch_anchor
+def progression_points(snapshots, field: str) -> tuple[list[tuple[datetime, float]], bool]:
+    points = [(_aware(s.taken_at), getattr(s, field)) for s in snapshots
+              if getattr(s, field) and _aware(s.taken_at) >= FOREVER_LAUNCH]
+    if not points:
+        return points, False
+    # Si le lancement coïncide avec le premier relevé, ne pas inventer de seconde mesure à la même heure.
+    if points[0][0] <= FOREVER_LAUNCH:
+        return points, False
+    return [(FOREVER_LAUNCH, 0), *points], True
 
 
 def number(value, digits: int = 0) -> str:

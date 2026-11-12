@@ -62,7 +62,7 @@
       <dd>
         {% if pace %}
         <span class="kpi-value">+{{ pace.per_day | number(1) }}</span>
-        <span class="kpi-note">niv. par jour sur {{ pace.observed_days | number(1) }} j suivis</span>
+        <span class="kpi-note">{% if pace.estimated %}niv. par jour estimés depuis le lancement{% else %}niv. par jour sur {{ pace.observed_days | number(1) }} j suivis{% endif %}</span>
         {% if pace.reached %}<span class="kpi-note">Objectif {{ goal_cfg.target }} atteint</span>
         {% elif pace.eta %}<span class="kpi-note">Niv. {{ goal_cfg.target }} vers le {{ pace.eta.strftime('%d/%m') }}</span>
         {% endif %}
@@ -134,14 +134,14 @@
         <figure class="chart-frame" data-chart-panel="level">
           <div class="chart-current"><strong>{{ char.level }}</strong><span>Niveau du personnage</span></div>
           {{ level_chart }}
-          {% if level_has_launch %}<figcaption>Le niveau 1 au 5 novembre est un repère de lancement. Le suivi commence au premier relevé Blizzard.</figcaption>{% endif %}
+          {% if level_has_launch %}<figcaption>Le zéro au 5 novembre est un repère de lancement. Le premier point mesuré vient de Blizzard.</figcaption>{% endif %}
         </figure>
         {% endif %}
         {% if ilvl_chart %}
         <figure class="chart-frame" data-chart-panel="gear"{% if level_chart %} hidden{% endif %}>
           <div class="chart-current"><strong>{{ char.ilvl | number(1) }}</strong><span>Niveau moyen de l’équipement</span></div>
           {{ ilvl_chart }}
-          <figcaption>La moyenne monte quand tu équipes des objets de niveau supérieur. Elle peut évoluer sans que ton personnage change de niveau.</figcaption>
+          <figcaption>La moyenne monte quand tu équipes des objets de niveau supérieur. Elle peut évoluer sans que ton personnage change de niveau.{% if ilvl_has_launch %} Le zéro au lancement sert de repère.{% endif %}</figcaption>
         </figure>
         {% endif %}
       </div>

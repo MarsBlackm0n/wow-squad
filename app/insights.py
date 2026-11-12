@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 
 from .db import Character, Event, Snapshot, select, utcnow
-from .ui import class_key, faction_key
+from .ui import FOREVER_LAUNCH, class_key, faction_key
 
 MAX_LEVEL = 60
 TOGETHER_WINDOW = timedelta(minutes=90)
@@ -202,6 +202,7 @@ class Pace:
     eta: date | None      # date estimée pour atteindre l'objectif (None : à l'arrêt ou déjà arrivé)
     reached: bool
     observed_days: float
+    estimated: bool = False
 
 
 def paces(db: Session, chars: list[Character], target: int, tz_name: str, days: int = 7) -> dict[int, Pace]:
@@ -219,15 +220,21 @@ def paces(db: Session, chars: list[Character], target: int, tz_name: str, days: 
         if base is None or latest is None:
             continue
         elapsed = (_aware(latest.taken_at) - _aware(base.taken_at)).total_seconds() / 86400
-        if elapsed < 1:
-            continue
-        gained = max(latest.level - base.level, 0)
+        estimated = elapsed < 1
+        if estimated:
+            elapsed = (_aware(latest.taken_at) - FOREVER_LAUNCH).total_seconds() / 86400
+            if elapsed <= 0:
+                continue
+            elapsed = max(elapsed, 1)
+            gained = latest.level
+        else:
+            gained = max(latest.level - base.level, 0)
         per_day = gained / elapsed
         reached = c.level >= target
         eta = None
         if not reached and per_day > 0.05:
             eta = today + timedelta(days=round((target - c.level) / per_day))
-        out[c.id] = Pace(round(per_day, 1), gained, eta, reached, elapsed)
+        out[c.id] = Pace(round(per_day, 1), gained, eta, reached, elapsed, estimated)
     return out
 
 
@@ -262,7 +269,7 @@ def squad_goal(chars: list[Character], target: int, deadline: date | None,
     if not active:
         return None
     total = sum(min(c.level, target) for c in active)
-    rated = [(c, pace_by_char[c.id]) for c in active if c.id in pace_by_char]
+    rated = [(c, pace_by_char[c.id]) for c in active if c.id in pace_by_char and not pace_by_char[c.id].estimated]
     pending = [p for c, p in rated if not p.reached]
     etas = [p.eta for p in pending if p.eta]
     fastest = max(rated, key=lambda cp: cp[1].per_day, default=(None, None))

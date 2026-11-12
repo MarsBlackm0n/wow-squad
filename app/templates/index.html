@@ -223,10 +223,10 @@
             <figure class="chart-frame" data-chart-panel="{{ c.id }}"{% if not loop.first %} hidden{% endif %}>
               <div class="chart-current"><strong>{{ c.last }}</strong><span>Niveau relevé</span></div>
               {{ c.svg }}
-              {% if c.launch %}<figcaption>Le niveau 1 au lancement de Forever sert de repère. Les gains du tableau sont calculés entre relevés Blizzard.</figcaption>{% endif %}
+              {% if c.launch %}<figcaption>Le zéro au lancement de Forever sert de repère. Les gains du tableau sont calculés entre relevés Blizzard.</figcaption>{% endif %}
             </figure>
             {% endfor %}
-          {{ chart_table(race_rows, ['Perso', 'Premier niveau relevé', 'Dernier niveau relevé', 'Gain observé'], 'Course au niveau sur 30 jours') }}
+          {{ chart_table(race_rows, ['Perso', 'Premier niveau relevé', 'Dernier niveau relevé', 'Gain observé'], 'Course au niveau depuis le lancement') }}
         </section>
         {% else %}
         <p class="empty">La course au niveau apparaîtra après quelques synchros.</p>
@@ -242,7 +242,7 @@
             {{ avatar(c, 'sm') }}
             <div class="rank-body">
               <a class="rank-name" href="/perso/{{ c.id }}"><span class="visually-hidden">{{ loop.index }}. </span>{{ c.display_name }}</a>
-              <span class="meta">{% if pc.reached %}objectif atteint{% elif pc.eta %}niv. {{ goal_cfg.target }} vers le {{ pc.eta.strftime('%d/%m') }}{% else %}{{ pc.gained }} niv. gagné{{ 's' if pc.gained > 1 }} sur {{ pc.observed_days | number(1) }} j{% endif %}</span>
+              <span class="meta">{% if pc.estimated %}estimation depuis le lancement · {% endif %}{% if pc.reached %}objectif atteint{% elif pc.eta %}niv. {{ goal_cfg.target }} vers le {{ pc.eta.strftime('%d/%m') }}{% else %}{% if not pc.estimated %}{{ pc.gained }} niv. gagné{{ 's' if pc.gained > 1 }} sur {{ pc.observed_days | number(1) }} j{% endif %}{% endif %}</span>
             </div>
             <span class="pace"><strong>+{{ pc.per_day | number(1) }}</strong><span class="meta">/jour</span></span>
           </li>

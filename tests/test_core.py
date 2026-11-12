@@ -202,29 +202,32 @@ def test_ruleset_label_and_account_summary():
     assert parse_profile({"ruleset": {"name": {"fr_FR": "Normal"}}})["ruleset"] == "Normal"
 
 
-def test_pace_requires_at_least_one_day_of_snapshots():
+def test_pace_estimates_until_one_day_of_snapshots(monkeypatch):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
 
     from app.db import Base, Snapshot
+    from app import insights
     from app.insights import paces
+    from app.ui import FOREVER_LAUNCH
 
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     with Session(engine) as db:
         char = _char(1, 21)
         db.add(char)
-        now = datetime.now(timezone.utc)
+        now = FOREVER_LAUNCH + timedelta(days=7)
+        monkeypatch.setattr(insights, "utcnow", lambda: now)
         db.add(Snapshot(character_id=char.id, taken_at=now - timedelta(days=8), level=10))
         db.add(Snapshot(character_id=char.id, taken_at=now - timedelta(days=2), level=20))
-        assert paces(db, [char], 60, "UTC") == {}
+        assert paces(db, [char], 60, "UTC")[char.id].estimated
 
         db.add(Snapshot(character_id=char.id, taken_at=now - timedelta(hours=36), level=20))
-        assert paces(db, [char], 60, "UTC") == {}
+        assert paces(db, [char], 60, "UTC")[char.id].estimated
 
         db.add(Snapshot(character_id=char.id, taken_at=now - timedelta(hours=24), level=21))
         pace = paces(db, [char], 60, "UTC")[char.id]
-        assert pace.gained == 1 and pace.per_day == 1 and pace.observed_days == 1
+        assert pace.gained == 1 and pace.per_day == 1 and pace.observed_days == 1 and not pace.estimated
 
 
 def test_activity_uses_comparable_blizzard_counters():
@@ -294,3 +297,15 @@ def test_account_entry_prefers_public_profile_href():
     assert account_entry_slug({"name": "Johnny"}) == ""
     assert account_entry_summary(entry)["experience"] == 0
     assert account_entry_summary(entry)["last_login"] is None
+
+
+def test_level_and_equipment_curves_share_launch_anchor():
+    from types import SimpleNamespace
+    from app.ui import FOREVER_LAUNCH, progression_points
+
+    first = FOREVER_LAUNCH + timedelta(days=1)
+    second = first + timedelta(hours=2)
+    snapshots = [SimpleNamespace(taken_at=first, level=4, ilvl=0),
+                 SimpleNamespace(taken_at=second, level=5, ilvl=3.5)]
+    assert progression_points(snapshots, "level") == ([(FOREVER_LAUNCH, 0), (first, 4), (second, 5)], True)
+    assert progression_points(snapshots, "ilvl") == ([(FOREVER_LAUNCH, 0), (second, 3.5)], True)
