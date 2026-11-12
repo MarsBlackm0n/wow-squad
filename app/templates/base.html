@@ -35,7 +35,7 @@
         <ul>
           <li><a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>QG</a></li>
           {% if qg_access %}
-          {% if not account_connected %}<li><a href="/compte" {% if request.url.path == '/compte' %}aria-current="page"{% endif %}>Mes personnages</a></li>{% endif %}
+          <li><a href="/compte" {% if request.url.path == '/compte' %}aria-current="page"{% endif %}>Mes personnages</a></li>
           <li><a href="/#squad">La squad</a></li>
           {% if admin %}<li><a href="/administration" {% if request.url.path == "/administration" %}aria-current="page"{% endif %}>Administration</a></li>{% endif %}
           {% endif %}
