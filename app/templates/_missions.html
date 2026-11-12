@@ -91,22 +91,19 @@
     {% for roster in missions %}
     {% set m = roster.mission %}
     {% set signup = roster.signups | selectattr('account_id', 'equalto', account_id) | first | default(none) %}
-    <article class="mission-card" aria-labelledby="mission-title-{{ m.id }}">
+    <article class="mission-card" data-objective="{{ m.kind }}" aria-labelledby="mission-title-{{ m.id }}">
       <header>
-        <div class="mission-card-meta"><span class="pill">{{ mission_kinds[m.kind] }}</span>
+        <div class="mission-card-meta"><span class="objective-badge">{{ icon({'raid': 'trophy', 'dungeon': 'shield', 'pvp': 'bolt'}.get(m.kind, 'flag')) }} {{ mission_kinds[m.kind] }}</span>
           <span class="meta">{% if m.starts_at %}<time datetime="{{ m.starts_at.isoformat() }}">{{ m.starts_at | localtime('%d/%m à %H:%M') }}</time>{% else %}Date à convenir{% endif %}</span>
         </div>
         <h4 id="mission-title-{{ m.id }}">{{ m.title }}</h4>
+        {% if signup %}<p class="mission-confirmed">{{ icon('check') }} Tu participes</p>{% endif %}
         {% if m.notes %}<p class="mission-notes">{{ m.notes }}</p>{% endif %}
       </header>
-      {% if m.instance_key in instance_catalog %}
-      <details class="instance-prep">
-        <summary>{{ icon('chevron', 'summary-chevron') }} Préparer la sortie</summary>
-        {{ instance_guide(instance_catalog[m.instance_key]) }}
-      </details>
-      {% endif %}
+      <div class="mission-readiness">
       <div class="mission-progress">
-        <label for="mission-progress-{{ m.id }}"><strong>{{ roster.signups | length }}/{{ m.target_size }}</strong> inscrits · niveau {{ m.min_level }} minimum</label>
+        <label for="mission-progress-{{ m.id }}"><span><strong>{{ roster.signups | length }}/{{ m.target_size }}</strong> inscrits</span>
+          <span class="meta">Niv. {{ m.min_level }} minimum</span></label>
         <progress id="mission-progress-{{ m.id }}" max="{{ m.target_size }}" value="{{ [roster.signups | length, m.target_size] | min }}"></progress>
       </div>
       {% if m.kind in ('raid', 'dungeon') %}
@@ -125,8 +122,17 @@
         {% for warning in warnings %}<li>{{ warning }}</li>{% endfor %}
       </ul>
       {% endif %}
+      </div>
+      {% if m.instance_key in instance_catalog %}
+      <details class="instance-prep">
+        <summary>{{ icon('chevron', 'summary-chevron') }} Préparer la sortie</summary>
+        {{ instance_guide(instance_catalog[m.instance_key]) }}
+      </details>
+      {% endif %}
       {% if roster.signups %}
-      <ul class="mission-roster" role="list">
+      <details class="mission-players">
+        <summary>{{ icon('chevron', 'summary-chevron') }} Participants ({{ roster.signups | length }})</summary>
+        <ul class="mission-roster" role="list">
         {% for row in roster.signups %}
         {% set c = row.character %}
         {% set eta = roster.level_dates.get(c.id) %}
@@ -138,9 +144,12 @@
           {% endif %}
         </li>
         {% endfor %}
-      </ul>
+        </ul>
+      </details>
       {% endif %}
       {% if mission_chars %}
+      <details class="mission-response">
+        <summary class="button {{ 'button-secondary' if signup else 'button-primary' }}">{{ 'Modifier ma participation' if signup else 'Je participe' }}</summary>
       <form method="post" action="/objectifs/{{ m.id }}/participation" class="mission-signup">
         <input type="hidden" name="csrf" value="{{ csrf }}">
         <div class="field">
@@ -155,9 +164,10 @@
             {% for key, label in mission_roles.items() %}<option value="{{ key }}"{% if (signup.role if signup else 'flex') == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
           </select>
         </div>
-        <button class="button button-primary button-small" name="action" value="inscrire" type="submit">{{ 'Mettre à jour' if signup else 'Je participe' }}</button>
+        <button class="button button-primary button-small" name="action" value="inscrire" type="submit">{{ 'Enregistrer' if signup else 'Confirmer' }}</button>
         {% if signup %}<button class="button button-ghost button-small" name="action" value="retirer" type="submit">Me désinscrire</button>{% endif %}
       </form>
+      </details>
       {% endif %}
       {% if account_id == m.creator_id %}
       <details class="mission-manage">

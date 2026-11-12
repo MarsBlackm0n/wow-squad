@@ -135,6 +135,13 @@ class Blizzard:
         except (NotFound, BlizzardError):
             return None
 
+    async def guild_part(self, slug: str, suffix: str = "") -> dict | None:
+        path = f"/data/wow/guild/{quote(slug, safe='')}{suffix}"
+        try:
+            return await self.get(path)
+        except (BlizzardError, httpx.RequestError):
+            return None
+
     # --- Compte (jeton utilisateur, scope wow.profile) -----------------------------------------
 
     async def account_characters(self, user_token: str) -> list[dict]:

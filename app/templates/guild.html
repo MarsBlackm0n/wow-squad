@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, faction_badge %}
+{% block title %}{{ guild.name or char.guild }}{% endblock %}
+{% block content %}
+<nav class="breadcrumb" aria-label="Fil d’Ariane">
+  <ol><li><a href="/">QG</a></li><li><a href="/perso/{{ char.id }}">{{ char.display_name }}</a></li><li aria-current="page">Guilde</li></ol>
+</nav>
+<header class="panel-head story-banner story-banner-hall">
+  <h1 id="guild-title">{{ guild.name or char.guild }}</h1>
+  <p class="lead">{{ faction_badge(guild.faction or char.faction) }}
+    {% if guild.ruleset or char.ruleset %}<span class="pill">{{ (guild.ruleset or char.ruleset) | ruleset_label }}</span>{% endif %}</p>
+</header>
+<dl class="activity-metrics character-activity">
+  <div class="panel-block"><dt>Membres de la guilde</dt><dd><strong>{{ (guild.count if guild.count is not none else (guild.members | length if guild.roster_available else none)) | number }}</strong></dd></div>
+  <div class="panel-block"><dt>Persos suivis par la squad</dt><dd><strong>{{ tracked | length }}</strong></dd></div>
+  {% if guild.created %}<div class="panel-block"><dt>Fondée le</dt><dd><strong>{{ guild.created | localtime('%d/%m/%Y') }}</strong></dd></div>{% endif %}
+  {% if guild.achievement_points is not none %}<div class="panel-block"><dt>Points de hauts faits</dt><dd><strong>{{ guild.achievement_points | number }}</strong></dd></div>{% endif %}
+</dl>
+<div class="split split-profile">
+  <div class="split-main">
+    <section aria-labelledby="guild-roster">
+      <h2 id="guild-roster" class="block-title">Membres de la guilde</h2>
+      {% if guild.members %}
+      <ul class="member-list" role="list">
+        {% for member in guild.members %}
+        {% set followed = tracked_by_slug.get(member.slug) %}
+        <li class="member"><div class="member-body">
+          {% if followed %}<a class="member-name" href="/perso/{{ followed.id }}">{{ member.name }}</a>
+          {% else %}<span>{{ member.name }}</span>{% endif %}
+        </div>{% if member.level is not none %}<span class="pill">Niv. {{ member.level }}</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% elif guild.roster_available %}
+      <p class="empty">Aucun membre renvoyé par Blizzard.</p>
+      {% else %}
+      <p class="empty">La liste complète des membres est indisponible pour le moment.</p>
+      {% endif %}
+    </section>
+  </div>
+  <aside class="split-side">
+    <section class="panel-block" aria-labelledby="guild-squad">
+      <h2 id="guild-squad" class="block-title">Dans la squad</h2>
+      <ul class="mission-roster" role="list">
+        {% for member in tracked %}<li>{{ avatar(member, 'xs') }} <a href="/perso/{{ member.id }}">{{ member.display_name }}</a></li>{% endfor %}
+      </ul>
+    </section>
+    {% if guild.recent %}
+    <section class="panel-block" aria-labelledby="guild-activity">
+      <h2 id="guild-activity" class="block-title">Activité de la guilde</h2>
+      <ul class="group-list" role="list">
+        {% for item in guild.recent %}<li class="group-item"><span>{{ item.detail }}</span><span class="meta">{{ item.at | time_tag }}</span></li>{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

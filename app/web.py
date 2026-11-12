@@ -14,7 +14,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from . import insights, photos, squad
+from . import guilds, insights, photos, squad
 from .instances import DUNGEON_CATALOG, INSTANCE_CATALOG, RAID_CATALOG
 from .blizzard import BlizzardCredentialsError, BlizzardError, character_slug, split_slug
 from .collector import apply_account_characters
@@ -269,6 +269,21 @@ async def character_page(request: Request, char_id: int):
                   xp=xp_progress(char.level, state.get("experience")), level_has_launch=level_has_launch, ilvl_has_launch=ilvl_has_launch,
                   boss_totals={key: sum(row["count"] for row in state[key].values()) if state.get(key) is not None else None
                                for key in ("dungeon_encounters", "raid_encounters")})
+
+
+@router.get("/perso/{char_id}/guilde", response_class=HTMLResponse)
+async def guild_page(request: Request, char_id: int):
+    with SessionLocal() as db:
+        char = db.get(Character, char_id)
+        if not char or not char.guild:
+            raise HTTPException(404, "Aucune guilde connue pour ce personnage.")
+        slug = (char.state or {}).get("guild_slug") or character_slug(char.guild)
+        candidates = db.scalars(select(Character).where(Character.region == char.region, Character.guild == char.guild)).all()
+        tracked = [member for member in candidates if ((member.state or {}).get("guild_slug") or character_slug(member.guild)) == slug]
+    bz = request.app.state.worker.bz
+    guild = await guilds.fetch_guild(bz, slug) if bz and slug and bz.region == char.region else guilds.guild_details(None, None, None, None)
+    return render(request, "guild.html", char=char, guild=guild, tracked=tracked,
+                  tracked_by_slug={member.slug: member for member in tracked})
 
 
 # --- Actions -------------------------------------------------------------------------------------

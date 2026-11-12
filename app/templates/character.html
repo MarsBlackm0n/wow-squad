@@ -18,7 +18,7 @@
     <p class="profile-meta">{{ class_line(char) }} {{ faction_badge(char.faction) }} {{ ruleset_badge(char) }}</p>
     <ul class="profile-facts" role="list">
       {% if char.player %}<li><span class="fact-label">Joueur</span> {{ char.player }}</li>{% endif %}
-      {% if char.guild %}<li><span class="fact-label">Guilde</span> &lt;{{ char.guild }}&gt;</li>{% endif %}
+      {% if char.guild %}<li><span class="fact-label">Guilde</span> <a href="/perso/{{ char.id }}/guilde">{{ char.guild }}</a></li>{% endif %}
       <li><span class="fact-label">Vu en jeu</span> {{ char.last_login | time_tag if char.last_login else 'Date indisponible' }}</li>
     </ul>
   </div>

@@ -67,6 +67,7 @@ def parse_profile(profile: dict) -> dict:
         "race": _name(profile.get("race") or profile.get("playable_race")),
         "faction": _name(profile.get("faction")),
         "guild": _name(profile.get("guild")),
+        "guild_slug": _name((profile.get("guild") or {}).get("slug")) if isinstance(profile.get("guild"), dict) else "",
         "ruleset": _ruleset_name(profile.get("ruleset")),
         "achievement_points": _int(profile.get("achievement_points")) or 0,
         "ilvl": float(ilvl or 0),
@@ -308,9 +309,9 @@ def diff_events(who: str, old: dict, new: dict) -> list[NewEvent]:
 
     if new.get("guild") != old.get("guild") and new.get("guild") is not None:
         if new.get("guild"):
-            events.append(NewEvent("guild", "🏰", f"{who} rejoint la guilde <{new['guild']}>", {"guild": new["guild"]}))
+            events.append(NewEvent("guild", "🏰", f"{who} rejoint la guilde {new['guild']}", {"guild": new["guild"]}))
         else:
-            events.append(NewEvent("guild", "🏰", f"{who} quitte la guilde <{old.get('guild')}>", {}))
+            events.append(NewEvent("guild", "🏰", f"{who} quitte la guilde {old.get('guild')}", {}))
     return events
 
 
