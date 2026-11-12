@@ -48,12 +48,15 @@
     picker.hidden = false;
   });
 
-  document.querySelectorAll("[data-copy-coordinate]").forEach(function (button) {
+  document.querySelectorAll("[data-copy-coordinate], [data-copy-link]").forEach(function (button) {
     if (!navigator.clipboard) return;
     button.hidden = false;
     button.addEventListener("click", async function () {
       try {
-        await navigator.clipboard.writeText(button.dataset.copyCoordinate);
+        var value = button.dataset.copyLink
+          ? new URL(button.dataset.copyLink, window.location.href).href
+          : button.dataset.copyCoordinate;
+        await navigator.clipboard.writeText(value);
         button.textContent = "Copié";
       } catch (error) {
         button.textContent = "Copie indisponible";

@@ -51,6 +51,8 @@
         {% endfor %}
         {% if point.xy %}<p><code>{{ point.xy | join(', ') }}</code> <button type="button" class="button button-secondary button-small" data-copy-coordinate="{{ point.xy | join(' ') }}" hidden>Copier</button> <button type="button" class="button button-secondary button-small" data-copy-coordinate="/way {{ point.xy | join(' ') }}" title="Dans la zone affichée" hidden>Copier le /way</button></p>
         {% else %}<p class="meta">Coordonnées non documentées dans le catalogue.</p>{% endif %}
+        <p><button type="button" class="button button-secondary button-small"
+                   data-copy-link="{{ '/' if chars else '/carte' }}?repere={{ point.key | urlencode }}{{ '#carte' if chars else '' }}" hidden>Copier le lien du repère</button></p>
         <p><a href="{{ point.guide }}">Ouvrir le guide de ce repère</a></p>
       </details>
       {% endfor %}
