@@ -31,10 +31,11 @@ MAP_IDS = {
 def map_backgrounds() -> dict[str, str]:
     maps = {ZONES[key]: f"{MAP_IMAGE_ROOT}{image_id}.webp" for key, image_id in MAP_IDS.items()}
     maps["Les Pitons du Tonnerre"] = f"{MAP_IMAGE_ROOT}1456.webp"
+    maps["Forêt d’Elwynn"] = f"{MAP_IMAGE_ROOT}1429.webp"
     return maps
 
 
-KINDS = {"dungeon": "Donjons", "raid": "Raids", "quest": "Quêtes", "mob": "Mobs"}
+KINDS = {"dungeon": "Donjons", "raid": "Raids", "quest": "Quêtes", "mob": "Mobs", "npc": "PNJ", "pet": "Mascottes"}
 
 
 def points():
@@ -54,9 +55,6 @@ def points():
         {"key": "old-murk-eye", "name": "Vieux Troublœil", "kind": "mob", "zone": "Marche de l’Ouest",
          "xy": [29.3, 75.9], "detail": "Un des points de passage documentés sur la côte.",
          "guide": "https://azeroth.wiki/forever/map/westfall/old-murk-eye"},
-        {"key": "defias", "name": "La Confrérie défias", "kind": "quest", "zone": "Marche de l’Ouest",
-         "xy": [56.3, 47.5], "detail": "Gryan Stoutmantle, départ et retour de la quête.",
-         "guide": "https://db.icy-veins.com/wow-forever/quests/166"},
         {"key": "fang", "name": "Les chefs du Croc", "kind": "quest", "zone": "Les Pitons du Tonnerre",
          "xy": [75.8, 31.2], "detail": "Nara Wildmane, donneuse de quête.",
          "guide": "https://db.icy-veins.com/wow-forever/quests/914"},
@@ -78,4 +76,28 @@ def points():
                    "detail": f"{detail}. Position documentée, susceptible de varier.",
                    "guide": f"https://azeroth.wiki/forever/map/{guide}"}
                   for key, name, zone, x, y, detail, guide in mobs)
+    westfall = "Marche de l'Ouest"
+    npc_guide = "https://azeroth.wiki/forever/map/westfall/"
+    pet_guide = "https://foreverbase.org/en/start/companion-pets/"
+    locations = (
+        ("defias", "Gryan Stoutmantle", "npc", ("quest",), westfall, (56.3, 47.5),
+         "Donneur de quêtes à la colline des Sentinelles.", ("La Confrérie défias", "La Milice du peuple"),
+         npc_guide + "gryan-stoutmantle"),
+        ("salma-saldean", "Salma Saldean", "npc", ("quest",), westfall, (56.4, 30.5),
+         "Donneuse de quêtes à la ferme des Saldean.", ("Tourte au foie de broche-tripes", "Ragoût de la marche de l'Ouest"),
+         npc_guide + "salma-saldean"),
+        ("farmer-saldean", "Fermier Saldean", "npc", ("quest",), westfall, (56, 31.2),
+         "Marchand et donneur de quêtes.", ("Les champs de la mort",), npc_guide + "farmer-saldean"),
+        ("sack-of-oats", "Sac d’avoine", "quest", (), westfall, (46.8, 37.5),
+         "Point de collecte.", ("Pauvre vieille Blanchette",), npc_guide + "sack-of-oats"),
+        ("donni-anthania", "Donni Anthania", "pet", ("npc",), "Forêt d’Elwynn", (44.2, 53.4),
+         "Vendeuse de mascottes.", ("Chat de Bombay", "Cornish Rex", "Chat tigré orange", "Chat tigré argenté"), pet_guide),
+        ("yarlyn-amberstill", "Yarlyn Amberstill", "pet", ("npc",), "Dun Morogh", (63.1, 50.9),
+         "Vendeuse de mascottes.", ("Lapin patte-blanche",), pet_guide),
+        ("xantish", "Xan’tish", "pet", ("npc",), "Orgrimmar", (33.8, 79.8),
+         "Vendeur de mascottes.", ("Serpent noir", "Serpent brun", "Serpent cramoisi"), pet_guide),
+    )
+    result.extend({"key": key, "name": name, "kind": kind, "also": also, "zone": zone, "xy": xy,
+                   "detail": detail, "entries": entries, "guide": guide}
+                  for key, name, kind, also, zone, xy, detail, entries, guide in locations)
     return result

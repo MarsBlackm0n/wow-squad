@@ -84,7 +84,7 @@
       var kinds = filters.filter(function (filter) { return filter.checked; }).map(function (filter) { return filter.value; });
       var query = fold(search.value.trim());
       var visible = function (el) {
-        return el.dataset.zone === zone.value && kinds.includes(el.dataset.mapKind) && fold(el.dataset.mapName).includes(query);
+        return el.dataset.zone === zone.value && el.dataset.mapKinds.split(" ").some(function (kind) { return kinds.includes(kind); }) && fold(el.dataset.mapName).includes(query);
       };
       pins.forEach(function (pin) {
         pin.hidden = !visible(pin) || image.hidden || !image.complete || !image.naturalWidth;

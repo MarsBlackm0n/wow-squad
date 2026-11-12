@@ -15,7 +15,7 @@
     <div class="map-plot" aria-label="Carte de zone et repères">
       <img data-map-image src="{{ backgrounds.get(active_zone, '') }}" alt="Carte de la zone {{ active_zone }}" referrerpolicy="no-referrer">
       {% for point in points if point.xy %}
-      <button type="button" class="map-pin" data-point="{{ point.key }}" data-zone="{{ point.zone }}" data-map-kind="{{ point.kind }}" data-map-name="{{ point.name }}"
+      <button type="button" class="map-pin" data-point="{{ point.key }}" data-zone="{{ point.zone }}" data-map-kind="{{ point.kind }}" data-map-name="{{ point.name }} {{ point.entries | default(()) | join(' ') }}" data-map-kinds="{{ ([point.kind] + (point.also | default(()) | list)) | join(' ') }}"
               style="--x:{{ point.xy[0] }}%;--y:{{ point.xy[1] }}%" aria-label="{{ point.name }} · {{ point.xy | join(', ') }}"
               aria-pressed="false" title="{{ point.name }}" hidden></button>
       {% endfor %}
@@ -29,9 +29,12 @@
     <p class="meta" data-map-empty hidden>Aucun repère pour ces filtres.</p>
     <div class="map-places">
       {% for point in points %}
-      <details id="map-{{ point.key }}" class="map-place" data-place="{{ point.key }}" data-zone="{{ point.zone }}" data-map-kind="{{ point.kind }}" data-map-name="{{ point.name }}"{% if point.zone != active_zone %} hidden{% endif %}{% if selected and selected.key == point.key %} open{% endif %}>
+      <details id="map-{{ point.key }}" class="map-place" data-place="{{ point.key }}" data-zone="{{ point.zone }}" data-map-kind="{{ point.kind }}" data-map-name="{{ point.name }} {{ point.entries | default(()) | join(' ') }}" data-map-kinds="{{ ([point.kind] + (point.also | default(()) | list)) | join(' ') }}"{% if point.zone != active_zone %} hidden{% endif %}{% if selected and selected.key == point.key %} open{% endif %}>
         <summary><span class="map-place-dot"></span> {{ point.name }} <span class="meta">{{ kinds[point.kind] }}</span></summary>
         <p>{{ point.detail }}</p>
+        {% if point.entries is defined %}
+        <ul>{% for entry in point.entries %}<li>{{ entry }}</li>{% endfor %}</ul>
+        {% endif %}
         {% if point.level is defined %}
         <dl class="instance-guide map-objective-guide">
           <div><dt>Niveau conseillé</dt><dd>{{ point.level }}</dd></div>
@@ -43,7 +46,7 @@
         <p><a href="/objectifs/{{ mission.id }}/preparation">{{ mission.title }}</a>
           <span class="meta">· niv. {{ mission.min_level }} minimum · {{ mission.target_size }} places</span></p>
         {% endfor %}
-        {% if point.xy %}<p><code>{{ point.xy | join(', ') }}</code> <button type="button" class="button button-secondary button-small" data-copy-coordinate="{{ point.xy | join(' ') }}" hidden>Copier</button></p>
+        {% if point.xy %}<p><code>{{ point.xy | join(', ') }}</code> <button type="button" class="button button-secondary button-small" data-copy-coordinate="{{ point.xy | join(' ') }}" hidden>Copier</button> <button type="button" class="button button-secondary button-small" data-copy-coordinate="/way {{ point.xy | join(' ') }}" title="Dans la zone affichée" hidden>Copier le /way</button></p>
         {% else %}<p class="meta">Coordonnées non documentées dans le catalogue.</p>{% endif %}
         <p><a href="{{ point.guide }}">Ouvrir le guide de ce repère</a></p>
       </details>

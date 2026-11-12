@@ -1069,6 +1069,8 @@ html { scroll-padding-top: 5.5rem; }
 [data-map-kind="raid"] { --pin: var(--gold); }
 [data-map-kind="quest"] { --pin: var(--violet); }
 [data-map-kind="mob"] { --pin: var(--danger); }
+[data-map-kind="npc"] { --pin: #4f8fdd; }
+[data-map-kind="pet"] { --pin: #83b84f; }
 .map-pin { position: absolute; z-index: 1; left: var(--x); top: var(--y); transform: translate(-50%,-50%); width: 44px; height: 44px; border: 0; background: transparent; cursor: pointer; display: grid; place-items: center; }
 .map-pin::after, .map-place-dot { content: ''; display: inline-block; width: .75rem; height: .75rem; border-radius: 50%; background: var(--pin); }
 .map-pin[aria-pressed="true"] { z-index: 2; }
