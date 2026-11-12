@@ -7,10 +7,9 @@ la course au niveau, les trophées, et un récap chaque semaine sur Telegram ou 
 
 | Zone | Contenu |
 |---|---|
-| **En haut** (toujours visible) | Objectif commun (niveau et date réglables) avec arrivée estimée, rythme de la squad, meilleur rythme, moments forts, qui a joué ces dernières 24 h |
 | **Ce soir** | Un donjon pour chacun de vos groupes fixes, puis les autres combinaisons possibles ; alerte s'il manque un tank ou un soigneur |
-| **Journal** | Un résumé par jour : qui a joué, soirées passées ensemble, paliers, hauts faits, montures, morts |
-| **Progression** | Course au niveau sur 30 jours, classement **au rythme** (niveaux par jour sur 7 jours, date d'arrivée estimée) puis au niveau |
+| **Journal** | Moments forts, activité des dernières 24 h et résumé par jour : qui a joué, soirées passées ensemble, paliers, hauts faits, montures, morts |
+| **Progression** | Objectif commun et arrivée estimée, course au niveau sur 30 jours, classement **au rythme** (niveaux par jour sur 7 jours, date d'arrivée estimée) puis au niveau |
 | **Palmarès** | Trophées de la semaine, panthéon des premières fois (premier 10, 20… 60, première monture), records |
 | **La squad** | Lier son compte Battle.net, ajouter un perso (prénom + nom), régler l'objectif, gérer les groupes fixes |
 

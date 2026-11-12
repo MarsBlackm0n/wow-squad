@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import avatar, faction_badge, icon, level_bar %}
+{% from "_macros.html" import avatar, faction_badge, icon, level_bar, ruleset_badge %}
 
 {% block title %}Mes personnages{% endblock %}
 
@@ -27,7 +27,7 @@
       </div>
       <div class="roster-card-facts">
         {{ level_bar(char.level or summary.level, max_level) }}
-        {{ faction_badge(faction) }}
+        <div class="character-badges">{{ faction_badge(faction) }} {{ ruleset_badge(char) }}</div>
       </div>
     </a>
   </li>

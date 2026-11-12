@@ -18,7 +18,7 @@ from .collector import apply_account_characters
 from .config import settings
 from .db import Account, Character, Event, PlayerPhoto, SessionLocal, Snapshot, select, utcnow
 from .stats import compute_week, leaderboard
-from .ui import Series, class_color, class_key, faction_key, frdate, line_chart, make_formatters, number
+from .ui import Series, class_color, class_key, faction_key, frdate, line_chart, make_formatters, number, ruleset_label
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -26,7 +26,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 localtime, time_tag = make_formatters(settings.timezone)
 templates.env.filters.update(localtime=localtime, time_tag=time_tag, number=number, class_color=class_color,
-                             class_key=class_key, faction_key=faction_key,
+                             class_key=class_key, faction_key=faction_key, ruleset_label=ruleset_label,
                              frdate=lambda d: frdate(d, settings.timezone))
 templates.env.globals.update(settings=settings, max_level=insights.MAX_LEVEL, photo_url=photos.url_for)
 

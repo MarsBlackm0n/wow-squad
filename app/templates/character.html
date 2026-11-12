@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, avatar, faction_badge, class_line, level_bar, event_item, chart_table %}
+{% from "_macros.html" import icon, avatar, faction_badge, class_line, level_bar, event_item, chart_table, ruleset_badge %}
 
 {% block title %}{{ char.display_name }}{% endblock %}
 
@@ -15,11 +15,10 @@
   {{ avatar(char, 'lg') }}
   <div class="profile-main">
     <h1 id="char-title" class="profile-name">{{ char.name }} <span class="profile-surname">{{ char.surname }}</span></h1>
-    <p class="profile-meta">{{ class_line(char) }} {{ faction_badge(char.faction) }}</p>
+    <p class="profile-meta">{{ class_line(char) }} {{ faction_badge(char.faction) }} {{ ruleset_badge(char) }}</p>
     <ul class="profile-facts" role="list">
       {% if char.player %}<li><span class="fact-label">Joueur</span> {{ char.player }}</li>{% endif %}
       {% if char.guild %}<li><span class="fact-label">Guilde</span> &lt;{{ char.guild }}&gt;</li>{% endif %}
-      {% if char.ruleset %}<li><span class="fact-label">Mode</span> {{ char.ruleset }}</li>{% endif %}
       <li><span class="fact-label">Vu en jeu</span> {{ char.last_login | time_tag }}</li>
       {% if honorable_kills %}<li><span class="fact-label">Victoires honorables</span> {{ honorable_kills | number }}</li>{% endif %}
     </ul>

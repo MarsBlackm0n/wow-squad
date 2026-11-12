@@ -21,6 +21,11 @@
 </span>
 {%- endmacro %}
 
+{% macro ruleset_badge(char) -%}
+{% set summary = (char.state or {}).get('account_summary') or {} %}
+<span class="pill ruleset-badge"><span class="visually-hidden">Mode de jeu </span>{{ (char.ruleset or summary.get('ruleset')) | ruleset_label }}</span>
+{%- endmacro %}
+
 {% macro faction_badge(faction) -%}
 {% if faction %}<span class="badge badge-{{ faction | faction_key }}">{{ faction }}</span>{% endif %}
 {%- endmacro %}

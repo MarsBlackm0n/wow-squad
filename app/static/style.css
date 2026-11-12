@@ -337,7 +337,7 @@ details[open] > summary .summary-chevron { transform: rotate(90deg); }
 .kpi-goal .kpi-value { color: var(--accent); }
 
 /* ---------- À la une / en jeu ---------- */
-.now { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 3rem; padding: 2rem 0 0; }
+.now { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 3rem; margin: 0 0 2rem; }
 .seen-list { display: grid; gap: .25rem; }
 .seen-item { display: flex; align-items: center; gap: .75rem; padding: .4rem .5rem .4rem .3rem; margin-left: -.3rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text); min-height: 48px; }
 .seen-item:hover { background: var(--surface); }
@@ -373,8 +373,8 @@ details[open] > summary .summary-chevron { transform: rotate(90deg); }
 .events-compact .event-text { font-size: .92rem; }
 
 /* ---------- Onglets ---------- */
-.tabs { margin-top: 3rem; scroll-margin-top: 1rem; }
-.tablist-wrap { box-shadow: inset 0 -1px 0 var(--line); margin-bottom: 2rem; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.tabs { margin-top: .85rem; scroll-margin-top: 1rem; }
+.tablist-wrap { box-shadow: inset 0 -1px 0 var(--line); margin-bottom: 1.25rem; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .tablist { display: flex; gap: 1.75rem; list-style: none; margin: 0; padding: 0; min-width: max-content; }
 .tab {
   display: inline-flex; align-items: center; gap: .45rem; min-height: 48px; padding: 0 .1rem;
@@ -675,7 +675,7 @@ input[type="number"]:focus-visible, input[type="date"]:focus-visible { outline-o
 .header-tools { flex-wrap: wrap; }
 .battlenet-link { white-space: nowrap; }
 
-.hero { padding-top: 1.5rem; }
+.hero { padding-top: .85rem; }
 .faction-banner {
   display: flex;
   position: relative;
@@ -738,13 +738,24 @@ input[type="number"]:focus-visible, input[type="date"]:focus-visible { outline-o
 .faction-labels span:first-child { color: var(--alliance-light); }
 .faction-labels span:last-child { color: var(--horde-light); }
 
-.hero > .kpis {
-  margin-top: 1rem;
+.kpis-overview {
+  margin: 0 0 1.5rem;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   padding-inline: 1rem;
   background: var(--surface);
 }
+.faction-banner-home {
+  min-height: clamp(6.5rem, 10vw, 9rem);
+  padding: .9rem 1rem;
+  gap: .2rem;
+}
+.faction-banner-home h1 { font-size: clamp(1.65rem, 4vw, 3.25rem); }
+.faction-banner-home .hero-status { font-size: .78rem; }
+.faction-banner-home .faction-labels { inset: auto 1rem .6rem; }
+.character-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .35rem; }
+.ruleset-badge { width: fit-content; }
+.member-body .ruleset-badge { margin-top: .25rem; }
 .account-banner { min-height: 14rem; margin: 1.5rem 0; }
 .account-banner h1 { font-size: clamp(2rem, 5vw, 3.7rem); }
 .roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; margin: 0; padding: 0; list-style: none; }
@@ -787,7 +798,15 @@ html { scroll-padding-top: 5.5rem; }
     background-size: auto, auto, 100% auto, auto;
   }
   .faction-labels { inset: .85rem .9rem auto; }
-  .hero > .kpis { padding-inline: .7rem; }
+  .faction-banner-home {
+    min-height: 7rem;
+    justify-content: center;
+    padding: .9rem .65rem 1.4rem;
+    background-position: center, center, center, center;
+    background-size: auto, auto, cover, auto;
+  }
+  .faction-banner-home .faction-labels { inset: auto .7rem .45rem; font-size: .58rem; }
+  .kpis-overview { padding-inline: .7rem; }
 }
 @media (forced-colors: active) {
   .faction-banner::after { border-color: CanvasText; }

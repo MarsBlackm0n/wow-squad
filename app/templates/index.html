@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, avatar, faction_badge, level_bar, event_item, chart_table, ring %}
+{% from "_macros.html" import icon, avatar, faction_badge, level_bar, event_item, chart_table, ring, ruleset_badge %}
 
 {% set AWARD_ICONS = {'rocket': 'trend', 'hunter': 'trophy', 'collector': 'horseshoe', 'graveyard': 'skull'} %}
 
@@ -118,6 +118,7 @@
       <div class="member-body">
         <a href="/perso/{{ c.id }}" class="member-name">{{ c.display_name }}</a>
         <span class="meta">{% if c.player %}{{ c.player }} · {% endif %}{% if c.battletag %}compte lié{% else %}ajouté à la main{% endif %}</span>
+        {{ ruleset_badge(c) }}
       </div>
       <span class="status status-{{ c.status }}">{{ {'ok': 'Suivi', 'pending': 'En attente', 'error': 'Erreur'}[c.status] }}</span>
     </li>
@@ -143,7 +144,7 @@
 
 {% block content %}
 <section class="hero" aria-labelledby="hero-title">
-  <div class="hero-head faction-banner">
+  <div class="hero-head faction-banner faction-banner-home">
     <div class="faction-labels" aria-hidden="true"><span>Alliance</span><span>Horde</span></div>
     <h1 id="hero-title">{{ settings.squad_name }}</h1>
     <p class="hero-status">
@@ -157,33 +158,7 @@
     </p>
   </div>
 
-  {% if goal %}
-  <dl class="kpis">
-    <div class="kpi kpi-goal">
-      <dt>Objectif niveau {{ goal.target }}{% if goal.deadline %} · {{ goal.deadline.strftime('%d/%m') }}{% endif %}</dt>
-      <dd>{{ ring(goal.progress, 52) }}<span class="kpi-value">{{ goal.progress | round | int }}&nbsp;%</span>
-        <span class="kpi-note">
-          {%- if goal.at_target == goal.members %}tout le monde y est
-          {%- elif goal.deadline and goal.days_left is not none and goal.days_left < 0 %}échéance passée
-          {%- elif goal.deadline %}J-{{ goal.days_left }}{% if goal.on_track is true %} · dans les temps{% elif goal.on_track is false %} · en retard{% endif %}
-          {%- elif goal.projected %}tous là vers le {{ goal.projected.strftime('%d/%m') }}
-          {%- else %}{{ goal.at_target }}/{{ goal.members }} arrivés{% endif -%}
-        </span></dd>
-    </div>
-    <div class="kpi">
-      <dt>Rythme de la squad</dt>
-      <dd><span class="kpi-value">+{{ goal.average_pace | number(1) }}</span><span class="kpi-note">niv. par jour et par perso{% if goal.stalled %} · {{ goal.stalled }} à l'arrêt{% endif %}</span></dd>
-    </div>
-    <div class="kpi">
-      <dt>Cette semaine</dt>
-      <dd><span class="kpi-value">+{{ week.total_levels }}</span><span class="kpi-note">niveaux à vous tous</span></dd>
-    </div>
-    <div class="kpi">
-      <dt>Meilleur rythme</dt>
-      <dd>{% if goal.fastest %}<a class="kpi-value kpi-link" href="/perso/{{ goal.fastest.id }}">{{ goal.fastest.name }}</a><span class="kpi-note">+{{ goal.fastest_pace | number(1) }} niv. par jour</span>{% else %}<span class="kpi-value">—</span><span class="kpi-note">personne n'a bougé cette semaine</span>{% endif %}</dd>
-    </div>
-  </dl>
-  {% endif %}</section>
+</section>
 
 {% if not chars %}
 <section class="onboarding" aria-labelledby="onboarding-title">
@@ -199,30 +174,6 @@
   {{ squad_panel() }}
 </section>
 {% else %}
-
-<div class="now">
-  <section class="now-main" aria-labelledby="headlines-title">
-    <h2 id="headlines-title" class="block-title">À la une</h2>
-    {% if headlines %}
-    <ul class="events events-feature" role="list">{% for e in headlines %}{{ event_item(e) }}{% endfor %}</ul>
-    {% else %}
-    <p class="quiet">Rien de marquant ces 3 derniers jours. Le prochain palier de 10 niveaux fera la une.</p>
-    {% endif %}
-  </section>
-
-  <section class="now-side" aria-labelledby="seen-title">
-    <h2 id="seen-title" class="block-title">En jeu ces dernières 24&nbsp;h</h2>
-    {% if seen %}
-    <ul class="seen-list" role="list">
-      {% for c in seen %}
-      <li><a class="seen-item" href="/perso/{{ c.id }}">{{ avatar(c, 'sm') }}<span><span class="seen-name">{{ c.name }}</span><span class="meta">{{ c.last_login | time_tag }}</span></span></a></li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p class="quiet">Personne depuis hier. Ce soir, on se connecte&nbsp;?</p>
-    {% endif %}
-  </section>
-</div>
 
 {# ----- Onglets : liens d'ancre sans JS, motif ARIA « tabs » avec JS (static/app.js) ----- #}
 <div class="tabs" data-tabs>
@@ -304,6 +255,29 @@
       <h2 id="journal-title">Journal de la squad</h2>
       <p class="lead">Ce qui s'est passé, jour après jour.</p>
     </header>
+    <div class="now">
+      <section class="now-main" aria-labelledby="headlines-title">
+        <h2 id="headlines-title" class="block-title">À la une</h2>
+        {% if headlines %}
+        <ul class="events events-feature" role="list">{% for e in headlines %}{{ event_item(e) }}{% endfor %}</ul>
+        {% else %}
+        <p class="quiet">Rien de marquant ces 3 derniers jours. Le prochain palier de 10 niveaux fera la une.</p>
+        {% endif %}
+      </section>
+    
+      <section class="now-side" aria-labelledby="seen-title">
+        <h2 id="seen-title" class="block-title">En jeu ces dernières 24&nbsp;h</h2>
+        {% if seen %}
+        <ul class="seen-list" role="list">
+          {% for c in seen %}
+          <li><a class="seen-item" href="/perso/{{ c.id }}">{{ avatar(c, 'sm') }}<span><span class="seen-name">{{ c.name }}</span><span class="meta">{{ c.last_login | time_tag }}</span></span></a></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="quiet">Personne depuis hier. Ce soir, on se connecte&nbsp;?</p>
+        {% endif %}
+      </section>
+    </div>
     {% if days %}
     <ol class="timeline" role="list">
       {% for d in days %}
@@ -339,6 +313,33 @@
       <h2 id="progression-title">Progression</h2>
       <p class="lead">On n'a pas tous commencé le même jour : le rythme compte autant que le niveau.</p>
     </header>
+    {% if goal %}
+    <dl class="kpis kpis-overview">
+      <div class="kpi kpi-goal">
+        <dt>Objectif niveau {{ goal.target }}{% if goal.deadline %} · {{ goal.deadline.strftime('%d/%m') }}{% endif %}</dt>
+        <dd>{{ ring(goal.progress, 52) }}<span class="kpi-value">{{ goal.progress | round | int }}&nbsp;%</span>
+          <span class="kpi-note">
+            {%- if goal.at_target == goal.members %}tout le monde y est
+            {%- elif goal.deadline and goal.days_left is not none and goal.days_left < 0 %}échéance passée
+            {%- elif goal.deadline %}J-{{ goal.days_left }}{% if goal.on_track is true %} · dans les temps{% elif goal.on_track is false %} · en retard{% endif %}
+            {%- elif goal.projected %}tous là vers le {{ goal.projected.strftime('%d/%m') }}
+            {%- else %}{{ goal.at_target }}/{{ goal.members }} arrivés{% endif -%}
+          </span></dd>
+      </div>
+      <div class="kpi">
+        <dt>Rythme de la squad</dt>
+        <dd><span class="kpi-value">+{{ goal.average_pace | number(1) }}</span><span class="kpi-note">niv. par jour et par perso{% if goal.stalled %} · {{ goal.stalled }} à l'arrêt{% endif %}</span></dd>
+      </div>
+      <div class="kpi">
+        <dt>Cette semaine</dt>
+        <dd><span class="kpi-value">+{{ week.total_levels }}</span><span class="kpi-note">niveaux à vous tous</span></dd>
+      </div>
+      <div class="kpi">
+        <dt>Meilleur rythme</dt>
+        <dd>{% if goal.fastest %}<a class="kpi-value kpi-link" href="/perso/{{ goal.fastest.id }}">{{ goal.fastest.name }}</a><span class="kpi-note">+{{ goal.fastest_pace | number(1) }} niv. par jour</span>{% else %}<span class="kpi-value">—</span><span class="kpi-note">personne n'a bougé cette semaine</span>{% endif %}</dd>
+      </div>
+    </dl>
+    {% endif %}
     <div class="split">
       <div class="split-main">
         {% if race_chart %}

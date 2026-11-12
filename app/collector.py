@@ -65,7 +65,7 @@ def parse_profile(profile: dict) -> dict:
         "race": _name(profile.get("race") or profile.get("playable_race")),
         "faction": _name(profile.get("faction")),
         "guild": _name(profile.get("guild")),
-        "ruleset": _name(profile.get("ruleset")),
+        "ruleset": _ruleset_name(profile.get("ruleset")),
         "achievement_points": _int(profile.get("achievement_points")) or 0,
         "ilvl": float(ilvl or 0),
         "last_login": int(last_login) if last_login else None,
@@ -236,6 +236,12 @@ def account_entry_slug(entry: dict) -> str:
     return slug_from_href((entry.get("character") or {}).get("href", "")) or character_slug(_name(entry.get("name")))
 
 
+def _ruleset_name(value) -> str:
+    if isinstance(value, dict):
+        return _name(value.get("name")) or _name(value.get("type"))
+    return _name(value)
+
+
 def account_entry_summary(entry: dict) -> dict:
     return {
         "name": _name(entry.get("name")),
@@ -244,6 +250,7 @@ def account_entry_summary(entry: dict) -> dict:
         "class_name": _name(entry.get("playable_class")),
         "race": _name(entry.get("playable_race")),
         "faction": _name(entry.get("faction")),
+        "ruleset": _ruleset_name(entry.get("ruleset")),
     }
 
 

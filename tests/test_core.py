@@ -183,3 +183,18 @@ def test_account_import_links_existing_characters_and_keeps_ownership():
         owner.battletag = "Nouveau#123"
         assert apply_account_characters(db, "eu", owner, [entry, reroll], add_missing=True) == 0
         assert main.battletag == "Nouveau#123"
+
+
+def test_ruleset_label_and_account_summary():
+    from app.collector import account_entry_summary
+    from app.ui import ruleset_label
+
+    assert ruleset_label("Normal") == "Normal"
+    assert ruleset_label("JcJ") == "PvP"
+    assert ruleset_label("Jeu de rôle") == "RP"
+    assert ruleset_label("RP-PvP") == "RP + PvP"
+    assert ruleset_label("JdR + JcJ") == "RP + PvP"
+    assert ruleset_label("Hardcore") == "Hardcore"
+    assert ruleset_label("") == "Non renseigné"
+    assert account_entry_summary({"ruleset": {"type": "RP_PVP"}})["ruleset"] == "RP_PVP"
+    assert parse_profile({"ruleset": {"name": {"fr_FR": "Normal"}}})["ruleset"] == "Normal"

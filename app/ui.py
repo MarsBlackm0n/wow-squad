@@ -6,6 +6,7 @@ Les graphiques sont du SVG statique (pas de JS) avec un titre, une description t
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -31,6 +32,20 @@ CLASS_ALIASES = {
 
 def _fold(text: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", (text or "").lower()) if unicodedata.category(c) != "Mn")
+
+
+def ruleset_label(ruleset: str) -> str:
+    if not ruleset:
+        return "Non renseigné"
+    key = re.sub(r"[^a-z0-9]", "", _fold(ruleset))
+    labels = {
+        "normal": "Normal", "pve": "Normal", "jce": "Normal",
+        "pvp": "PvP", "jcj": "PvP", "playerversusplayer": "PvP", "joueurcontrejoueur": "PvP",
+        "rp": "RP", "jdr": "RP", "roleplay": "RP", "roleplaying": "RP", "jeuderole": "RP",
+        "rppvp": "RP + PvP", "pvprp": "RP + PvP", "jdrjcj": "RP + PvP", "jcjjdr": "RP + PvP",
+        "roleplaypvp": "RP + PvP", "roleplayingpvp": "RP + PvP", "jeuderolejcj": "RP + PvP",
+    }
+    return labels.get(key, ruleset)
 
 
 def class_key(class_name: str) -> str:
