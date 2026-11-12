@@ -12,6 +12,7 @@
 
 {% macro mission_form(m=none) %}
 {% set prefix = 'mission-' ~ (m.id if m else 'new') %}
+{% set preset = suggested_instance if not m else none %}
 <form class="mission-form" method="post" action="/objectifs" data-instance-form>
   <input type="hidden" name="csrf" value="{{ csrf }}">
   {% if m %}<input type="hidden" name="objectif" value="{{ m.id }}">{% endif %}
@@ -22,7 +23,7 @@
       {% for label, entries in [('Donjons', dungeon_catalog), ('Raids', raid_catalog)] %}
       <optgroup label="{{ label }}">
         {% for entry in entries %}
-        <option value="{{ entry.key }}" data-title="{{ entry.name }}" data-kind="{{ entry.kind }}" data-level="{{ entry.level }}" data-size="{{ entry.size }}"{% if m and m.instance_key == entry.key %} selected{% endif %}>{{ entry.name }} · niv. {{ entry.level }} · {{ entry.size }} joueurs</option>
+        <option value="{{ entry.key }}" data-title="{{ entry.name }}" data-kind="{{ entry.kind }}" data-level="{{ entry.level }}" data-size="{{ entry.size }}"{% if (m and m.instance_key == entry.key) or (preset and preset.key == entry.key) %} selected{% endif %}>{{ entry.name }} · niv. {{ entry.level }} · {{ entry.size }} joueurs</option>
         {% endfor %}
       </optgroup>
       {% endfor %}
@@ -33,12 +34,12 @@
   <div class="field-row">
     <div class="field">
       <label for="{{ prefix }}-title">Objectif</label>
-      <input id="{{ prefix }}-title" type="text" name="titre" required maxlength="80" value="{{ m.title if m else '' }}" placeholder="Ex. Cœur du Magma">
+      <input id="{{ prefix }}-title" type="text" name="titre" required maxlength="80" value="{{ m.title if m else (preset.name if preset else '') }}" placeholder="Ex. Cœur du Magma">
     </div>
     <div class="field">
       <label for="{{ prefix }}-kind">Activité</label>
       <select id="{{ prefix }}-kind" name="type_objectif">
-        {% for key, label in mission_kinds.items() %}<option value="{{ key }}"{% if (m.kind if m else 'dungeon') == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        {% for key, label in mission_kinds.items() %}<option value="{{ key }}"{% if (m.kind if m else (preset.kind if preset else 'dungeon')) == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
     </div>
   </div>
@@ -49,11 +50,11 @@
     </div>
     <div class="field">
       <label for="{{ prefix }}-size">Joueurs visés</label>
-      <input id="{{ prefix }}-size" name="effectif" type="number" min="2" max="40" required value="{{ m.target_size if m else 5 }}">
+      <input id="{{ prefix }}-size" name="effectif" type="number" min="2" max="40" required value="{{ m.target_size if m else (preset.size if preset else 5) }}">
     </div>
     <div class="field">
       <label for="{{ prefix }}-level">Niveau minimum</label>
-      <input id="{{ prefix }}-level" name="niveau" type="number" min="1" max="{{ max_level }}" required value="{{ m.min_level if m else 1 }}">
+      <input id="{{ prefix }}-level" name="niveau" type="number" min="1" max="{{ max_level }}" required value="{{ m.min_level if m else (preset.level if preset else 1) }}">
     </div>
   </div>
   <div class="field">
@@ -77,7 +78,7 @@
       <h3 id="mission-heading">Objectifs de la squad</h3>
     </div>
     {% if account_id %}
-    <details class="mission-create">
+    <details class="mission-create" id="proposer-objectif"{% if suggested_instance %} open{% endif %}>
       <summary class="button button-primary mission-create-button"><span aria-hidden="true">+</span> Proposer un objectif</summary>
       {{ mission_form() }}
     </details>
@@ -129,6 +130,7 @@
         {{ instance_guide(instance_catalog[m.instance_key]) }}
       </details>
       {% endif %}
+      <a class="mission-prep-link" href="/objectifs/{{ m.id }}/preparation">{{ icon('flag') }} Voir la préparation du groupe</a>
       {% if roster.signups %}
       <details class="mission-players">
         <summary>{{ icon('chevron', 'summary-chevron') }} Participants ({{ roster.signups | length }})</summary>
@@ -190,7 +192,7 @@
   <details class="mission-archive">
     <summary>{{ icon('chevron', 'summary-chevron') }} Derniers objectifs accomplis</summary>
     <ul class="mission-roster" role="list">
-      {% for m in completed_missions %}<li><strong>{{ m.title }}</strong> <span class="meta">{{ mission_kinds[m.kind] }} · {{ m.completed_at | localtime('%d/%m') }}</span></li>{% endfor %}
+      {% for m in completed_missions %}<li><a href="/objectifs/{{ m.id }}/recit"><strong>{{ m.title }}</strong></a> <span class="meta">{{ mission_kinds[m.kind] }} · {{ m.completed_at | localtime('%d/%m') }}</span></li>{% endfor %}
     </ul>
   </details>
   {% endif %}

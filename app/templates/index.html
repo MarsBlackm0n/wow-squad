@@ -69,7 +69,7 @@
 </section>
 
 {% if not chars %}
-<div id="ce-soir">{% include "_community.html" %}{% include "_missions.html" %}</div>
+<div id="ce-soir">{% include "_evening.html" %}{% include "_community.html" %}{% include "_missions.html" %}</div>
 <section class="onboarding" aria-labelledby="onboarding-title">
   <h2 id="onboarding-title">Bienvenue au QG</h2>
   <ol class="steps">
@@ -101,6 +101,7 @@
       <h2 id="ce-soir-title">Ce soir, on fait quoi&nbsp;?</h2>
       <p class="lead">Vos groupes d'abord, puis les autres combinaisons possibles d'après vos niveaux actuels.</p>
     </header>
+    {% include "_evening.html" %}
     {% include "_community.html" %}
     {% include "_missions.html" %}
     {% if activity.values() | sum %}
@@ -273,6 +274,20 @@
       <h2 id="journal-title">Journal de la squad</h2>
       <p class="lead">Ce qui s'est passé, jour après jour.</p>
     </header>
+    {% if completed_missions %}
+    <section class="mission-board" aria-labelledby="stories-title">
+      <h3 id="stories-title">Récits de sortie</h3>
+      <ul class="mission-grid story-links" role="list">
+        {% for mission in completed_missions %}
+        <li class="mission-card" data-objective="{{ mission.kind }}">
+          <span class="objective-badge">{{ mission_kinds[mission.kind] }}</span>
+          <h4><a href="/objectifs/{{ mission.id }}/recit">{{ mission.title }}</a></h4>
+          <p class="meta">{{ mission.completed_at | localtime('%d/%m à %H:%M') }}</p>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
     <div class="now">
       <section class="now-main" aria-labelledby="headlines-title">
         <h2 id="headlines-title" class="block-title">À la une</h2>

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, icon %}
+{% block title %}Récit · {{ mission.title }}{% endblock %}
+{% block content %}
+<nav class="breadcrumb" aria-label="Fil d’Ariane"><ol><li><a href="/#journal">Journal</a></li><li aria-current="page">Récit</li></ol></nav>
+<header class="panel-head story-banner story-banner-journal">
+  <h1 class="expedition-title">{{ mission.title }}</h1>
+  <p class="lead">Sortie terminée le {{ mission.completed_at | localtime }}</p>
+</header>
+<div class="split">
+  <section aria-labelledby="memories-title">
+    <h2 id="memories-title" class="block-title">Souvenirs de la sortie</h2>
+    {% if memories %}
+    <ol class="expedition-steps story-timeline">
+      {% for item in memories %}
+      <li class="panel-block">
+        <div class="story-entry-heading"><strong>{{ item.author }}</strong><span class="meta">{{ item.at | localtime }}</span></div>
+        {% if item.event_text %}<p>{{ item.event_text }} <span class="meta">· relevé le {{ item.event_at | localtime }}</span></p>{% endif %}
+        {% if item.note %}<p class="mission-notes">{{ item.note }}</p>{% endif %}
+        {% if item.has_image %}
+        <a href="/objectifs/{{ mission.id }}/recit/{{ item.id }}/capture"><img class="story-capture" src="/objectifs/{{ mission.id }}/recit/{{ item.id }}/capture" alt="Capture de {{ item.author }} pour {{ mission.title }}" loading="lazy"></a>
+        {% endif %}
+        {% if account_id in (item.author_id, mission.creator_id) %}
+        <form method="post" action="/objectifs/{{ mission.id }}/recit/{{ item.id }}/retirer">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><button class="button button-ghost button-small" type="submit">Retirer ce souvenir</button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}<p class="empty">Aucun souvenir ajouté pour cette sortie.</p>{% endif %}
+  </section>
+  <aside class="split-side">
+    <section class="panel-block">
+      <h2 class="block-title">Participants</h2>
+      <ul class="mission-roster" role="list">{% for row in signups %}<li>{{ avatar(row.character,'xs') }} <a href="/perso/{{ row.character.id }}">{{ row.character.display_name }}</a></li>{% else %}<li class="meta">Aucun inscrit enregistré.</li>{% endfor %}</ul>
+    </section>
+    {% if can_contribute %}
+    <section class="panel-block" aria-labelledby="memory-add">
+      <h2 id="memory-add" class="block-title">Ajouter un souvenir</h2>
+      <form method="post" action="/objectifs/{{ mission.id }}/recit" enctype="multipart/form-data" class="mission-form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        {% if candidates %}
+        <div class="field"><label for="memory-event">Rattacher un relevé Blizzard</label>
+          <select id="memory-event" name="event_id"><option value="0">Aucun événement</option>
+          {% for e in candidates %}<option value="{{ e.id }}">{{ e.at | localtime('%d/%m %H:%M') }} · {{ e.text }}</option>{% endfor %}</select>
+          <p class="hint">Choisis un relevé que tu confirmes avoir eu lieu pendant cette sortie.</p>
+        </div>
+        {% endif %}
+        <div class="field"><label for="memory-note">Note</label><textarea id="memory-note" name="note" maxlength="500" rows="3"></textarea></div>
+        <div class="field"><label for="memory-capture">Capture (5 Mo max)</label><input id="memory-capture" name="capture" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></div>
+        <button class="button button-primary" type="submit">Ajouter au récit</button>
+      </form>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

@@ -87,13 +87,15 @@ def parse_equipment(equipment: dict | None) -> float | None:
     return round(sum(levels) / len(levels), 1) if levels else None
 
 
-def completed_quests(data: dict | None) -> int | None:
-    if data is None:
+def completed_quest_ids(data: dict | None) -> list[int] | None:
+    if data is None or not ("quests" in data or "character" in data):
         return None
-    quests = data.get("quests")
-    if quests is None:
-        return 0 if "character" in data else None
-    return len({quest["id"] for quest in quests if "id" in quest})
+    return sorted({quest["id"] for quest in data.get("quests") or [] if isinstance(quest.get("id"), int)})
+
+
+def completed_quests(data: dict | None) -> int | None:
+    ids = completed_quest_ids(data)
+    return len(ids) if ids is not None else None
 
 
 def encounter_counts(data: dict | None) -> dict | None:
@@ -112,6 +114,8 @@ def encounter_counts(data: dict | None) -> dict | None:
                     if encounter.get("id") is not None and count is not None:
                         key = f"{instance_id}:{difficulty}:{encounter['id']}"
                         counts[key] = {"count": count, "name": _name(encounter)}
+                        if instance_name := _name(instance.get("instance")):
+                            counts[key]["instance"] = instance_name
     return counts
 
 
@@ -368,7 +372,8 @@ async def fetch_state(bz: Blizzard, char: Character) -> tuple[dict, str]:
     if state.get("honorable_kills") is None and pvp:
         state["honorable_kills"] = _int(pvp.get("honorable_kills"))
     state["pvp_rank"] = _int((pvp or {}).get("pvp_rank"))
-    state["quests_completed"] = completed_quests(quests)
+    state["completed_quest_ids"] = completed_quest_ids(quests)
+    state["quests_completed"] = len(state["completed_quest_ids"]) if state["completed_quest_ids"] is not None else None
     state["dungeon_encounters"] = encounter_counts(dungeons)
     state["raid_encounters"] = encounter_counts(raids)
     state["achievements"] = parse_achievements(achievements)
@@ -381,7 +386,7 @@ def apply_state(db: Session, char: Character, state: dict, status: str, message:
     old = dict(char.state or {})
     # On conserve les collections déjà connues si l'endpoint n'a pas répondu cette fois-ci.
     for key in ("achievements", "mounts", "professions", "deaths", "honorable_kills", "avatar_url",
-                "pvp_rank", "quests_completed", "dungeon_encounters", "raid_encounters"):
+                "pvp_rank", "quests_completed", "completed_quest_ids", "dungeon_encounters", "raid_encounters"):
         if state.get(key) is None and old.get(key) is not None:
             state[key] = old[key]
     if state.get("last_login") is None and old.get("last_login") is not None:

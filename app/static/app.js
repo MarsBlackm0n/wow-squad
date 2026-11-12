@@ -48,6 +48,67 @@
     picker.hidden = false;
   });
 
+  document.querySelectorAll("[data-copy-coordinate]").forEach(function (button) {
+    if (!navigator.clipboard) return;
+    button.hidden = false;
+    button.addEventListener("click", async function () {
+      try {
+        await navigator.clipboard.writeText(button.dataset.copyCoordinate);
+        button.textContent = "Copié";
+      } catch (error) {
+        button.textContent = "Copie indisponible";
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-world-map]").forEach(function (map) {
+    var zone = map.querySelector("#map-zone");
+    var search = map.querySelector("#map-search");
+    function fold(value) { return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
+    var filters = Array.from(map.querySelectorAll("[data-map-filters] input"));
+    var pins = Array.from(map.querySelectorAll("[data-point]"));
+    var places = Array.from(map.querySelectorAll("[data-place]"));
+    var active = map.dataset.selected;
+    function update() {
+      var kinds = filters.filter(function (filter) { return filter.checked; }).map(function (filter) { return filter.value; });
+      var query = fold(search.value.trim());
+      var visible = function (el) {
+        return el.dataset.zone === zone.value && kinds.includes(el.dataset.mapKind) && fold(el.dataset.mapName).includes(query);
+      };
+      pins.forEach(function (pin) {
+        pin.hidden = !visible(pin);
+        pin.setAttribute("aria-pressed", String(!pin.hidden && pin.dataset.point === active));
+      });
+      places.forEach(function (place) { place.hidden = !visible(place); });
+      map.querySelector("[data-map-empty]").hidden = places.some(function (place) { return !place.hidden; });
+    }
+    pins.forEach(function (pin) {
+      pin.addEventListener("click", function () {
+        active = pin.dataset.point;
+        places.forEach(function (place) { place.open = place.dataset.place === active; });
+        var target = places.find(function (place) { return place.dataset.place === active; });
+        if (target) {
+          target.querySelector("summary").focus({preventScroll: true});
+          target.scrollIntoView({block: "nearest"});
+        }
+        update();
+      });
+    });
+    places.forEach(function (place) {
+      place.addEventListener("toggle", function () {
+        if (place.open && !place.hidden) { active = place.dataset.place; update(); }
+      });
+    });
+    zone.addEventListener("change", update);
+    search.addEventListener("input", update);
+    filters.forEach(function (filter) { filter.addEventListener("change", update); });
+    map.querySelector("[data-map-board]").hidden = false;
+    map.querySelector("[data-map-filters]").hidden = false;
+    map.querySelector("[data-map-search-wrap]").hidden = false;
+    map.querySelector("[data-map-submit]").hidden = true;
+    update();
+  });
+
   // Bascule de thème : respecte le réglage système tant que la personne n'a rien choisi.
   var toggle = document.querySelector("[data-theme-toggle]");
   if (toggle) {

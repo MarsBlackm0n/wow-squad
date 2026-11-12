@@ -10,16 +10,18 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from sqlalchemy.exc import IntegrityError
+
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from . import guilds, insights, photos, squad
+from . import expedition, guilds, insights, photos, squad, worldmap
 from .instances import DUNGEON_CATALOG, INSTANCE_CATALOG, RAID_CATALOG
 from .blizzard import BlizzardCredentialsError, BlizzardError, character_slug, split_slug
 from .collector import apply_account_characters
 from .config import settings
-from .db import Account, Character, Event, MissionSignup, PlayerPhoto, SessionLocal, Snapshot, SquadMission, kv_get, kv_set, select, utcnow
+from .db import Account, Character, EveningAvailability, Event, MissionMemory, MissionPreparation, MissionSignup, PlayerPhoto, SessionLocal, Snapshot, SquadMission, kv_get, kv_set, select, utcnow
 from .stats import compute_week, leaderboard
 from .ui import Series, class_color, class_key, faction_key, frdate, line_chart, progression_points, make_formatters, number, ruleset_label, xp_progress
 
@@ -126,8 +128,10 @@ async def logout(request: Request, csrf: str = Form("")):
 # --- Pages ---------------------------------------------------------------------------------------
 
 @router.get("/", response_class=HTMLResponse)
-async def home(request: Request):
+async def home(request: Request, priorite: str = "group", suggestion: str = ""):
     tz = settings.timezone
+    today = utcnow().astimezone(ZoneInfo(tz)).date()
+    priority = priorite if priorite in expedition.PREFERENCES else "group"
     with SessionLocal() as db:
         chars = leaderboard(db)
         week = compute_week(db)
@@ -141,6 +145,10 @@ async def home(request: Request):
         missions, completed_missions = squad.mission_rosters(db, pace_by_char, utcnow().astimezone(ZoneInfo(tz)).date())
         account_id = request.session.get("account_id")
         mission_chars = [c for c in chars if account_id is not None and c.account_id == account_id]
+        availability = db.scalars(select(EveningAvailability).where(EveningAvailability.day == today)).all()
+        my_availability = next((row for row in availability if row.account_id == account_id), None)
+        availability_names = {a.id: a.battletag.split("#")[0] for a in accounts}
+        suggested_instance = INSTANCE_CATALOG.get(suggestion)
     worker = request.app.state.worker
     by_pace = sorted((c for c in chars if c.id in pace_by_char), key=lambda c: -pace_by_char[c.id].per_day)
     weekly_extra = sum(max(0, pace_by_char[gain.character.id].weekly_estimate - gain.levels)
@@ -154,6 +162,10 @@ async def home(request: Request):
                   seen=insights.recently_seen(chars), headlines=insights.headlines(events), accounts=accounts,
                   targets=targets, missions=missions, completed_missions=completed_missions, mission_chars=mission_chars,
                   mission_kinds=squad.MISSION_KINDS, mission_roles=squad.MISSION_ROLES, account_id=account_id,
+                  availability=availability, availability_names=availability_names, my_availability=my_availability,
+                  availability_labels=expedition.AVAILABILITY, priority_labels=expedition.PREFERENCES,
+                  suggestions=expedition.evening_suggestions(availability, chars, priority),
+                  priority=priority, suggested_instance=suggested_instance,
                   dungeon_catalog=DUNGEON_CATALOG, raid_catalog=RAID_CATALOG, instance_catalog=INSTANCE_CATALOG,
                   activity=insights.activity_totals(events), last_cycle=worker.last_cycle,
                   blizzard_ready=settings.blizzard_enabled, add_form=request.session.pop("add_form", None) or {})
@@ -416,6 +428,171 @@ def mission_account(db, request: Request) -> int:
     if account_id is None or db.get(Account, account_id) is None:
         raise HTTPException(403, "Connecte ton compte Battle.net pour participer aux objectifs.")
     return account_id
+
+
+@router.post("/disponibilite")
+async def save_availability(request: Request, statut: str = Form(""), role: str = Form("flex"),
+                            persos: list[int] = Form([]), csrf: str = Form("")):
+    check_csrf(request, csrf)
+    today = utcnow().astimezone(ZoneInfo(settings.timezone)).date()
+    with SessionLocal() as db:
+        account_id = mission_account(db, request)
+        if statut not in expedition.AVAILABILITY or role not in squad.MISSION_ROLES:
+            raise HTTPException(400, "Disponibilité invalide.")
+        ids = list(dict.fromkeys(persos)) if statut != "no" else []
+        if statut != "no" and not ids:
+            flash(request, "Choisis au moins un personnage pour ce soir.", "error")
+            return back("/#ce-soir")
+        if ids and set(db.scalars(select(Character.id).where(Character.id.in_(ids), Character.account_id == account_id))) != set(ids):
+            raise HTTPException(403, "Choisis les personnages de ton compte.")
+        row = db.get(EveningAvailability, (today, account_id))
+        if row is None:
+            row = EveningAvailability(day=today, account_id=account_id)
+            db.add(row)
+        row.status, row.role, row.character_ids = statut, role, ids
+        db.commit()
+    return back("/#ce-soir")
+
+
+@router.get("/carte", response_class=HTMLResponse)
+async def world_map(request: Request, zone: str = "", repere: str = ""):
+    points = worldmap.points()
+    zones = sorted({point["zone"] for point in points})
+    selected = next((point for point in points if point["key"] == repere), None)
+    active_zone = selected["zone"] if selected else zone if zone in zones else "Marche de l’Ouest"
+    return render(request, "world_map.html", points=points, zones=zones, active_zone=active_zone,
+                  selected=selected, kinds=worldmap.KINDS)
+
+
+@router.get("/objectifs/{mission_id}/preparation")
+async def preparation_page(request: Request, mission_id: int):
+    account_id = request.session.get("account_id")
+    with SessionLocal() as db:
+        mission = db.get(SquadMission, mission_id)
+        if mission is None:
+            raise HTTPException(404, "Sortie introuvable.")
+        signups = expedition.mission_signups(db, mission_id)
+        checks = expedition.preparation_checks(mission)
+        saved = {(r.account_id, r.character_id): r.checks for r in db.scalars(select(MissionPreparation)
+                 .where(MissionPreparation.mission_id == mission_id))}
+        people = [{"signup": row, "checks": [key for key in saved.get((row.account_id, row.character_id), []) if key in dict(checks)],
+                   "quest": expedition.quest_status(row.character, mission.instance_key)} for row in signups]
+        own = next((person for person in people if person["signup"].account_id == account_id), None)
+        return render(request, "preparation.html", mission=mission, people=people, own=own, checks=checks,
+                      roles=squad.MISSION_ROLES, instance=INSTANCE_CATALOG.get(mission.instance_key), map_zone=worldmap.ZONES.get(mission.instance_key))
+
+
+@router.post("/objectifs/{mission_id}/preparation")
+async def save_preparation(request: Request, mission_id: int, checks: list[str] = Form([]), csrf: str = Form("")):
+    check_csrf(request, csrf)
+    with SessionLocal() as db:
+        account_id = mission_account(db, request)
+        mission = db.get(SquadMission, mission_id, with_for_update=True)
+        signup = db.get(MissionSignup, (mission_id, account_id))
+        if not mission or mission.completed_at or not signup:
+            raise HTTPException(403, "Inscris-toi à une sortie ouverte pour confirmer ta préparation.")
+        allowed = dict(expedition.preparation_checks(mission))
+        if not set(checks) <= allowed.keys():
+            raise HTTPException(400, "Étape de préparation invalide.")
+        key = (mission_id, account_id, signup.character_id)
+        row = db.get(MissionPreparation, key)
+        if row is None:
+            row = MissionPreparation(mission_id=mission_id, account_id=account_id, character_id=signup.character_id)
+            db.add(row)
+        row.checks = list(dict.fromkeys(checks))
+        db.commit()
+    return back(f"/objectifs/{mission_id}/preparation")
+
+
+@router.get("/objectifs/{mission_id}/recit")
+async def mission_story(request: Request, mission_id: int):
+    account_id = request.session.get("account_id")
+    with SessionLocal() as db:
+        mission = db.get(SquadMission, mission_id)
+        if not mission or not mission.completed_at:
+            raise HTTPException(404, "Cette sortie n’est pas encore dans le journal.")
+        signups = expedition.mission_signups(db, mission_id)
+        can_contribute = account_id == mission.creator_id or any(row.account_id == account_id for row in signups)
+        memories = db.execute(select(MissionMemory.id, MissionMemory.author, MissionMemory.author_id, MissionMemory.at,
+                                     MissionMemory.note, MissionMemory.image.is_not(None).label("has_image"),
+                                     Event.text.label("event_text"), Event.at.label("event_at"), MissionMemory.event_id)
+                              .outerjoin(Event, Event.id == MissionMemory.event_id)
+                              .where(MissionMemory.mission_id == mission_id)
+                              .order_by(MissionMemory.at)).all()
+        candidates = []
+        if can_contribute:
+            linked = set(db.scalars(select(MissionMemory.event_id).where(MissionMemory.event_id.is_not(None))))
+            candidates = [e for e in expedition.story_candidates(db, mission, signups) if e.id not in linked]
+        return render(request, "mission_story.html", mission=mission, signups=signups, memories=memories,
+                      candidates=candidates, can_contribute=can_contribute, account_id=account_id)
+
+
+@router.post("/objectifs/{mission_id}/recit")
+async def add_memory(request: Request, mission_id: int, note: str = Form(""), event_id: int = Form(0),
+                     capture: UploadFile | None = File(None), csrf: str = Form("")):
+    check_csrf(request, csrf)
+    account_id = request.session.get("account_id")
+    note = note.strip()
+    with SessionLocal() as db:
+        mission = db.get(SquadMission, mission_id)
+        if not mission or not mission.completed_at:
+            raise HTTPException(404, "Sortie terminée introuvable.")
+        if account_id is None or (account_id != mission.creator_id and db.get(MissionSignup, (mission_id, account_id)) is None):
+            raise HTTPException(403, "Seuls l’organisateur et les inscrits peuvent compléter ce récit.")
+    try:
+        image = photos.process(await capture.read(photos.MAX_UPLOAD_BYTES + 1), screenshot=True) if capture and capture.filename else None
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+        return back(f"/objectifs/{mission_id}/recit")
+    if len(note) > 500 or not (note or event_id or image):
+        flash(request, "Ajoute une note, une capture ou un événement.", "error")
+        return back(f"/objectifs/{mission_id}/recit")
+    with SessionLocal() as db:
+        account_id = mission_account(db, request)
+        mission = db.get(SquadMission, mission_id, with_for_update=True)
+        signups = expedition.mission_signups(db, mission_id)
+        signup = next((row for row in signups if row.account_id == account_id), None)
+        if not mission or not mission.completed_at or (account_id != mission.creator_id and signup is None):
+            raise HTTPException(403, "Ce récit ne peut pas être modifié par ce compte.")
+        if event_id and event_id not in {e.id for e in expedition.story_candidates(db, mission, signups)}:
+            raise HTTPException(400, "Cet événement ne fait pas partie des relevés proposés pour la sortie.")
+        if len(db.scalars(select(MissionMemory.id).where(MissionMemory.mission_id == mission_id).limit(50)).all()) >= 50:
+            flash(request, "Ce récit contient déjà 50 souvenirs.", "error")
+            return back(f"/objectifs/{mission_id}/recit")
+        author = signup.character.display_name if signup else db.get(Account, account_id).battletag.split("#")[0]
+        db.add(MissionMemory(mission_id=mission_id, author_id=account_id, author=author[:80],
+                             note=note, image=image, event_id=event_id or None))
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            flash(request, "Cet événement est déjà rattaché à une sortie.", "error")
+    return back(f"/objectifs/{mission_id}/recit")
+
+
+@router.post("/objectifs/{mission_id}/recit/{memory_id}/retirer")
+async def remove_memory(request: Request, mission_id: int, memory_id: int, csrf: str = Form("")):
+    check_csrf(request, csrf)
+    with SessionLocal() as db:
+        account_id = mission_account(db, request)
+        memory = db.get(MissionMemory, memory_id)
+        mission = db.get(SquadMission, mission_id)
+        if not memory or not mission or memory.mission_id != mission_id:
+            raise HTTPException(404, "Souvenir introuvable.")
+        if account_id not in (memory.author_id, mission.creator_id):
+            raise HTTPException(403, "Ce souvenir appartient à une autre personne.")
+        db.delete(memory)
+        db.commit()
+    return back(f"/objectifs/{mission_id}/recit")
+
+
+@router.get("/objectifs/{mission_id}/recit/{memory_id}/capture")
+async def memory_image(mission_id: int, memory_id: int):
+    with SessionLocal() as db:
+        memory = db.get(MissionMemory, memory_id)
+        if not memory or memory.mission_id != mission_id or not memory.image:
+            raise HTTPException(404, "Capture introuvable.")
+        return Response(memory.image, media_type="image/webp", headers={"Cache-Control": "private, max-age=300"})
 
 
 @router.post("/objectifs")

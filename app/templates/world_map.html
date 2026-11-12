@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Carte d’Azeroth{% endblock %}
+{% block content %}
+<nav class="breadcrumb" aria-label="Fil d’Ariane"><ol><li><a href="/#ce-soir">Ce soir</a></li><li aria-current="page">Carte</li></ol></nav>
+<header class="panel-head story-banner story-banner-journal"><h1 class="expedition-title">Carte d’Azeroth</h1><p class="lead">Repères documentés pour WoW Forever.</p></header>
+<section class="world-map-layout" data-world-map data-selected="{{ selected.key if selected else '' }}">
+  <form method="get" action="/carte" class="map-controls panel-block">
+    <div class="field"><label for="map-zone">Zone</label><select name="zone" id="map-zone">
+      {% for zone in zones %}<option value="{{ zone }}"{% if zone == active_zone %} selected{% endif %}>{{ zone }}</option>{% endfor %}
+    </select></div>
+    <div class="field" data-map-search-wrap hidden><label for="map-search">Rechercher dans la zone</label><input type="text" id="map-search" placeholder="Nom d’un repère"></div>
+    <fieldset class="map-filters" data-map-filters hidden>
+      <legend>Afficher</legend>
+      {% for key,label in kinds.items() %}<label data-map-kind="{{ key }}"><input type="checkbox" value="{{ key }}" checked> {{ label }}</label>{% endfor %}
+    </fieldset>
+    <button class="button button-secondary button-small" type="submit" data-map-submit>Afficher la zone</button>
+    <a class="button button-ghost button-small" href="https://forever.azerpug.com/">Ouvrir la carte détaillée d’Azeroth</a>
+  </form>
+  <div class="world-map-board" data-map-board hidden>
+    <div class="map-axis map-axis-x" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100 X</span></div>
+    <div class="map-axis map-axis-y" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100 Y</span></div>
+    <div class="map-plot" aria-label="Repères sur la grille de coordonnées">
+      {% for point in points if point.xy %}
+      <button type="button" class="map-pin" data-point="{{ point.key }}" data-zone="{{ point.zone }}" data-map-kind="{{ point.kind }}" data-map-name="{{ point.name }}"
+              style="--x:{{ point.xy[0] }}%;--y:{{ point.xy[1] }}%" aria-label="{{ point.name }} · {{ point.xy | join(', ') }}"
+              aria-pressed="false" title="{{ point.name }}" hidden></button>
+      {% endfor %}
+    </div>
+    <p class="meta">Grille des coordonnées du jeu. Les guides donnent accès aux cartes de zone.</p>
+  </div>
+  <div class="world-map-places panel-block" aria-labelledby="map-places-title">
+    <h2 id="map-places-title" class="block-title">Repères de la zone</h2>
+    <p class="meta" data-map-empty hidden>Aucun repère pour ces filtres.</p>
+    <div class="map-places">
+      {% for point in points %}
+      <details id="map-{{ point.key }}" class="map-place" data-place="{{ point.key }}" data-zone="{{ point.zone }}" data-map-kind="{{ point.kind }}" data-map-name="{{ point.name }}"{% if point.zone != active_zone %} hidden{% endif %}{% if selected and selected.key == point.key %} open{% endif %}>
+        <summary><span class="map-place-dot"></span> {{ point.name }} <span class="meta">{{ kinds[point.kind] }}</span></summary>
+        <p>{{ point.detail }}</p>
+        {% if point.xy %}<p><code>{{ point.xy | join(', ') }}</code> <button type="button" class="button button-secondary button-small" data-copy-coordinate="{{ point.xy | join(' ') }}" hidden>Copier</button></p>
+        {% else %}<p class="meta">Coordonnées non documentées dans le catalogue.</p>{% endif %}
+        <p><a href="{{ point.guide }}">Ouvrir le guide de ce repère</a></p>
+      </details>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

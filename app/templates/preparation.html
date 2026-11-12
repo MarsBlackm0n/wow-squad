@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, icon %}
+{% block title %}Préparer {{ mission.title }}{% endblock %}
+{% block content %}
+<nav class="breadcrumb" aria-label="Fil d’Ariane"><ol><li><a href="/#ce-soir">Ce soir</a></li><li aria-current="page">Préparation</li></ol></nav>
+<header class="panel-head story-banner story-banner-journal">
+  <h1 class="expedition-title">{{ mission.title }}</h1>
+  <p class="lead">{{ mission.starts_at | localtime('%d/%m à %H:%M') if mission.starts_at else 'Date à convenir' }} · Niveau {{ mission.min_level }} · {{ people | length }}/{{ mission.target_size }} inscrits</p>
+</header>
+<div class="split">
+  <div>
+    <section class="panel-block" aria-labelledby="route-title">
+      <h2 id="route-title" class="block-title">Feuille de route</h2>
+      <ol class="expedition-steps">
+        {% if instance %}
+        <li><h3>Se retrouver</h3><p>{{ instance.access }}</p>
+          {% if instance.coordinates %}<div class="route-coordinate"><code>{{ instance.coordinates }}</code><button type="button" class="button button-secondary button-small" data-copy-coordinate="{{ instance.coordinates }}" hidden>Copier</button></div>{% endif %}
+          <p>{% if map_zone %}<a href="/carte?repere={{ instance.key }}">Voir le repère sur la carte</a> · {% endif %}<a href="{{ instance.guide }}">Guide d’accès</a></p>
+          {% if instance.availability %}<p class="meta">{{ instance.availability }}</p>{% endif %}
+        </li>
+        <li><h3>Préparer l’accès et le combat</h3><p>{{ instance.preparation }}</p></li>
+        <li><h3>Former le groupe</h3><p>{{ instance.composition }}</p></li>
+        {% else %}<li><h3>Se retrouver</h3><p>Le point de rendez-vous est à convenir avec l’organisateur.</p></li>{% endif %}
+        {% if mission.notes %}<li><h3>Notes de l’organisateur</h3><p class="mission-notes">{{ mission.notes }}</p></li>{% endif %}
+      </ol>
+    </section>
+    {% if own and not mission.completed_at %}
+    <section class="panel-block prep-self" aria-labelledby="prep-self-title">
+      <h2 id="prep-self-title" class="block-title">Ma préparation · {{ own.signup.character.display_name }}</h2>
+      <form method="post" action="/objectifs/{{ mission.id }}/preparation">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <fieldset class="checkbox-group"><legend>Étapes confirmées</legend>
+          <ul role="list">{% for key,label in checks %}<li><label class="check"><input type="checkbox" name="checks" value="{{ key }}"{% if key in own.checks %} checked{% endif %}> {{ label }}</label></li>{% endfor %}</ul>
+        </fieldset>
+        <button type="submit" class="button button-primary">Enregistrer ma préparation</button>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+  <aside class="panel-block" aria-labelledby="prep-roster-title">
+    <h2 id="prep-roster-title" class="block-title">Préparation des inscrits</h2>
+    <ul class="prep-roster" role="list">
+      {% for person in people %}
+      {% set c = person.signup.character %}
+      <li>
+        <div class="prep-character">{{ avatar(c,'sm') }} <div><a href="/perso/{{ c.id }}">{{ c.display_name }}</a><p class="meta">{{ roles[person.signup.role] }} · niveau {{ c.level or '?' }}</p></div></div>
+        {% if c.level < mission.min_level %}<p class="meta">Niveau conseillé : {{ mission.min_level }}</p>{% endif %}
+        <label for="prep-{{ c.id }}">{{ person.checks | length }}/{{ checks | length }} étapes confirmées par le joueur</label>
+        <progress id="prep-{{ c.id }}" value="{{ person.checks | length }}" max="{{ checks | length }}"></progress>
+        {% for key,label in checks if key not in person.checks %}<p class="meta">À confirmer · {{ label }}</p>{% endfor %}
+        {% if person.quest %}
+        <p class="meta">{{ person.quest[0][1] }} · {% if person.quest[1] is true %}Validée par Blizzard{% elif person.quest[1] is false %}Validation non relevée{% else %}Donnée Blizzard indisponible{% endif %}</p>
+        {% endif %}
+      </li>
+      {% else %}<li class="meta">Les préparatifs apparaîtront avec les inscriptions.</li>{% endfor %}
+    </ul>
+  </aside>
+</div>
+{% endblock %}

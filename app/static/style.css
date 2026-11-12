@@ -1028,3 +1028,54 @@ html { scroll-padding-top: 5.5rem; }
 .mission-response summary::marker { content: ''; }
 .mission-response summary::-webkit-details-marker { display: none; }
 .mission-response .mission-signup { margin-top: .6rem; }
+
+
+.evening-board { margin: 0 0 1.4rem; padding: 1rem; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); }
+.evening-board > p { margin: .6rem 0; }
+.evening-board .mission-grid { margin-top: .75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
+.evening-declare summary::marker { content: ''; }
+.evening-declare summary::-webkit-details-marker { display: none; }
+.evening-priority { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; margin-top: .85rem; }
+.evening-priority select, .map-controls select { min-height: 44px; padding: .4rem .65rem; background: var(--surface-2); color: var(--text); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); font: inherit; }
+.lineup { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: .3rem; list-style: none; padding: 0; text-align: center; }
+.lineup > li { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: .25rem; font-size: .73rem; }
+.lineup > li a { overflow-wrap: anywhere; }
+.lineup-icon { display: grid; place-items: center; width: 40px; height: 40px; color: var(--muted); background: var(--surface); border: 1px dashed var(--line-strong); border-radius: 50%; }
+.lineup-alternatives summary { min-height: 44px; }
+.lineup-alternatives ul { list-style: none; padding: 0; }
+.expedition-title { color: #fff3da; font: 800 clamp(1.55rem, 4vw, 3rem)/1.08 var(--display-font); overflow-wrap: anywhere; }
+.expedition-steps, .prep-roster, .story-links { list-style: none; margin: .6rem 0 0; padding: 0; }
+.expedition-steps { display: grid; gap: .85rem; padding-left: 1rem; border-left: 2px solid var(--line-strong); }
+.expedition-steps > li { position: relative; min-width: 0; }
+.expedition-steps > li::before { content: ''; position: absolute; left: -1.32rem; top: .55rem; width: .52rem; height: .52rem; border-radius: 50%; background: var(--gold); }
+.expedition-steps h3 { margin: 0 0 .35rem; font-size: 1.03rem; }
+.expedition-steps p { margin: .25rem 0; }
+.route-coordinate, .prep-character, .story-entry-heading { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; }
+.story-entry-heading { justify-content: space-between; }
+.prep-self { margin-top: 1rem; }
+.prep-roster { display: grid; gap: .8rem; }
+.prep-roster > li + li { border-top: 1px solid var(--line); padding-top: .75rem; }
+.prep-roster progress { display: block; width: 100%; accent-color: var(--gold); }
+.story-capture { display: block; width: 100%; max-height: 25rem; object-fit: contain; border-radius: var(--radius-sm); margin: .65rem 0; }
+.world-map-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(16rem, .55fr); gap: 1rem; }
+.map-controls { grid-column: 1 / -1; display: flex; align-items: end; flex-wrap: wrap; gap: .85rem; }
+.map-filters { display: flex; flex-wrap: wrap; gap: .5rem .8rem; margin: 0; border: 0; padding: 0; }
+.map-filters label { display: inline-flex; align-items: center; gap: .35rem; min-height: 44px; }
+.world-map-board { position: relative; min-width: 0; padding: 1rem 1rem .5rem 2.8rem; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); }
+.map-plot { position: relative; aspect-ratio: 1; background: repeating-linear-gradient(0deg, var(--line) 0 1px, transparent 1px 25%), repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 25%), var(--surface-2); border: 1px solid var(--line); }
+.map-axis { display: flex; justify-content: space-between; color: var(--muted); font-size: .7rem; }
+.map-axis-y { position: absolute; top: 2.1rem; bottom: 3rem; left: .4rem; flex-direction: column; }
+[data-map-kind="dungeon"] { --pin: var(--teal); }
+[data-map-kind="raid"] { --pin: var(--gold); }
+[data-map-kind="quest"] { --pin: var(--violet); }
+[data-map-kind="mob"] { --pin: var(--danger); }
+.map-pin { position: absolute; z-index: 1; left: var(--x); top: var(--y); transform: translate(-50%,-50%); width: 44px; height: 44px; border: 0; background: transparent; cursor: pointer; display: grid; place-items: center; }
+.map-pin::after, .map-place-dot { content: ''; display: inline-block; width: .75rem; height: .75rem; border-radius: 50%; background: var(--pin); }
+.map-pin[aria-pressed="true"] { z-index: 2; }
+.map-pin[aria-pressed="true"]::after { outline: 2px solid var(--text); outline-offset: 3px; }
+.map-place { padding: .45rem 0; border-bottom: 1px solid var(--line); }
+.map-place summary { min-height: 44px; }
+.map-place p { margin: .25rem 0; }
+.map-place-dot { width: .6rem; height: .6rem; margin-right: .3rem; }
+.world-map-layout [hidden], [data-copy-coordinate][hidden] { display: none; }
+@media (max-width: 720px) { .world-map-layout { grid-template-columns: 1fr; } }

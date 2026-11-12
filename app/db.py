@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import (JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text,
+from sqlalchemy import (JSON, BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text,
                         UniqueConstraint, create_engine, inspect, select, text)
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 
@@ -128,6 +128,39 @@ class MissionSignup(Base):
     character_id: Mapped[int] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), index=True)
     role: Mapped[str] = mapped_column(String(12))
     character: Mapped[Character] = relationship()
+
+
+class EveningAvailability(Base):
+    __tablename__ = "evening_availability"
+
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True)
+    status: Mapped[str] = mapped_column(String(12))
+    character_ids: Mapped[list[int]] = mapped_column(JSON, default=list)
+    role: Mapped[str] = mapped_column(String(12))
+
+
+class MissionPreparation(Base):
+    __tablename__ = "mission_preparation"
+
+    mission_id: Mapped[int] = mapped_column(ForeignKey("squad_missions.id", ondelete="CASCADE"), primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True)
+    character_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    checks: Mapped[list[str]] = mapped_column(JSON, default=list)
+
+
+class MissionMemory(Base):
+    __tablename__ = "mission_memories"
+    __table_args__ = (UniqueConstraint("event_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    mission_id: Mapped[int] = mapped_column(ForeignKey("squad_missions.id", ondelete="CASCADE"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"))
+    author: Mapped[str] = mapped_column(String(80))
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id", ondelete="SET NULL"), nullable=True)
+    note: Mapped[str] = mapped_column(String(500), default="")
+    image: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
 
 
 class PlayerPhoto(Base):

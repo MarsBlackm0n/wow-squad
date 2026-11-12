@@ -309,3 +309,34 @@ def test_level_and_equipment_curves_share_launch_anchor():
                  SimpleNamespace(taken_at=second, level=5, ilvl=3.5)]
     assert progression_points(snapshots, "level") == ([(FOREVER_LAUNCH, 0), (first, 4), (second, 5)], True)
     assert progression_points(snapshots, "ilvl") == ([(FOREVER_LAUNCH, 0), (second, 3.5)], True)
+
+
+def test_evening_suggestions_respect_roles_modes_and_unique_accounts():
+    from types import SimpleNamespace
+
+    from app.expedition import evening_suggestions
+
+    def player(cid, account_id, cls, mode="PvP"):
+        char = _char(cid, 24, cls)
+        char.account_id, char.ruleset, char.region = account_id, mode, "eu"
+        return char
+
+    chars = [player(1, 1, "Guerrier"), player(2, 1, "Prêtre"), player(3, 2, "Prêtre"),
+             player(4, 3, "Mage"), player(5, 4, "Chasseur"), player(6, 5, "Voleur", "Normal")]
+    rows = [SimpleNamespace(account_id=i, status="yes", role="flex", character_ids=ids)
+            for i, ids in [(1, [1, 2]), (2, [3]), (3, [4]), (4, [5]), (5, [6])]]
+    ideas = evening_suggestions(rows, chars, "group")
+    assert ideas and ideas[0]["score"][:3] == (4, 4, 2)
+    chosen = [slot.character for slot in ideas[0]["team"] if slot]
+    assert len({c.account_id for c in chosen}) == 4
+    assert all(c.ruleset == "PvP" for c in chosen)
+
+
+def test_map_has_verified_coordinates_for_each_filter():
+    from app.worldmap import KINDS, points
+
+    items = points()
+    assert len({point["key"] for point in items}) == len(items)
+    assert set(KINDS) <= {point["kind"] for point in items if point["xy"]}
+    assert all(0 <= coordinate <= 100 for point in items for coordinate in (point["xy"] or []))
+    assert next(p for p in items if p["key"] == "deadmines")["xy"] == [38.2, 77.5]

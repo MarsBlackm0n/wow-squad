@@ -45,7 +45,7 @@ def crop_box(width: int, height: int, zoom: float = 1.0, cx: float = 0.5, cy: fl
     return round(left), round(top), round(left + side), round(top + side)
 
 
-def process(data: bytes, zoom: float = 1.0, cx: float = 0.5, cy: float = 0.5) -> bytes:
+def process(data: bytes, zoom: float = 1.0, cx: float = 0.5, cy: float = 0.5, *, screenshot: bool = False) -> bytes:
     """Image envoyée -> WebP carré 256×256 recadré selon (zoom, cx, cy). Lève ValueError avec un message lisible."""
     if not data:
         raise ValueError("Le fichier est vide.")
@@ -60,8 +60,11 @@ def process(data: bytes, zoom: float = 1.0, cx: float = 0.5, cy: float = 0.5) ->
             img.seek(0)  # GIF animé : première image
             img = ImageOps.exif_transpose(img)
             img = img.convert("RGBA" if img.mode in ("RGBA", "LA", "P") else "RGB")
-            img = img.crop(crop_box(img.width, img.height, zoom, cx, cy))
-            img = img.resize((SIZE, SIZE), Image.Resampling.LANCZOS)
+            if screenshot:
+                img.thumbnail((1440, 1000), Image.Resampling.LANCZOS)
+            else:
+                img = img.crop(crop_box(img.width, img.height, zoom, cx, cy))
+                img = img.resize((SIZE, SIZE), Image.Resampling.LANCZOS)
             out = io.BytesIO()
             img.save(out, "WEBP", quality=84, method=6)
             return out.getvalue()

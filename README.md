@@ -112,3 +112,15 @@ Les inscriptions aux sorties et les propositions de sorties restent accessibles 
 Le formulaire de sortie propose aussi un catalogue de donjons et de raids Forever. Choisir une instance
 préremplit le titre, le type, l’effectif et le niveau conseillé. La fiche d’accès et de préparation reste
 accessible sur la sortie publiée. Le catalogue inclut les raids annoncés, dont la date d’ouverture est indiquée.
+
+
+## Préparer et raconter une sortie
+
+- « Ce soir » utilise les disponibilités déclarées le jour même. Les propositions privilégient les groupes
+  complets, les confirmations et les rôles couverts, avec une seule place par compte et des personnages compatibles.
+- La préparation est confirmée par personnage et par sortie. Les validations de quêtes Blizzard sont distinctes
+  des confirmations manuelles. La couverture des quêtes est volontairement limitée aux repères documentés.
+- L’organisateur et les inscrits peuvent enrichir le récit d’une sortie terminée. Les relevés Blizzard sont
+  rattachés manuellement. Les captures sont réencodées et conservées dans la base, avec une limite de 50 souvenirs
+  par sortie et 5 Mo par fichier source.
+- La carte affiche une grille de coordonnées par zone et des filtres. Chaque repère renvoie à son guide.
