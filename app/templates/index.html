@@ -89,8 +89,8 @@
   <nav class="tablist-wrap" aria-label="Sections du QG">
     <ul class="tablist" data-tablist>
       <li><a class="tab" href="#ce-soir" data-tab>Ce soir{% if ideas %} <span class="tab-count">{{ ideas | length }}</span>{% endif %}</a></li>
-      <li><a class="tab" href="#journal" data-tab>Journal</a></li>
       <li><a class="tab" href="#progression" data-tab>Progression</a></li>
+      <li><a class="tab" href="#journal" data-tab>Journal</a></li>
       <li><a class="tab" href="#palmares" data-tab>Palmarès</a></li>
       <li><a class="tab" href="#squad" data-tab>La squad <span class="tab-count">{{ chars | length }}</span></a></li>
     </ul>
@@ -172,6 +172,98 @@
     {% endif %}
   </section>
 
+  <section id="progression" class="panel" data-panel aria-labelledby="progression-title">
+    <header class="panel-head">
+      <h2 id="progression-title">Progression</h2>
+      <p class="lead">On n'a pas tous commencé le même jour : le rythme compte autant que le niveau.</p>
+    </header>
+    {% if goal %}
+    <dl class="kpis kpis-overview">
+      <div class="kpi kpi-goal">
+        <dt>Objectif niveau {{ goal.target }}{% if goal.deadline %} · {{ goal.deadline.strftime('%d/%m') }}{% endif %}</dt>
+        <dd>{{ ring(goal.progress, 52) }}<span class="kpi-value">{{ goal.progress | round | int }}&nbsp;%</span>
+          <span class="kpi-note">
+            {%- if goal.at_target == goal.members %}tout le monde y est
+            {%- elif goal.deadline and goal.days_left is not none and goal.days_left < 0 %}échéance passée
+            {%- elif goal.deadline %}J-{{ goal.days_left }}{% if goal.on_track is true %} · dans les temps{% elif goal.on_track is false %} · en retard{% endif %}
+            {%- elif goal.projected %}tous là vers le {{ goal.projected.strftime('%d/%m') }}
+            {%- else %}{{ goal.at_target }}/{{ goal.members }} arrivés{% endif -%}
+          </span></dd>
+      </div>
+      <div class="kpi">
+        <dt>Rythme de la squad</dt>
+        <dd><span class="kpi-value">{{ ('+' ~ (goal.average_pace | number(1))) if goal.average_pace is not none else '—' }}</span><span class="kpi-note">niv. par jour par perso mesuré{% if goal.stalled %} · {{ goal.stalled }} sans gain observé{% endif %}</span></dd>
+      </div>
+      <div class="kpi">
+        <dt>Cette semaine</dt>
+        <dd><span class="kpi-value">+{{ week.total_levels }}</span><span class="kpi-note">niveaux à vous tous</span></dd>
+      </div>
+      <div class="kpi">
+        <dt>Meilleur rythme</dt>
+        <dd>{% if goal.fastest %}<a class="kpi-value kpi-link" href="/perso/{{ goal.fastest.id }}">{{ goal.fastest.name }}</a><span class="kpi-note">+{{ goal.fastest_pace | number(1) }} niv. par jour</span>{% else %}<span class="kpi-value">—</span><span class="kpi-note">aucun rythme positif mesuré</span>{% endif %}</dd>
+      </div>
+    </dl>
+    {% endif %}
+    <div class="split">
+      <div class="split-main">
+        {% if race_chart %}
+        <section aria-labelledby="race-title">
+          <h3 id="race-title" class="block-title">Course au niveau</h3>
+          <figure class="chart-frame">
+            {{ race_chart }}
+            <figcaption>
+              <ul class="legend" role="list">
+                {% for s in race_series %}<li><span class="legend-swatch" style="background: {{ s.color }}" aria-hidden="true"></span>{{ s.label }} <strong>{{ s.points[-1][1] | int }}</strong></li>{% endfor %}
+              </ul>
+              {% if race_has_launch %}<p class="meta">Pour les persos avec un seul relevé, le niveau 1 au lancement de Forever sert de repère. Les gains du tableau sont calculés entre les relevés Blizzard.</p>{% endif %}
+            </figcaption>
+          </figure>
+          {{ chart_table(race_rows, ['Perso', 'Premier niveau relevé', 'Dernier niveau relevé', 'Gain observé'], 'Course au niveau sur 30 jours') }}
+        </section>
+        {% else %}
+        <p class="empty">La course au niveau apparaîtra après quelques synchros.</p>
+        {% endif %}
+      </div>
+      <section class="split-side" aria-labelledby="board-title">
+        <h3 id="pace-title" class="block-title">Au rythme <span class="count">7 derniers jours</span></h3>
+        {% if by_pace %}
+        <ol class="ranking ranking-pace" role="list" aria-labelledby="pace-title">
+          {% for c in by_pace %}{% set pc = paces[c.id] %}
+          <li class="rank-item" style="--class-color: {{ c.class_name | class_color }}">
+            <span class="rank-pos" aria-hidden="true">{{ loop.index }}</span>
+            {{ avatar(c, 'sm') }}
+            <div class="rank-body">
+              <a class="rank-name" href="/perso/{{ c.id }}"><span class="visually-hidden">{{ loop.index }}. </span>{{ c.display_name }}</a>
+              <span class="meta">{% if pc.reached %}objectif atteint{% elif pc.eta %}niv. {{ goal_cfg.target }} vers le {{ pc.eta.strftime('%d/%m') }}{% else %}{{ pc.gained }} niv. gagné{{ 's' if pc.gained > 1 }} sur {{ pc.observed_days | number(1) }} j{% endif %}</span>
+            </div>
+            <span class="pace"><strong>+{{ pc.per_day | number(1) }}</strong><span class="meta">/jour</span></span>
+          </li>
+          {% endfor %}
+        </ol>
+        {% else %}
+        <p class="quiet">Le rythme apparaîtra après quelques synchros.</p>
+        {% endif %}
+        <h3 id="board-title" class="block-title board-level">Au niveau</h3>
+        <ol class="ranking" role="list">
+          {% for c in chars %}
+          <li class="rank-item {{ 'is-pending' if c.status == 'pending' }}" style="--class-color: {{ c.class_name | class_color }}">
+            <span class="rank-pos" aria-hidden="true">{{ '–' if c.status == 'pending' else loop.index }}</span>
+            {{ avatar(c, 'sm') }}
+            <div class="rank-body">
+              <a class="rank-name" href="/perso/{{ c.id }}">
+                {%- if c.status != 'pending' %}<span class="visually-hidden">{{ loop.index }}. </span>{% endif -%}
+                {{ c.display_name }}
+              </a>
+              <span class="meta">{% if c.status == 'pending' %}En attente de l'API{% else %}{{ c.class_name }}{% if c.player %} · {{ c.player }}{% endif %}{% endif %}</span>
+            </div>
+            {% if c.status != 'pending' %}{{ level_bar(c.level, max_level) }}{% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+    </div>
+  </section>
+
   <section id="journal" class="panel" data-panel aria-labelledby="journal-title">
     <header class="panel-head">
       <h2 id="journal-title">Journal de la squad</h2>
@@ -228,97 +320,6 @@
     {% else %}
     <p class="empty">Le journal se remplit dès que quelqu'un gagne un niveau, un haut fait ou une monture.</p>
     {% endif %}
-  </section>
-
-  <section id="progression" class="panel" data-panel aria-labelledby="progression-title">
-    <header class="panel-head">
-      <h2 id="progression-title">Progression</h2>
-      <p class="lead">On n'a pas tous commencé le même jour : le rythme compte autant que le niveau.</p>
-    </header>
-    {% if goal %}
-    <dl class="kpis kpis-overview">
-      <div class="kpi kpi-goal">
-        <dt>Objectif niveau {{ goal.target }}{% if goal.deadline %} · {{ goal.deadline.strftime('%d/%m') }}{% endif %}</dt>
-        <dd>{{ ring(goal.progress, 52) }}<span class="kpi-value">{{ goal.progress | round | int }}&nbsp;%</span>
-          <span class="kpi-note">
-            {%- if goal.at_target == goal.members %}tout le monde y est
-            {%- elif goal.deadline and goal.days_left is not none and goal.days_left < 0 %}échéance passée
-            {%- elif goal.deadline %}J-{{ goal.days_left }}{% if goal.on_track is true %} · dans les temps{% elif goal.on_track is false %} · en retard{% endif %}
-            {%- elif goal.projected %}tous là vers le {{ goal.projected.strftime('%d/%m') }}
-            {%- else %}{{ goal.at_target }}/{{ goal.members }} arrivés{% endif -%}
-          </span></dd>
-      </div>
-      <div class="kpi">
-        <dt>Rythme de la squad</dt>
-        <dd><span class="kpi-value">{{ ('+' ~ (goal.average_pace | number(1))) if goal.average_pace is not none else '—' }}</span><span class="kpi-note">niv. par jour par perso mesuré{% if goal.stalled %} · {{ goal.stalled }} sans gain observé{% endif %}</span></dd>
-      </div>
-      <div class="kpi">
-        <dt>Cette semaine</dt>
-        <dd><span class="kpi-value">+{{ week.total_levels }}</span><span class="kpi-note">niveaux à vous tous</span></dd>
-      </div>
-      <div class="kpi">
-        <dt>Meilleur rythme</dt>
-        <dd>{% if goal.fastest %}<a class="kpi-value kpi-link" href="/perso/{{ goal.fastest.id }}">{{ goal.fastest.name }}</a><span class="kpi-note">+{{ goal.fastest_pace | number(1) }} niv. par jour</span>{% else %}<span class="kpi-value">—</span><span class="kpi-note">aucun rythme positif mesuré</span>{% endif %}</dd>
-      </div>
-    </dl>
-    {% endif %}
-    <div class="split">
-      <div class="split-main">
-        {% if race_chart %}
-        <section aria-labelledby="race-title">
-          <h3 id="race-title" class="block-title">Course au niveau</h3>
-          <figure class="chart-frame">
-            {{ race_chart }}
-            <figcaption>
-              <ul class="legend" role="list">
-                {% for s in race_series %}<li><span class="legend-swatch" style="background: {{ s.color }}" aria-hidden="true"></span>{{ s.label }} <strong>{{ s.points[-1][1] | int }}</strong></li>{% endfor %}
-              </ul>
-            </figcaption>
-          </figure>
-          {{ chart_table(race_rows, ['Perso', 'Niveau au départ', 'Niveau actuel', 'Progression'], 'Course au niveau sur 30 jours') }}
-        </section>
-        {% else %}
-        <p class="empty">La course au niveau apparaîtra après quelques synchros.</p>
-        {% endif %}
-      </div>
-      <section class="split-side" aria-labelledby="board-title">
-        <h3 id="pace-title" class="block-title">Au rythme <span class="count">7 derniers jours</span></h3>
-        {% if by_pace %}
-        <ol class="ranking ranking-pace" role="list" aria-labelledby="pace-title">
-          {% for c in by_pace %}{% set pc = paces[c.id] %}
-          <li class="rank-item" style="--class-color: {{ c.class_name | class_color }}">
-            <span class="rank-pos" aria-hidden="true">{{ loop.index }}</span>
-            {{ avatar(c, 'sm') }}
-            <div class="rank-body">
-              <a class="rank-name" href="/perso/{{ c.id }}"><span class="visually-hidden">{{ loop.index }}. </span>{{ c.display_name }}</a>
-              <span class="meta">{% if pc.reached %}objectif atteint{% elif pc.eta %}niv. {{ goal_cfg.target }} vers le {{ pc.eta.strftime('%d/%m') }}{% else %}{{ pc.gained }} niv. gagné{{ 's' if pc.gained > 1 }} sur {{ pc.observed_days | number(1) }} j{% endif %}</span>
-            </div>
-            <span class="pace"><strong>+{{ pc.per_day | number(1) }}</strong><span class="meta">/jour</span></span>
-          </li>
-          {% endfor %}
-        </ol>
-        {% else %}
-        <p class="quiet">Le rythme apparaîtra après quelques synchros.</p>
-        {% endif %}
-        <h3 id="board-title" class="block-title board-level">Au niveau</h3>
-        <ol class="ranking" role="list">
-          {% for c in chars %}
-          <li class="rank-item {{ 'is-pending' if c.status == 'pending' }}" style="--class-color: {{ c.class_name | class_color }}">
-            <span class="rank-pos" aria-hidden="true">{{ '–' if c.status == 'pending' else loop.index }}</span>
-            {{ avatar(c, 'sm') }}
-            <div class="rank-body">
-              <a class="rank-name" href="/perso/{{ c.id }}">
-                {%- if c.status != 'pending' %}<span class="visually-hidden">{{ loop.index }}. </span>{% endif -%}
-                {{ c.display_name }}
-              </a>
-              <span class="meta">{% if c.status == 'pending' %}En attente de l'API{% else %}{{ c.class_name }}{% if c.player %} · {{ c.player }}{% endif %}{% endif %}</span>
-            </div>
-            {% if c.status != 'pending' %}{{ level_bar(c.level, max_level) }}{% endif %}
-          </li>
-          {% endfor %}
-        </ol>
-      </section>
-    </div>
   </section>
 
   <section id="palmares" class="panel" data-panel aria-labelledby="palmares-title">

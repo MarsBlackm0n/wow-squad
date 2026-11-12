@@ -131,7 +131,7 @@ async def home(request: Request):
         chars = leaderboard(db)
         week = compute_week(db)
         events = insights.load_events(db, days=30)
-        race_chart, race_rows, race_series = _race_chart(db, chars)
+        race_chart, race_rows, race_series, race_has_launch = _race_chart(db, chars)
         firsts = insights.firsts(db)
         accounts = db.scalars(select(Account).order_by(Account.battletag)).all()
         goal_cfg, groups = squad.get_goal(db), squad.get_groups(db)
@@ -143,7 +143,7 @@ async def home(request: Request):
     worker = request.app.state.worker
     by_pace = sorted((c for c in chars if c.id in pace_by_char), key=lambda c: -pace_by_char[c.id].per_day)
     return render(request, "index.html", chars=chars, week=week, race_chart=race_chart, race_rows=race_rows,
-                  race_series=race_series, days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
+                  race_series=race_series, race_has_launch=race_has_launch, days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
                   goal=insights.squad_goal(chars, goal_cfg.target, goal_cfg.deadline, pace_by_char),
                   goal_cfg=goal_cfg, groups=groups, plans=insights.group_plans(groups, chars),
                   paces=pace_by_char, by_pace=by_pace, firsts=firsts, records=insights.records(events, tz),
@@ -205,24 +205,36 @@ async def account_page(request: Request):
 def _race_chart(db, chars: list[Character]):
     since = utcnow() - timedelta(days=30)
     series = []
+    rows = {}
+    has_launch = False
     for c in chars:
         if c.status == "pending":
             continue
         snaps = db.scalars(select(Snapshot).where(Snapshot.character_id == c.id, Snapshot.taken_at >= since)
                            .order_by(Snapshot.taken_at)).all()
-        points = [(s.taken_at, s.level) for s in snaps if s.level]
-        if points:
-            series.append(Series(c.name, class_color(c.class_name), points))
+        points, launch_anchor = level_history(snaps)
+        if launch_anchor and points[0][0] < since:
+            points.pop(0)
+            launch_anchor = False
+        if not points:
+            continue
+        label = c.display_name
+        series.append(Series(label, class_color(c.class_name), points))
+        observed = points[1:] if launch_anchor else points
+        first, last = observed[0][1], observed[-1][1]
+        rows[label] = (label, first, last, f"{last - first:+d}" if len(observed) > 1 else "—")
+        has_launch |= launch_anchor
     if not series:
-        return None, [], []
-    leader = max(series, key=lambda s: s.points[-1][1])
+        return None, [], [], False
+    ranked = sorted(series, key=lambda s: -s.points[-1][1])
+    leader = ranked[0]
     desc = (f"Évolution du niveau de {len(series)} personnages sur les 30 derniers jours. "
             f"En tête : {leader.label}, niveau {int(leader.points[-1][1])}.")
-    ranked = sorted(series, key=lambda s: -s.points[-1][1])
-    rows = [(s.label, int(s.points[0][1]), int(s.points[-1][1]), f"+{int(s.points[-1][1] - s.points[0][1])}")
-            for s in ranked]
+    if has_launch:
+        desc += " Pour les personnages avec un seul relevé, le niveau 1 au lancement sert de repère."
     chart = line_chart(series, "Course au niveau", desc, "race", y_label="Niveau", tz_name=settings.timezone)
-    return chart, rows, ranked
+    return chart, [rows[s.label] for s in ranked], ranked, has_launch
+
 
 
 @router.get("/perso/{char_id}", response_class=HTMLResponse)
