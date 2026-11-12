@@ -6,7 +6,7 @@
 <section class="world-map-layout" data-world-map data-selected="{{ selected.key if selected else '' }}">
   <form method="get" action="/carte" class="map-controls panel-block">
     <div class="field"><label for="map-zone">Zone</label><select name="zone" id="map-zone">
-      {% for zone in zones %}<option value="{{ zone }}"{% if zone == active_zone %} selected{% endif %}>{{ zone }}</option>{% endfor %}
+      {% for zone in zones %}<option value="{{ zone }}" data-background="{{ backgrounds.get(zone, '') }}"{% if zone == active_zone %} selected{% endif %}>{{ zone }}</option>{% endfor %}
     </select></div>
     <div class="field" data-map-search-wrap hidden><label for="map-search">Rechercher dans la zone</label><input type="text" id="map-search" placeholder="Nom d’un repère"></div>
     <fieldset class="map-filters" data-map-filters hidden>
@@ -16,17 +16,17 @@
     <button class="button button-secondary button-small" type="submit" data-map-submit>Afficher la zone</button>
     <a class="button button-ghost button-small" href="https://forever.azerpug.com/">Ouvrir la carte détaillée d’Azeroth</a>
   </form>
-  <div class="world-map-board" data-map-board hidden>
-    <div class="map-axis map-axis-x" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100 X</span></div>
-    <div class="map-axis map-axis-y" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100 Y</span></div>
-    <div class="map-plot" aria-label="Repères sur la grille de coordonnées">
+  <div class="world-map-board" data-map-board>
+    <div class="map-plot" aria-label="Carte de zone et repères">
+      <img data-map-image src="{{ backgrounds.get(active_zone, '') }}" alt="Carte de la zone {{ active_zone }}" referrerpolicy="no-referrer">
       {% for point in points if point.xy %}
       <button type="button" class="map-pin" data-point="{{ point.key }}" data-zone="{{ point.zone }}" data-map-kind="{{ point.kind }}" data-map-name="{{ point.name }}"
               style="--x:{{ point.xy[0] }}%;--y:{{ point.xy[1] }}%" aria-label="{{ point.name }} · {{ point.xy | join(', ') }}"
               aria-pressed="false" title="{{ point.name }}" hidden></button>
       {% endfor %}
     </div>
-    <p class="meta">Grille des coordonnées du jeu. Les guides donnent accès aux cartes de zone.</p>
+    <p class="meta" data-map-unavailable hidden>Fond de carte indisponible. Les repères restent accessibles dans la liste.</p>
+    <p class="meta">Carte © Blizzard Entertainment · <a href="https://warcraftforever.games/maps/azeroth">Warcraft Forever</a></p>
   </div>
   <div class="world-map-places panel-block" aria-labelledby="map-places-title">
     <h2 id="map-places-title" class="block-title">Repères de la zone</h2>

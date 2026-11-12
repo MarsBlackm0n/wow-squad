@@ -10,7 +10,7 @@ import re
 from bisect import bisect_right
 import unicodedata
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from html import escape
 from zoneinfo import ZoneInfo
 
@@ -161,6 +161,28 @@ def squad_chart_color(index: int) -> str:
     if index < len(SQUAD_CHART_COLORS):
         return SQUAD_CHART_COLORS[index]
     return f"hsl({index * 137.508 % 360:.2f} 78% 72%)"
+
+
+def progression_replay(histories, now: datetime, tz_name: str) -> list[dict]:
+    """Compare les gains mesurés sur la même fenêtre glissante de sept jours."""
+    prepared = [(name, color, [(_aware(s.taken_at), s.level, s.ilvl) for s in snaps if s.level and s.ilvl])
+                for name, color, snaps in histories]
+    tz = ZoneInfo(tz_name)
+    frames = []
+    for offset in range(13, -1, -1):
+        end = now - timedelta(days=offset)
+        start = end - timedelta(days=7)
+        points = []
+        for name, color, history in prepared:
+            window = [(at, level, ilvl) for at, level, ilvl in history if start <= at <= end]
+            if len(window) < 2 or window[-1][0] - window[0][0] < timedelta(days=1):
+                continue
+            first, last = window[0], window[-1]
+            points.append({"name": name, "color": color, "level": last[1] - first[1],
+                           "gear": round(last[2] - first[2], 1), "days": round((last[0] - first[0]).total_seconds() / 86400, 1)})
+        if len(points) >= 2:
+            frames.append({"date": end.astimezone(tz).strftime("%d/%m"), "points": points})
+    return frames
 
 
 def sum_progression(series) -> list[tuple[datetime, float]]:

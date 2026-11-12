@@ -14,6 +14,26 @@ ZONES = {
     "scholomance": "Maleterres de l’Ouest", "barrow-deeps": "Mont Hyjal", "hyjal-summit": "Mont Hyjal",
     "onyxia": "Marécage d’Âprefange",
 }
+# Les fonds restent hébergés par Warcraft Forever. Chaque identifiant a été
+# vérifié sur la page de la zone et correspond à son image complète.
+MAP_IMAGE_ROOT = "https://wowforever-media.fly.storage.tigris.dev/maps/1.60.1.69893/zones/"
+MAP_IDS = {
+    "ragefire": 1454, "thanes": 1455, "lordaeron": 1420, "deadmines": 1436,
+    "wailing": 1413, "shadowfang": 1421, "blackfathom": 1440, "stockade": 1453,
+    "razorfen-kraul": 1413, "gnomeregan": 1426, "wetlands": 1437, "dalaran": 1416,
+    "scarlet": 1420, "razorfen-downs": 1413, "uldaman": 1418, "maraudon": 1443,
+    "zul-farrak": 1446, "sunken-temple": 1435, "blackrock-depths": 1427, "lower-spire": 1428,
+    "upper-spire": 1428, "dire-maul": 1444, "stratholme": 1423, "scholomance": 1422,
+    "barrow-deeps": 2482, "hyjal-summit": 2482, "onyxia": 1445,
+}
+
+
+def map_backgrounds() -> dict[str, str]:
+    maps = {ZONES[key]: f"{MAP_IMAGE_ROOT}{image_id}.webp" for key, image_id in MAP_IDS.items()}
+    maps["Les Pitons du Tonnerre"] = f"{MAP_IMAGE_ROOT}1456.webp"
+    return maps
+
+
 KINDS = {"dungeon": "Donjons", "raid": "Raids", "quest": "Quêtes", "mob": "Mobs"}
 
 

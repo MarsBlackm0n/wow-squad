@@ -69,6 +69,17 @@
     var pins = Array.from(map.querySelectorAll("[data-point]"));
     var places = Array.from(map.querySelectorAll("[data-place]"));
     var active = map.dataset.selected;
+    var image = map.querySelector("[data-map-image]");
+    var unavailable = map.querySelector("[data-map-unavailable]");
+    function background() {
+      var url = zone.options[zone.selectedIndex].dataset.background;
+      unavailable.hidden = Boolean(url);
+      image.hidden = !url;
+      if (url && image.getAttribute("src") !== url) image.src = url;
+      image.alt = "Carte de la zone " + zone.value;
+    }
+    image.addEventListener("load", function () { unavailable.hidden = true; image.hidden = false; update(); });
+    image.addEventListener("error", function () { unavailable.hidden = false; image.hidden = true; update(); });
     function update() {
       var kinds = filters.filter(function (filter) { return filter.checked; }).map(function (filter) { return filter.value; });
       var query = fold(search.value.trim());
@@ -76,7 +87,7 @@
         return el.dataset.zone === zone.value && kinds.includes(el.dataset.mapKind) && fold(el.dataset.mapName).includes(query);
       };
       pins.forEach(function (pin) {
-        pin.hidden = !visible(pin);
+        pin.hidden = !visible(pin) || image.hidden || !image.complete || !image.naturalWidth;
         pin.setAttribute("aria-pressed", String(!pin.hidden && pin.dataset.point === active));
       });
       places.forEach(function (place) { place.hidden = !visible(place); });
@@ -99,14 +110,109 @@
         if (place.open && !place.hidden) { active = place.dataset.place; update(); }
       });
     });
-    zone.addEventListener("change", update);
+    zone.addEventListener("change", function () { background(); update(); });
     search.addEventListener("input", update);
     filters.forEach(function (filter) { filter.addEventListener("change", update); });
     map.querySelector("[data-map-board]").hidden = false;
     map.querySelector("[data-map-filters]").hidden = false;
     map.querySelector("[data-map-search-wrap]").hidden = false;
     map.querySelector("[data-map-submit]").hidden = true;
+    background();
+    if (image.complete && !image.naturalWidth) {
+      image.hidden = true;
+      unavailable.hidden = false;
+    }
     update();
+  });
+
+  document.querySelectorAll("[data-squad-replay]").forEach(function (replay) {
+    var frames = JSON.parse(replay.querySelector("[data-replay-data]").textContent);
+    var range = replay.querySelector("input");
+    var play = replay.querySelector("[data-replay-play]");
+    var date = replay.querySelector("[data-replay-date]");
+    var plot = replay.querySelector("[data-replay-plot]");
+    var legend = replay.querySelector("[data-replay-legend]");
+    var observations = frames.flatMap(function (frame) { return frame.points; });
+    var lowX = Math.floor(Math.min(0, ...observations.map(function (p) { return p.level; })));
+    var highX = Math.max(lowX + 4, Math.ceil(Math.max(0, ...observations.map(function (p) { return p.level; }))));
+    var lowY = Math.floor(Math.min(0, ...observations.map(function (p) { return p.gear; })));
+    var highY = Math.max(lowY + 4, Math.ceil(Math.max(0, ...observations.map(function (p) { return p.gear; }))));
+    var timer;
+    var format = new Intl.NumberFormat("fr-FR", {signDisplay: "exceptZero", maximumFractionDigits: 1});
+    var axisFormat = new Intl.NumberFormat("fr-FR", {maximumFractionDigits: 1});
+    var ns = "http://www.w3.org/2000/svg";
+    function svg(parent, tag, attrs, label) {
+      var node = document.createElementNS(ns, tag);
+      Object.keys(attrs).forEach(function (key) { node.setAttribute(key, attrs[key]); });
+      if (label !== undefined) node.textContent = label;
+      parent.appendChild(node);
+      return node;
+    }
+    function draw() {
+      var width = plot.clientWidth;
+      if (!width) return;
+      var index = Number(range.value);
+      var frame = frames[index];
+      var x = function (v) { return 54 + (width - 78) * (v - lowX) / (highX - lowX); };
+      var y = function (v) { return 224 - 188 * (v - lowY) / (highY - lowY); };
+      plot.setAttribute("viewBox", "0 0 " + width + " 270");
+      plot.replaceChildren();
+      legend.replaceChildren();
+      date.textContent = frame.date;
+      svg(plot, "text", {x: 43, y: 15}, "Équipement gagné (ilvl)");
+      svg(plot, "text", {x: width - 15, y: 263, "text-anchor": "end"}, "Niveaux gagnés");
+      for (var tick = 0; tick <= 4; tick += 1) {
+        var yValue = lowY + (highY - lowY) * tick / 4;
+        var xValue = Math.round(lowX + (highX - lowX) * tick / 4);
+        svg(plot, "line", {x1: 43, x2: width - 13, y1: y(yValue), y2: y(yValue)});
+        svg(plot, "text", {x: 35, y: y(yValue) + 4, "text-anchor": "end"}, axisFormat.format(yValue));
+        svg(plot, "line", {x1: x(xValue), x2: x(xValue), y1: 26, y2: 233});
+        svg(plot, "text", {x: x(xValue), y: 249, "text-anchor": "middle"}, xValue);
+      }
+      frame.points.forEach(function (point) {
+        var trail = [point];
+        for (var i = index - 1; i >= Math.max(0, index - 3); i -= 1) {
+          var previous = frames[i].points.find(function (item) { return item.name === point.name; });
+          if (!previous) break;
+          trail.unshift(previous);
+        }
+        if (trail.length > 1) svg(plot, "polyline", {
+          points: trail.map(function (p) { return x(p.level) + "," + y(p.gear); }).join(" "),
+          stroke: point.color, "stroke-width": 2, opacity: .42, fill: "none"
+        });
+        var dot = svg(plot, "circle", {cx: x(point.level), cy: y(point.gear), r: 7, fill: point.color});
+        var label = point.name + " · " + format.format(point.level) + " niv. · " + format.format(point.gear)
+          + " ilvl · " + axisFormat.format(point.days) + " j observés";
+        svg(dot, "title", {}, label);
+        var item = document.createElement("li");
+        var swatch = document.createElement("span");
+        swatch.className = "legend-swatch";
+        swatch.style.backgroundColor = point.color;
+        swatch.setAttribute("aria-hidden", "true");
+        item.append(swatch, label);
+        legend.appendChild(item);
+      });
+    }
+    function stop() {
+      window.clearInterval(timer);
+      timer = undefined;
+      if (play) play.textContent = "Lire";
+    }
+    range.addEventListener("input", function () { stop(); draw(); });
+    if (play) play.addEventListener("click", function () {
+      if (timer !== undefined) return stop();
+      if (Number(range.value) === frames.length - 1) range.value = 0;
+      play.textContent = "Pause";
+      draw();
+      timer = window.setInterval(function () {
+        range.value = Number(range.value) + 1;
+        draw();
+        if (Number(range.value) >= frames.length - 1) stop();
+      }, 760);
+    });
+    replay.hidden = false;
+    new ResizeObserver(draw).observe(plot);
+    draw();
   });
 
   // Bascule de thème : respecte le réglage système tant que la personne n'a rien choisi.
