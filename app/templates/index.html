@@ -260,7 +260,7 @@
               <div class="chart-control" data-chart-control hidden>
                 <label for="race-picker">Afficher</label>
                 <select id="race-picker" data-chart-select>
-                  <option value="comparison">Tous les personnages</option>
+                  <option value="comparison">Comparer les personnages</option>
                   <option value="total">Cumul de la squad</option>
                   <optgroup label="Par personnage">
                     {% for c in race_charts %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
@@ -272,14 +272,19 @@
               {{ race_comparison }}
               <figcaption><ul class="legend" role="list">
                 {% for c in race_charts %}
-                <li><span class="legend-swatch" style="background: {{ c.color }}" aria-hidden="true"></span>{{ c.name }} <strong>{{ c.last }}</strong></li>
+                <li><label class="tag race-series-label" style="border-color: {{ c.color }}">
+                  <input type="checkbox" value="{{ c.id }}" data-race-toggle checked hidden>
+                  <span class="legend-swatch" style="background: {{ c.color }}" aria-hidden="true"></span>
+                  {{ c.name }} <strong>{{ c.last }}</strong>
+                </label></li>
                 {% endfor %}
-              </ul><p>Le zéro au lancement sert de repère. Entre deux relevés, les niveaux sont interpolés.</p></figcaption>
+              </ul><p class="meta" data-race-empty role="status" hidden>Sélectionne au moins un personnage pour afficher sa courbe.</p>
+                <p>Le zéro au lancement sert de repère. Entre deux relevés, les niveaux sont interpolés.</p></figcaption>
             </figure>
             <figure class="chart-frame" data-chart-panel="total" hidden>
               <div class="chart-current"><strong>{{ race_total_level | number }}</strong><span>Niveaux cumulés</span></div>
               {{ race_total }}
-              <figcaption>Somme des courbes affichées dans la comparaison. Le dernier niveau connu reste la référence après le dernier relevé de chaque personnage.</figcaption>
+              <figcaption>Somme des niveaux de tous les personnages suivis. Le dernier niveau connu reste la référence après le dernier relevé de chaque personnage.</figcaption>
             </figure>
             {% for c in race_charts %}
             <figure class="chart-frame" data-chart-panel="{{ c.id }}" hidden>

@@ -1254,3 +1254,7 @@ html { scroll-padding-top: 5.5rem; }
 .squad-artisan summary { cursor: pointer; }
 .squad-connect { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .65rem 1rem; }
 .squad-connect h3, .squad-connect p { margin: 0; }
+
+.race-series-label { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; }
+.race-series-label:has(input:not(:checked)) .legend-swatch { opacity: .35; }
+.race-series-label:focus-within { outline: 2px solid var(--teal); outline-offset: 2px; }

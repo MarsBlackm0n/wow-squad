@@ -2,6 +2,26 @@
 (function () {
   "use strict";
 
+  document.querySelectorAll('[data-chart-panel="comparison"]').forEach(function (figure) {
+    var toggles = Array.from(figure.querySelectorAll("[data-race-toggle]"));
+    var groups = new Map(Array.from(figure.querySelectorAll("[data-race-series]"), function (group) {
+      return [group.dataset.raceSeries, group];
+    }));
+    var empty = figure.querySelector("[data-race-empty]");
+    toggles.forEach(function (toggle) {
+      toggle.hidden = false;
+      toggle.addEventListener("change", update);
+    });
+    function update() {
+      toggles.forEach(function (toggle) {
+        var group = groups.get(toggle.value);
+        if (group) group.setAttribute("display", toggle.checked ? "inline" : "none");
+      });
+      empty.hidden = toggles.some(function (toggle) { return toggle.checked; });
+    }
+    update();
+  });
+
   document.querySelectorAll("[data-chart-picker]").forEach(function (picker) {
     var control = picker.querySelector("[data-chart-control]");
     var select = picker.querySelector("[data-chart-select]");

@@ -223,6 +223,7 @@ class Series:
     label: str
     color: str
     points: list[tuple[datetime, float]]
+    character_id: int | None = None
 
 
 def line_chart(series: list[Series], title: str, desc: str, chart_id: str, y_label: str = "",
@@ -279,6 +280,8 @@ def line_chart(series: list[Series], title: str, desc: str, chart_id: str, y_lab
                 d.append(f"H{x:.1f}V{y:.1f}" if step else f"L{x:.1f},{y:.1f}")
             prev_y = y
         end_x = sx(pts[-1][0])
+        if s.character_id is not None:
+            parts.append(f'<g data-race-series="{s.character_id}">')
         if len(series) == 1 and len(pts) > 1:
             fill_id = f"{chart_id}-area"
             start_x = sx(pts[0][0])
@@ -292,6 +295,9 @@ def line_chart(series: list[Series], title: str, desc: str, chart_id: str, y_lab
         parts.append(f'<path class="chart-line" d="{" ".join(d)}" stroke="{s.color}" aria-hidden="true"/>')
         parts.append(f'<circle cx="{end_x:.1f}" cy="{prev_y:.1f}" r="4.5" fill="{s.color}" '
                      'stroke="var(--chart-bg)" stroke-width="1.5" aria-hidden="true"/>')
+
+        if s.character_id is not None:
+            parts.append("</g>")
 
     # Pas d'étiquettes dans le SVG : la légende est une liste HTML à côté (lisible, zoomable, traduisible).
     parts.append("</svg>")

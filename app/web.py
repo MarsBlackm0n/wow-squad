@@ -255,7 +255,7 @@ def _race_chart(db, chars: list[Character]):
         chart = line_chart([Series(c.display_name, class_color(c.class_name), points)],
                            f"Niveau de {c.display_name}", desc, f"race-{c.id}",
                            y_label="Niveau", y_min=0, step=False, tz_name=settings.timezone)
-        series.append(Series(c.display_name, comparison_color, points))
+        series.append(Series(c.display_name, comparison_color, points, character_id=c.id))
         histories.append((c.display_name, comparison_color, snaps))
         charts.append({"color": comparison_color, "id": c.id, "name": c.display_name, "last": last, "first": first,
                        "gain": gain, "launch": launch_anchor, "svg": chart})
