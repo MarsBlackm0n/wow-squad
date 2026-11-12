@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from . import insights, photos, squad
+from .instances import DUNGEON_CATALOG, INSTANCE_CATALOG, RAID_CATALOG
 from .blizzard import BlizzardCredentialsError, BlizzardError, character_slug, split_slug
 from .collector import apply_account_characters
 from .config import settings
@@ -153,6 +154,7 @@ async def home(request: Request):
                   seen=insights.recently_seen(chars), headlines=insights.headlines(events), accounts=accounts,
                   targets=targets, missions=missions, completed_missions=completed_missions, mission_chars=mission_chars,
                   mission_kinds=squad.MISSION_KINDS, mission_roles=squad.MISSION_ROLES, account_id=account_id,
+                  dungeon_catalog=DUNGEON_CATALOG, raid_catalog=RAID_CATALOG, instance_catalog=INSTANCE_CATALOG,
                   activity=insights.activity_totals(events), last_cycle=worker.last_cycle,
                   blizzard_ready=settings.blizzard_enabled, add_form=request.session.pop("add_form", None) or {})
 
@@ -404,7 +406,8 @@ def mission_account(db, request: Request) -> int:
 @router.post("/objectifs")
 async def create_mission(request: Request, titre: str = Form(""), type_objectif: str = Form(""),
                          date_prevue: str = Form(""), effectif: int = Form(5), niveau: int = Form(1),
-                         notes: str = Form(""), csrf: str = Form(""), objectif: int = Form(0)):
+                         notes: str = Form(""), csrf: str = Form(""), objectif: int = Form(0),
+                         instance_key: str = Form("")):
     check_csrf(request, csrf)
     try:
         starts_at = datetime.fromisoformat(date_prevue) if date_prevue else None
@@ -415,6 +418,12 @@ async def create_mission(request: Request, titre: str = Form(""), type_objectif:
     except (ValueError, OverflowError):
         flash(request, "Choisis une date et une heure valides.", "error")
         return back("/#ce-soir")
+    instance = INSTANCE_CATALOG.get(instance_key)
+    if instance_key and instance is None:
+        raise HTTPException(400, "Cette instance n’est pas dans le catalogue.")
+    if instance:
+        titre = titre.strip() or instance.name
+        type_objectif = instance.kind
     if (not titre.strip() or len(titre.strip()) > 80 or len(notes.strip()) > 320 or
             type_objectif not in squad.MISSION_KINDS or not 2 <= effectif <= 40 or not 1 <= niveau <= insights.MAX_LEVEL):
         flash(request, "Vérifie le titre, le type, le niveau et l’effectif de l’objectif.", "error")
@@ -430,6 +439,7 @@ async def create_mission(request: Request, titre: str = Form(""), type_objectif:
         else:
             mission = SquadMission(creator_id=account_id)
             db.add(mission)
+        mission.instance_key = instance.key if instance else None
         mission.title, mission.kind, mission.notes = titre.strip(), type_objectif, notes.strip()
         mission.starts_at, mission.target_size, mission.min_level = starts_at, effectif, niveau
         db.commit()

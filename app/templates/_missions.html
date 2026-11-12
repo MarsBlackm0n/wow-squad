@@ -1,10 +1,35 @@
 {% from "_macros.html" import avatar, icon, ruleset_badge with context %}
 
+{% macro instance_guide(entry) %}
+<dl class="instance-guide">
+  <div><dt>Accès</dt><dd>{{ entry.access }}{% if entry.coordinates %} <code>{{ entry.coordinates }}</code>{% endif %}</dd></div>
+  <div><dt>Composition conseillée</dt><dd>{{ entry.composition }}</dd></div>
+  <div><dt>À préparer</dt><dd>{{ entry.preparation }}</dd></div>
+  {% if entry.availability %}<div><dt>Disponibilité</dt><dd>{{ entry.availability }}</dd></div>{% endif %}
+</dl>
+<a class="instance-guide-link" href="{{ entry.guide }}">Voir le guide et les accès</a>
+{% endmacro %}
+
 {% macro mission_form(m=none) %}
 {% set prefix = 'mission-' ~ (m.id if m else 'new') %}
-<form class="mission-form" method="post" action="/objectifs">
+<form class="mission-form" method="post" action="/objectifs" data-instance-form>
   <input type="hidden" name="csrf" value="{{ csrf }}">
   {% if m %}<input type="hidden" name="objectif" value="{{ m.id }}">{% endif %}
+  <div class="field instance-picker" data-instance-picker hidden>
+    <label for="{{ prefix }}-instance">Choisir un donjon ou un raid</label>
+    <select id="{{ prefix }}-instance" name="instance_key">
+      <option value="">Objectif libre</option>
+      {% for label, entries in [('Donjons', dungeon_catalog), ('Raids', raid_catalog)] %}
+      <optgroup label="{{ label }}">
+        {% for entry in entries %}
+        <option value="{{ entry.key }}" data-title="{{ entry.name }}" data-kind="{{ entry.kind }}" data-level="{{ entry.level }}" data-size="{{ entry.size }}"{% if m and m.instance_key == entry.key %} selected{% endif %}>{{ entry.name }} · niv. {{ entry.level }} · {{ entry.size }} joueurs</option>
+        {% endfor %}
+      </optgroup>
+      {% endfor %}
+    </select>
+    <p class="hint">Les valeurs proposées restent modifiables. Le niveau indiqué est un repère de préparation.</p>
+    <div class="instance-preview" data-instance-preview hidden></div>
+  </div>
   <div class="field-row">
     <div class="field">
       <label for="{{ prefix }}-title">Objectif</label>
@@ -39,6 +64,12 @@
 </form>
 {% endmacro %}
 
+{% if account_id %}
+{% for entry in instance_catalog.values() %}
+<template id="instance-guide-{{ entry.key }}">{{ instance_guide(entry) }}</template>
+{% endfor %}
+{% endif %}
+
 <section class="mission-board" aria-labelledby="mission-heading">
   <div class="mission-board-head">
     <div class="mission-heading">
@@ -68,6 +99,12 @@
         <h4 id="mission-title-{{ m.id }}">{{ m.title }}</h4>
         {% if m.notes %}<p class="mission-notes">{{ m.notes }}</p>{% endif %}
       </header>
+      {% if m.instance_key in instance_catalog %}
+      <details class="instance-prep">
+        <summary>{{ icon('chevron', 'summary-chevron') }} Préparer la sortie</summary>
+        {{ instance_guide(instance_catalog[m.instance_key]) }}
+      </details>
+      {% endif %}
       <div class="mission-progress">
         <label for="mission-progress-{{ m.id }}"><strong>{{ roster.signups | length }}/{{ m.target_size }}</strong> inscrits · niveau {{ m.min_level }} minimum</label>
         <progress id="mission-progress-{{ m.id }}" max="{{ m.target_size }}" value="{{ [roster.signups | length, m.target_size] | min }}"></progress>

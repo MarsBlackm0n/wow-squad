@@ -984,3 +984,14 @@ html { scroll-padding-top: 5.5rem; }
 #journal .day { padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 #journal .day-title { color: var(--gold); }
 @media (max-width: 640px) { .story-banner { min-height: 10rem; background-position: center, 57% center; } }
+
+
+.instance-picker { padding: .85rem; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-2); }
+.instance-picker[hidden], .instance-preview[hidden] { display: none; }
+.instance-picker .hint { margin: .35rem 0 0; }
+.instance-preview, .instance-prep { padding: .65rem .75rem; margin-top: .5rem; border-radius: var(--radius-sm); background: var(--surface-2); }
+.instance-guide { display: grid; gap: .55rem; margin: .55rem 0; }
+.instance-guide dt { font-size: .78rem; color: var(--gold); font-weight: 650; }
+.instance-guide dd { margin: 0; font-size: .87rem; overflow-wrap: anywhere; }
+.instance-guide code { white-space: nowrap; font-size: .83rem; }
+.instance-guide-link { display: inline-flex; align-items: center; min-height: 44px; font-size: .87rem; }

@@ -17,6 +17,37 @@
     control.hidden = false;
   });
 
+  document.querySelectorAll("[data-instance-form]").forEach(function (form) {
+    var picker = form.querySelector("[data-instance-picker]");
+    var select = form.elements.namedItem("instance_key");
+    var preview = form.querySelector("[data-instance-preview]");
+    var kind = form.elements.namedItem("type_objectif");
+    function showGuide() {
+      var template = document.getElementById("instance-guide-" + select.value);
+      preview.replaceChildren();
+      preview.hidden = !template;
+      if (template) preview.appendChild(template.content.cloneNode(true));
+    }
+    select.addEventListener("change", function () {
+      var option = select.options[select.selectedIndex];
+      if (option.value) {
+        form.elements.namedItem("titre").value = option.dataset.title;
+        kind.value = option.dataset.kind;
+        form.elements.namedItem("niveau").value = option.dataset.level;
+        form.elements.namedItem("effectif").value = option.dataset.size;
+      }
+      showGuide();
+    });
+    kind.addEventListener("change", function () {
+      if (select.value && select.options[select.selectedIndex].dataset.kind !== kind.value) {
+        select.value = "";
+        showGuide();
+      }
+    });
+    showGuide();
+    picker.hidden = false;
+  });
+
   // Bascule de thème : respecte le réglage système tant que la personne n'a rien choisi.
   var toggle = document.querySelector("[data-theme-toggle]");
   if (toggle) {

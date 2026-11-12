@@ -107,3 +107,8 @@ affiché dans « Mes personnages » → « Identifiant Battle.net ». Dans les v
 ajoute `ADMIN_BATTLE_ID` avec cet identifiant. Sans cette variable, les actions administratives sont verrouillées.
 La création des défis, les réglages des groupes et le retrait d’un personnage passent par « Administration ».
 Les inscriptions aux sorties et les propositions de sorties restent accessibles aux joueurs connectés.
+
+
+Le formulaire de sortie propose aussi un catalogue de donjons et de raids Forever. Choisir une instance
+préremplit le titre, le type, l’effectif et le niveau conseillé. La fiche d’accès et de préparation reste
+accessible sur la sortie publiée. Le catalogue inclut les raids annoncés, dont la date d’ouverture est indiquée.

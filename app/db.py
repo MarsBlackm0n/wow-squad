@@ -112,6 +112,7 @@ class SquadMission(Base):
     creator_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"))
     title: Mapped[str] = mapped_column(String(80))
     kind: Mapped[str] = mapped_column(String(16))
+    instance_key: Mapped[str | None] = mapped_column(String(40), nullable=True)
     notes: Mapped[str] = mapped_column(String(320), default="")
     starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     target_size: Mapped[int] = mapped_column(Integer)
@@ -164,6 +165,9 @@ def init_db() -> None:
         snapshots = inspect(connection).get_columns("snapshots")
         if not any(column["name"] == "experience" for column in snapshots):
             connection.execute(text("ALTER TABLE snapshots ADD COLUMN experience INTEGER"))
+        missions = inspect(connection).get_columns("squad_missions")
+        if not any(column["name"] == "instance_key" for column in missions):
+            connection.execute(text("ALTER TABLE squad_missions ADD COLUMN instance_key VARCHAR(40)"))
 
 
 def kv_get(db: Session, key: str) -> dict | None:
