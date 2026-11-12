@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import insights, photos, squad
 from .blizzard import BlizzardCredentialsError, BlizzardError, character_slug, split_slug
-from .collector import sync_account
+from .collector import apply_account_characters
 from .config import settings
 from .db import Account, Character, Event, PlayerPhoto, SessionLocal, Snapshot, select, utcnow
 from .stats import compute_week, leaderboard
@@ -41,7 +41,8 @@ def csrf_token(request: Request) -> str:
 
 
 def check_csrf(request: Request, token: str) -> None:
-    if not hmac.compare_digest(token or "", request.session.get("csrf", "")):
+    expected = request.session.get("csrf")
+    if not expected or not hmac.compare_digest(token.encode(), expected.encode()):
         raise HTTPException(400, "Formulaire expiré, recharge la page.")
 
 
@@ -51,12 +52,27 @@ def flash(request: Request, message: str, kind: str = "success") -> None:
 
 def render(request: Request, template: str, status_code: int = 200, **context) -> HTMLResponse:
     context.update(request=request, csrf=csrf_token(request), flashes=request.session.pop("flash", []),
-                   logged_in=bool(request.session.get("auth")), battletag=request.session.get("battletag"))
+                   logged_in=bool(request.session.get("auth")), qg_access=is_authenticated(request),
+                   account_connected=bool(request.session.get("account_id")))
     return templates.TemplateResponse(request, template, context, status_code=status_code)
 
 
 def is_authenticated(request: Request) -> bool:
     return not settings.site_password or bool(request.session.get("auth"))
+
+
+def can_manage_character(request: Request, char: Character) -> bool:
+    if char.account_id is not None:
+        return char.account_id == request.session.get("account_id")
+    return not char.battletag
+
+
+def require_character_access(request: Request, char: Character | None) -> Character:
+    if char is None:
+        raise HTTPException(404, "Ce perso n'existe pas (ou plus).")
+    if not can_manage_character(request, char):
+        raise HTTPException(403, "Connecte le compte Battle.net associé pour modifier ce perso.")
+    return char
 
 
 def back(path: str = "/") -> RedirectResponse:
@@ -68,7 +84,7 @@ def back(path: str = "/") -> RedirectResponse:
 @router.get("/connexion", response_class=HTMLResponse)
 async def login_form(request: Request, suite: str = "/"):
     if is_authenticated(request):
-        return back(suite if suite.startswith("/") else "/")
+        return back(suite if suite.startswith("/") and not suite.startswith(("//", "/\\")) else "/")
     return render(request, "login.html", suite=suite)
 
 
@@ -77,7 +93,7 @@ async def login(request: Request, password: str = Form(""), csrf: str = Form("")
     check_csrf(request, csrf)
     if settings.site_password and hmac.compare_digest(password, settings.site_password):
         request.session["auth"] = True
-        return back(suite if suite.startswith("/") and not suite.startswith("//") else "/")
+        return back(suite if suite.startswith("/") and not suite.startswith(("//", "/\\")) else "/")
     return render(request, "login.html", status_code=401, suite=suite,
                   error="Mot de passe incorrect. Demande-le à la personne qui a créé le QG.")
 
@@ -113,6 +129,18 @@ async def home(request: Request):
                   seen=insights.recently_seen(chars), headlines=insights.headlines(events), accounts=accounts,
                   last_cycle=worker.last_cycle,
                   blizzard_ready=settings.blizzard_enabled, add_form=request.session.pop("add_form", None) or {})
+
+
+@router.get("/compte", response_class=HTMLResponse)
+async def account_page(request: Request):
+    with SessionLocal() as db:
+        account_id = request.session.get("account_id")
+        account = db.get(Account, account_id) if account_id is not None else None
+        chars = db.scalars(select(Character).where(Character.account_id == account.id)
+                           .order_by(Character.level.desc(), Character.name, Character.surname)).all() if account else []
+    if not account:
+        request.session.pop("account_id", None)
+    return render(request, "account.html", account=account, chars=chars)
 
 
 def _race_chart(db, chars: list[Character]):
@@ -171,7 +199,7 @@ async def character_page(request: Request, char_id: int):
     return render(request, "character.html", char=char, pace=pace, goal_cfg=goal_cfg, snaps=snaps, events=events, level_chart=level_chart,
                   ilvl_chart=ilvl_chart, professions=state.get("professions") or {},
                   mounts=state.get("mounts"), achievements=state.get("achievements"),
-                  honorable_kills=state.get("honorable_kills"))
+                  honorable_kills=state.get("honorable_kills"), can_manage=can_manage_character(request, char))
 
 
 # --- Actions -------------------------------------------------------------------------------------
@@ -220,10 +248,9 @@ async def refresh_character_route(request: Request, char_id: int, csrf: str = Fo
 async def set_player(request: Request, char_id: int, joueur: str = Form(""), csrf: str = Form("")):
     check_csrf(request, csrf)
     with SessionLocal() as db:
-        char = db.get(Character, char_id)
-        if char:
-            char.player = joueur.strip()[:40]
-            db.commit()
+        char = require_character_access(request, db.get(Character, char_id))
+        char.player = joueur.strip()[:40]
+        db.commit()
     flash(request, "Joueur mis à jour.")
     return back(f"/perso/{char_id}")
 
@@ -232,12 +259,11 @@ async def set_player(request: Request, char_id: int, joueur: str = Form(""), csr
 async def delete_character(request: Request, char_id: int, csrf: str = Form("")):
     check_csrf(request, csrf)
     with SessionLocal() as db:
-        char = db.get(Character, char_id)
-        if char:
-            name = char.display_name
-            db.delete(char)
-            db.commit()
-            flash(request, f"{name} a quitté la squad (historique supprimé).")
+        char = require_character_access(request, db.get(Character, char_id))
+        name = char.display_name
+        db.delete(char)
+        db.commit()
+        flash(request, f"{name} a quitté la squad (historique supprimé).")
     return back("/")
 
 # --- Réglages de la squad : objectif et groupes ---------------------------------------------------
@@ -291,8 +317,8 @@ async def upload_photo(request: Request, char_id: int, photo: UploadFile | None 
                        zoom: float = Form(1.0), pos_x: float = Form(50), pos_y: float = Form(50)):
     check_csrf(request, csrf)
     with SessionLocal() as db:
-        char = db.get(Character, char_id)
-        key = photos.player_key(char.player if char else "")
+        char = require_character_access(request, db.get(Character, char_id))
+        key = photos.character_key(char)
         if not key:
             flash(request, "Indique d'abord le joueur derrière ce perso : la photo appartient au joueur.", "error")
             return back(f"/perso/{char_id}#photo")
@@ -310,7 +336,7 @@ async def upload_photo(request: Request, char_id: int, photo: UploadFile | None 
             db.add(PlayerPhoto(key=key, image=image))
         db.commit()
         photos.refresh(db)
-        flash(request, f"Photo de {char.player} enregistrée. Elle s'affiche sur tous ses persos.")
+        flash(request, "Photo enregistrée sur les persos du même joueur.")
     return back(f"/perso/{char_id}")
 
 
@@ -318,20 +344,29 @@ async def upload_photo(request: Request, char_id: int, photo: UploadFile | None 
 async def delete_photo(request: Request, char_id: int, csrf: str = Form("")):
     check_csrf(request, csrf)
     with SessionLocal() as db:
-        char = db.get(Character, char_id)
-        row = db.get(PlayerPhoto, photos.player_key(char.player if char else ""))
+        char = require_character_access(request, db.get(Character, char_id))
+        row = db.get(PlayerPhoto, photos.character_key(char))
         if row:
             db.delete(row)
             db.commit()
             photos.refresh(db)
-            flash(request, f"Photo de {char.player} retirée.")
+            flash(request, "Photo retirée.")
     return back(f"/perso/{char_id}")
+
+
+@router.get("/photo/account/{account_id}")
+async def account_photo(account_id: int) -> Response:
+    return photo_response(f"account/{account_id}")
 
 
 @router.get("/photo/{key}")
 async def player_photo(key: str) -> Response:
+    return photo_response(photos.player_key(key))
+
+
+def photo_response(key: str) -> Response:
     with SessionLocal() as db:
-        row = db.get(PlayerPhoto, photos.player_key(key))
+        row = db.get(PlayerPhoto, key)
     if not row:
         raise HTTPException(404, "Pas de photo pour ce joueur.")
     # L'URL change à chaque nouvelle photo (?v=...) : on peut la mettre en cache longtemps.
@@ -355,7 +390,7 @@ async def battlenet_login(request: Request):
     worker = request.app.state.worker
     if not settings.battlenet_login_enabled or not worker.bz:
         flash(request, "La connexion Battle.net n'est pas configurée (PUBLIC_URL et identifiants API).", "error")
-        return back("/")
+        return back("/compte")
     state = secrets.token_urlsafe(16)
     request.session["oauth_state"] = state
     return RedirectResponse(worker.bz.authorize_url(settings.oauth_redirect_uri, state), status_code=302)
@@ -369,7 +404,7 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         state.encode("utf-8"), expected_state.encode("utf-8")
     ) or not worker.bz:
         flash(request, "Connexion Battle.net annulée ou expirée.", "error")
-        return back("/")
+        return back("/compte")
     try:
         token = await worker.bz.exchange_code(code, settings.oauth_redirect_uri)
         info = await worker.bz.userinfo(token["access_token"])
@@ -378,7 +413,13 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         message = (str(exc) if isinstance(exc, BlizzardCredentialsError)
                    else f"Battle.net a refusé la connexion ({exc}).")
         flash(request, message, "error")
-        return back("/")
+        return back("/compte")
+
+    try:
+        entries = await worker.bz.account_characters(token["access_token"])
+    except BlizzardError as exc:
+        log.warning("Liste des persos du compte : %s", exc)
+        entries = None
 
     with SessionLocal() as db:
         account = db.scalars(select(Account).where(Account.battle_id == int(info["id"]))).first()
@@ -386,14 +427,13 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
             account = Account(battle_id=int(info["id"]), battletag=info.get("battletag", "Inconnu"))
             db.add(account)
         account.battletag = info.get("battletag", account.battletag)
-        worker.remember_user_token(account.battle_id, token["access_token"], int(token.get("expires_in", 86400)))
-        try:
-            added = await sync_account(db, worker.bz, account, token["access_token"], add_missing=True)
-        except BlizzardError as exc:
-            log.warning("Liste des persos du compte : %s", exc)
-            added = -1
+        db.flush()
+        added = apply_account_characters(db, worker.bz.region, account, entries, True) if entries is not None else -1
         db.commit()
-    request.session["battletag"] = info.get("battletag")
+        photos.refresh(db)
+    worker.remember_user_token(account.battle_id, token["access_token"], int(token.get("expires_in", 86400)))
+    request.session["account_id"] = account.id
+    request.session.pop("battletag", None)
     if added > 0:
         flash(request, f"Compte lié : {added} perso(s) Forever ajouté(s). Ils seront suivis en continu, sans reconnexion.")
         worker.trigger_cycle()
@@ -401,7 +441,7 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         flash(request, "Compte lié. Aucun nouveau perso : ils sont déjà suivis, ou pas encore niveau 10.", "info")
     else:
         flash(request, "Compte lié, mais Battle.net ne renvoie pas encore tes persos Forever. Ajoute-les à la main en attendant.", "error")
-    return back("/#squad")
+    return back("/compte")
 
 
 @router.get("/healthz")

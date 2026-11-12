@@ -14,8 +14,9 @@ from urllib.parse import unquote, urlparse
 
 from sqlalchemy.orm import Session
 
+from . import photos
 from .blizzard import Blizzard, NotFound, character_slug
-from .db import Account, Character, Event, Snapshot, select, utcnow
+from .db import Account, Character, Event, PlayerPhoto, Snapshot, select, utcnow
 
 log = logging.getLogger(__name__)
 
@@ -346,21 +347,39 @@ async def refresh_character(db: Session, bz: Blizzard, char: Character) -> list[
 async def sync_account(db: Session, bz: Blizzard, account: Account, user_token: str, add_missing: bool = False) -> int:
     """Met à jour le résumé (niveau, classe...) des persos Forever du compte. Renvoie le nombre de persos ajoutés."""
     entries = await bz.account_characters(user_token)
+    db.refresh(account)
+    return apply_account_characters(db, bz.region, account, entries, add_missing)
+
+
+def apply_account_characters(db: Session, region: str, account: Account, entries: list[dict],
+                             add_missing: bool = False) -> int:
     added = 0
+    first_import = add_missing and db.scalar(select(Character.id).where(Character.account_id == account.id).limit(1)) is None
     for entry in entries:
         slug = account_entry_slug(entry)
         if not slug:
             continue
-        char = db.scalars(select(Character).where(Character.region == bz.region, Character.slug == slug)).first()
+        char = db.scalars(select(Character).where(Character.region == region, Character.slug == slug)).first()
         summary = account_entry_summary(entry)
         if char is None:
             if not add_missing:
                 continue
-            char = Character(region=bz.region, slug=slug, name=summary["name"] or slug, surname=summary["surname"],
+            char = Character(region=region, slug=slug, name=summary["name"] or slug, surname=summary["surname"],
                              player=account.battletag.split("#")[0], battletag=account.battletag, state={})
             db.add(char)
             db.flush()
             added += 1
+        elif char.account_id != account.id and (char.account_id is not None or not add_missing):
+            continue
+        if first_import and char.account_id is None:
+            old_key = photos.character_key(char)
+            previous_photo = db.get(PlayerPhoto, old_key) if old_key else None
+            if previous_photo:
+                new_key = f"account/{account.id}"
+                if not db.get(PlayerPhoto, new_key):
+                    db.add(PlayerPhoto(key=new_key, image=previous_photo.image, updated_at=previous_photo.updated_at))
+                first_import = False
+        char.account_id = account.id
         char.battletag = account.battletag
         state = dict(char.state or {})
         state["account_summary"] = summary

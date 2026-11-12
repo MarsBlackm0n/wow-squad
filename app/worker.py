@@ -66,9 +66,10 @@ class Worker:
                     if token:
                         try:
                             await sync_account(db, self.bz, account, token)
+                            db.commit()
                         except Exception as exc:  # noqa: BLE001
+                            db.rollback()
                             log.info("Synchro du compte %s impossible : %s", account.battletag, exc)
-                db.commit()
                 for char in db.scalars(select(Character)).all():
                     await refresh_character(db, self.bz, char)
                     db.commit()

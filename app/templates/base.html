@@ -10,8 +10,8 @@
   <link rel="icon" href="{{ url_for('static', path='favicon.svg') }}" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=6">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&amp;family=Inter:opsz,wght@14..32,400..800&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=7">
   <script>
     // Appliqué avant l'affichage pour éviter un flash du mauvais thème.
     try { var t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
@@ -34,16 +34,25 @@
       <nav class="site-nav" aria-label="Navigation principale">
         <ul>
           <li><a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>QG</a></li>
-          <li><a href="/#squad">Ajouter un perso</a></li>
+          {% if qg_access %}
+          <li><a href="/compte" {% if request.url.path == '/compte' %}aria-current="page"{% endif %}>Mes personnages</a></li>
+          <li><a href="/#squad">La squad</a></li>
+          {% endif %}
         </ul>
       </nav>
       <div class="header-tools">
+        {% if settings.battlenet_login_enabled %}
+        <a class="button button-secondary button-small battlenet-link" href="/auth/battlenet"
+           {% if account_connected %}aria-label="Synchroniser mes personnages avec Battle.net"{% endif %}>
+          {{ 'Synchroniser Battle.net' if account_connected else 'Connexion Battle.net' }}
+        </a>
+        {% endif %}
         <button type="button" class="icon-button" data-theme-toggle aria-pressed="false" hidden>
           <svg class="icon icon-moon" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg>
           <svg class="icon icon-sun" aria-hidden="true" focusable="false"><use href="#i-sun"/></svg>
           <span class="visually-hidden">Thème sombre</span>
         </button>
-        {% if settings.site_password and logged_in %}
+        {% if logged_in or account_connected %}
         <form method="post" action="/deconnexion">
           <input type="hidden" name="csrf" value="{{ csrf }}">
           <button type="submit" class="button button-ghost button-small">Se déconnecter</button>

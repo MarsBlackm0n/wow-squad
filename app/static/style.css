@@ -661,3 +661,135 @@ input[type="number"]:focus-visible, input[type="date"]:focus-visible { outline-o
   body { background: #fff; color: #000; }
 }
 .login-mark { width: 44px; height: 44px; color: var(--accent); margin-bottom: 1rem; }
+
+/* Le QG, entre les deux factions. */
+:root {
+  --display-font: "Cinzel", Georgia, serif;
+  --alliance-light: #91c6ff;
+  --horde-light: #ffae91;
+}
+
+.site-header { position: sticky; top: 0; z-index: 10; border-top: 2px solid transparent; border-image: linear-gradient(90deg, #467cca, #b99a60 50%, #bc4839) 1; }
+.header-inner { gap: .25rem 1.25rem; }
+.brand-name { font-family: var(--display-font); font-weight: 800; }
+.header-tools { flex-wrap: wrap; }
+.battlenet-link { white-space: nowrap; }
+
+.hero { padding-top: 1.5rem; }
+.faction-banner {
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  min-height: clamp(16rem, 33vw, 27rem);
+  overflow: hidden;
+  padding: 3rem 1.2rem;
+  border: 1px solid #665743;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(0deg, #090d17dd, transparent 60%),
+    linear-gradient(90deg, #101a2e22, #090d17b5 47%, #090d17b5 53%, #240f0d22),
+    url("factions.jpg") center 54% / cover no-repeat,
+    linear-gradient(105deg, #1b3660, #101624 49%, #642d23);
+  text-align: center;
+  color: #fff5df;
+}
+.faction-banner::after {
+  content: "";
+  position: absolute;
+  inset: .5rem;
+  border: 1px solid #dfc58c46;
+  border-radius: calc(var(--radius) - 5px);
+  pointer-events: none;
+}
+.faction-banner h1 {
+  color: inherit;
+  font-family: var(--display-font);
+  font-size: clamp(2.15rem, 6.4vw, 5rem);
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+  text-shadow: 0 3px 22px #080b10, 0 2px 4px #080b10;
+}
+.faction-banner .hero-status,
+.account-tag {
+  display: inline-block;
+  margin: 0;
+  padding: .3rem .65rem;
+  border-radius: 4px;
+  background: #0b101bd9;
+  color: #f2eee7;
+}
+.faction-banner .status-dot { display: inline-block; margin-right: .35rem; vertical-align: .12em; }
+.faction-labels {
+  display: flex;
+  position: absolute;
+  inset: auto 1.2rem 1rem;
+  justify-content: space-between;
+  font-family: var(--display-font);
+  font-size: .73rem;
+  font-weight: 800;
+  letter-spacing: .15em;
+}
+.faction-labels span { padding: .2rem .45rem; border-radius: 3px; background: #0b101bd9; }
+.faction-labels span:first-child { color: var(--alliance-light); }
+.faction-labels span:last-child { color: var(--horde-light); }
+
+.hero > .kpis {
+  margin-top: 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding-inline: 1rem;
+  background: var(--surface);
+}
+.account-banner { min-height: 14rem; margin: 1.5rem 0; }
+.account-banner h1 { font-size: clamp(2rem, 5vw, 3.7rem); }
+.roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; margin: 0; padding: 0; list-style: none; }
+.roster-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 100%;
+  padding: 1.1rem;
+  border: 1px solid var(--line-strong);
+  border-top: 2px solid var(--faction-accent, var(--line-strong));
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+[data-faction="alliance"] { --faction-accent: #4b83d3; }
+[data-faction="horde"] { --faction-accent: #d35d45; }
+.roster-card:hover { background: var(--surface-2); border-color: var(--faction-accent, var(--link)); }
+.roster-card-head, .roster-card-facts { display: flex; align-items: center; gap: .8rem; }
+.roster-card-head h2 { font-size: 1.1rem; overflow-wrap: anywhere; }
+.roster-card-head p { margin: .15rem 0 0; }
+.roster-chevron { margin-left: auto; flex-shrink: 0; }
+.roster-card-facts { justify-content: space-between; margin-top: auto; }
+.roster-card-facts .level { flex: 1; }
+.account-empty { max-width: 40rem; margin-inline: auto; }
+.account-empty p { color: var(--text-2); }
+.profile[data-faction] { border-top: 2px solid var(--faction-accent, var(--line)); }
+.profile-name { font-family: var(--display-font); overflow-wrap: anywhere; }
+
+html { scroll-padding-top: 5.5rem; }
+@media (max-width: 850px) { html { scroll-padding-top: 10rem; } }
+@media (max-width: 640px) {
+  .header-tools { column-gap: .35rem; }
+  .faction-banner {
+    min-height: 15rem;
+    justify-content: flex-end;
+    padding: 6rem .85rem 1.25rem;
+    background-position: center, center, center top, center;
+    background-size: auto, auto, 100% auto, auto;
+  }
+  .faction-labels { inset: .85rem .9rem auto; }
+  .hero > .kpis { padding-inline: .7rem; }
+}
+@media (forced-colors: active) {
+  .faction-banner::after { border-color: CanvasText; }
+  .site-header { border-image: none; border-top-color: CanvasText; }
+}

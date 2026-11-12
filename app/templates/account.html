@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, faction_badge, icon, level_bar %}
+
+{% block title %}Mes personnages{% endblock %}
+
+{% block content %}
+<section class="faction-banner account-banner" aria-labelledby="account-title">
+  <h1 id="account-title">Mes personnages</h1>
+  {% if account %}<p class="account-tag">{{ account.battletag }}</p>{% endif %}
+</section>
+
+{% if chars %}
+<ul class="roster" role="list" aria-label="Mes personnages Forever">
+  {% for char in chars %}
+  {% set summary = (char.state or {}).get('account_summary', {}) %}
+  {% set faction = char.faction or summary.faction or '' %}
+  <li>
+    <a class="roster-card" data-faction="{{ faction | faction_key }}" href="/perso/{{ char.id }}"
+       style="--class-color: {{ char.class_name | class_color }}">
+      <div class="roster-card-head">
+        {{ avatar(char) }}
+        <div>
+          <h2>{{ char.display_name }}</h2>
+          <p class="meta">{{ [char.race or summary.race, char.class_name or summary.class_name] | select | join(' · ') }}</p>
+        </div>
+        {{ icon('chevron', 'roster-chevron') }}
+      </div>
+      <div class="roster-card-facts">
+        {{ level_bar(char.level or summary.level, max_level) }}
+        {{ faction_badge(faction) }}
+      </div>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<section class="panel-block account-empty">
+  {% if account %}
+  <h2>Aucun personnage importé</h2>
+  <p>Battle.net peut mettre du temps à afficher un perso Forever. Une fois le niveau 10 atteint, déconnecte-toi du jeu puis relance la synchronisation.</p>
+  {% if settings.battlenet_login_enabled %}
+  <a class="button button-primary" href="/auth/battlenet">Synchroniser Battle.net</a>
+  {% endif %}
+  {% else %}
+  <h2>Retrouve tes personnages Forever</h2>
+  {% if settings.battlenet_login_enabled %}
+  <p>Connecte-toi sur Battle.net pour importer tes personnages et retrouver leur progression ici.</p>
+  <a class="button button-primary" href="/auth/battlenet">Connexion Battle.net</a>
+  {% else %}
+  <p>La connexion Battle.net est indisponible sur cette instance.</p>
+  {% endif %}
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -11,7 +11,7 @@
 
 {# Photo du joueur en priorité, puis portrait Blizzard du perso, puis initiale. #}
 {% macro avatar(char, size='md') -%}
-{% set src = photo_url(char.player) or char.avatar_url %}
+{% set src = photo_url(char) or char.avatar_url %}
 <span class="avatar avatar-{{ size }}" style="--class-color: {{ char.class_name | class_color }}" aria-hidden="true">
   {%- if src -%}
   <img src="{{ src }}" alt="" width="64" height="64" loading="lazy" decoding="async">

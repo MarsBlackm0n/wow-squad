@@ -150,3 +150,36 @@ def test_photo_rejects_non_images_and_big_files():
     with pytest.raises(ValueError):
         process(b"x" * (MAX_UPLOAD_BYTES + 1))
     assert player_key("  Max   Le Grand ") == "max le grand"
+
+def test_account_import_links_existing_characters_and_keeps_ownership():
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+
+    from app.collector import apply_account_characters
+    from app.db import Account, Base, PlayerPhoto
+    from app.photos import character_key
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine) as db:
+        owner = Account(battle_id=1, battletag="Ami#123")
+        other = Account(battle_id=2, battletag="Ami#456")
+        main = Character(region="eu", slug="mars-blackmon", name="Mars", surname="Blackmon", player="Ami",
+                         battletag="Ancien#123", state={"synced": True})
+        db.add_all([owner, other, main, PlayerPhoto(key="ami", image=b"legacy-photo")])
+        db.flush()
+        entry = {"name": "Mars", "surname": "Blackmon"}
+        reroll = {"name": "Nova", "surname": "Blackmon"}
+
+        assert apply_account_characters(db, "eu", owner, [entry, reroll], add_missing=True) == 1
+        db.flush()
+        assert main.account_id == owner.id
+        assert main.state["synced"] is True
+        assert db.get(PlayerPhoto, character_key(main)).image == b"legacy-photo"
+        assert len(db.scalars(select(Character).where(Character.account_id == owner.id)).all()) == 2
+
+        assert apply_account_characters(db, "eu", other, [entry], add_missing=True) == 0
+        assert main.account_id == owner.id
+        owner.battletag = "Nouveau#123"
+        assert apply_account_characters(db, "eu", owner, [entry, reroll], add_missing=True) == 0
+        assert main.battletag == "Nouveau#123"

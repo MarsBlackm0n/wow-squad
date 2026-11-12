@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 
 from sqlalchemy import (JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, LargeBinary, String, Text,
-                        UniqueConstraint, create_engine, select)
+                        UniqueConstraint, create_engine, inspect, select, text)
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 
 from .config import settings
@@ -29,6 +29,8 @@ class Character(Base):
     surname: Mapped[str] = mapped_column(String(40), default="")
     player: Mapped[str] = mapped_column(String(40), default="")  # le pote derrière le perso
     battletag: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    account_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id"), index=True)
 
     class_name: Mapped[str] = mapped_column(String(40), default="")
     race: Mapped[str] = mapped_column(String(40), default="")
@@ -129,6 +131,11 @@ SessionLocal = sessionmaker(engine, expire_on_commit=False)
 
 def init_db() -> None:
     Base.metadata.create_all(engine)
+    with engine.begin() as connection:
+        columns = inspect(connection).get_columns("characters")
+        if not any(column["name"] == "account_id" for column in columns):
+            connection.execute(text("ALTER TABLE characters ADD COLUMN account_id INTEGER REFERENCES accounts(id)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_characters_account_id ON characters (account_id)"))
 
 
 def kv_get(db: Session, key: str) -> dict | None:

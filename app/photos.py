@@ -1,6 +1,6 @@
 """Photos de profil des joueurs : validation, recadrage carré, réencodage WebP, index en mémoire pour les URLs.
 
-Une photo appartient à un joueur (le champ `Character.player`), pas à un perso : tous ses persos l'affichent.
+La photo est partagée par les persos du même compte, ou du même joueur pour les ajouts manuels.
 Le réencodage supprime les métadonnées (EXIF, position GPS des photos de téléphone).
 """
 
@@ -12,7 +12,7 @@ from urllib.parse import quote
 from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
-from .db import PlayerPhoto, select
+from .db import Character, PlayerPhoto, select
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 SIZE = 256
@@ -24,6 +24,13 @@ _index: dict[str, int] = {}
 
 def player_key(player: str | None) -> str:
     return " ".join((player or "").split()).lower()[:40]
+
+
+def character_key(char: Character) -> str:
+    if char.account_id is not None:
+        return f"account/{char.account_id}"
+    key = player_key(char.player)
+    return "" if key.startswith("account/") else key
 
 
 def crop_box(width: int, height: int, zoom: float = 1.0, cx: float = 0.5, cy: float = 0.5) -> tuple[int, int, int, int]:
@@ -68,8 +75,8 @@ def refresh(db: Session) -> None:
     _index.update({key: int(updated.timestamp()) for key, updated in rows})
 
 
-def url_for(player: str | None) -> str | None:
-    key = player_key(player)
+def url_for(char: Character) -> str | None:
+    key = character_key(char)
     if key and key in _index:
         return f"/photo/{quote(key)}?v={_index[key]}"
     return None

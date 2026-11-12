@@ -6,15 +6,10 @@
 {% macro squad_panel() %}
 <div class="squad-grid">
   <div class="panel-block join-card join-card-link">
-    <h3>Lier son compte Battle.net</h3>
-    <p>Connexion sur la page officielle de Blizzard : ton mot de passe n'arrive jamais ici. Blizzard nous transmet seulement la liste de tes persos Forever.</p>
-    <ul class="checklist" role="list">
-      <li>{{ icon('check') }} Une seule fois suffit, le suivi continue ensuite tout seul</li>
-      <li>{{ icon('check') }} Aucun mot de passe ni jeton enregistré</li>
-      <li>{{ icon('check') }} À refaire seulement pour un nouveau reroll</li>
-    </ul>
+    <h3>Personnages Battle.net</h3>
+    <p>Retrouve les personnages Forever importés depuis ton compte et ouvre leurs fiches depuis ton espace joueur.</p>
     {% if settings.battlenet_login_enabled %}
-    <a class="button button-primary" href="/auth/battlenet">Lier mon compte Battle.net</a>
+    <a class="button button-primary" href="/compte">Mes personnages</a>
     {% else %}
     <p class="hint">Pas encore disponible : il faut définir <code>PUBLIC_URL</code> et les identifiants API (voir le README).</p>
     {% endif %}
@@ -148,7 +143,8 @@
 
 {% block content %}
 <section class="hero" aria-labelledby="hero-title">
-  <div class="hero-head">
+  <div class="hero-head faction-banner">
+    <div class="faction-labels" aria-hidden="true"><span>Alliance</span><span>Horde</span></div>
     <h1 id="hero-title">{{ settings.squad_name }}</h1>
     <p class="hero-status">
       {% if not blizzard_ready %}

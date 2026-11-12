@@ -11,7 +11,7 @@
   </ol>
 </nav>
 
-<section class="profile" style="--class-color: {{ char.class_name | class_color }}" aria-labelledby="char-title">
+<section class="profile" data-faction="{{ char.faction | faction_key }}" style="--class-color: {{ char.class_name | class_color }}" aria-labelledby="char-title">
   {{ avatar(char, 'lg') }}
   <div class="profile-main">
     <h1 id="char-title" class="profile-name">{{ char.name }} <span class="profile-surname">{{ char.surname }}</span></h1>
@@ -108,16 +108,17 @@
     </section>
     {% endif %}
 
+    {% if can_manage %}
     <section id="photo" class="panel-block" aria-labelledby="photo-title" tabindex="-1">
       <h2 id="photo-title" class="block-title">Photo {{ "de " ~ char.player if char.player else "du joueur" }}</h2>
-      {% if char.player %}
-      {% set current = photo_url(char.player) %}
+      {% if char.player or char.account_id %}
+      {% set current = photo_url(char) %}
       <div class="photo-row">
         <span class="photo-preview" style="--class-color: {{ char.class_name | class_color }}" data-photo-preview>
           {%- if current %}<img src="{{ current }}" alt="Photo actuelle de {{ char.player }}" width="72" height="72">
           {%- else %}<span class="avatar-initial" aria-hidden="true">{{ char.player[:1] | upper }}</span>{% endif -%}
         </span>
-        <p id="photo-hint" class="hint">Partagée par tous les persos de {{ char.player }}. JPG, PNG, WebP ou GIF, 5&nbsp;Mo max, recadrée en carré.</p>
+        <p id="photo-hint" class="hint">Partagée par les persos du même joueur. JPG, PNG, WebP ou GIF, 5&nbsp;Mo max, recadrée en carré.</p>
       </div>
       <form method="post" action="/perso/{{ char.id }}/photo" enctype="multipart/form-data" class="photo-form">
         <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -176,6 +177,7 @@
         </form>
       </details>
     </section>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

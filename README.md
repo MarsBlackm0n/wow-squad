@@ -25,8 +25,12 @@ autant que le niveau : c'est lui qui désigne le « meilleur rythme » et qui es
 
 - La liaison passe par la **page officielle Blizzard** (OAuth). Le mot de passe n'arrive jamais sur l'app.
 - Blizzard fournit un jeton en lecture seule valable 24 h, **sans jeton de renouvellement** : c'est une limite
-  de leur API. On ne le garde qu'en mémoire, jamais en base. Seul le BattleTag est enregistré.
-- **Lier une fois suffit** : la liaison sert à découvrir les persos. Le suivi se fait ensuite avec le jeton
+  de leur API. On ne le garde qu'en mémoire, jamais en base. L’identifiant du compte et le BattleTag sont enregistrés.
+- Chaque ami ouvre le QG avec le mot de passe partagé, puis utilise **Connexion Battle.net** dans l'en-tête.
+  La page **Mes personnages** affiche ses personnages Forever, rattachés à l'identifiant stable du compte.
+  Les fiches restent visibles dans le QG et seul le compte associé peut modifier ou retirer un perso importé.
+- Les joueurs déjà liés doivent se reconnecter une fois pour rattacher leurs persos existants à leur espace.
+- **Lier une fois suffit ensuite** : la liaison sert à découvrir les persos. Le suivi se fait ensuite avec le jeton
   applicatif de l'app, renouvelé automatiquement, sans limite de durée. On ne revient lier son compte que pour
   récupérer un nouveau reroll.
 - Sans liaison, on peut ajouter un perso avec son prénom et son nom (« Mars » + « Blackmon »).
