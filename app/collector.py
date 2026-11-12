@@ -17,17 +17,18 @@ from sqlalchemy.orm import Session
 from . import photos
 from .blizzard import Blizzard, NotFound, character_slug
 from .db import Account, Character, Event, PlayerPhoto, Snapshot, kv_get, select, utcnow
+from .ui import _fold, class_key
 
 log = logging.getLogger(__name__)
 
 STAT_TOTAL_DEATHS = 60
 STAT_HONORABLE_KILLS = 588
-DEATH_NAMES = ("total deaths", "morts totales", "nombre total de morts", "décès")
+DEATH_NAMES = ("total deaths", "morts totales", "nombre total de morts", "total des morts", "nombre total de deces", "deces")
 HK_NAMES = ("honorable kills", "victoires honorables", "victoires honorables totales")
 IGNORED_SLOTS = {"SHIRT", "TABARD"}
 PROFESSION_RANKS = (75, 150, 225, 300, 375, 450)
 # Événements poussés en direct sur Telegram / Discord (les autres restent dans le fil et le récap).
-LIVE_KINDS = {"joined", "level_milestone", "achievement", "mount", "profession_rank", "guild", "ilvl"}
+LIVE_KINDS = {"joined", "level_milestone", "achievement", "mount", "profession_rank", "guild", "ilvl", "deaths"}
 
 
 def _name(value) -> str:
@@ -133,7 +134,7 @@ def parse_statistics(stats: dict | None) -> dict:
     if not stats:
         return out
     for stat in _walk_statistics(stats):
-        sid, name = stat.get("id"), _name(stat).lower()
+        sid, name = _int(stat.get("id")), _fold(_name(stat)).strip()
         qty = _int(stat.get("quantity"))
         if qty is None:
             continue
@@ -184,6 +185,44 @@ class NewEvent:
     icon: str
     text: str
     data: dict = field(default_factory=dict)
+
+
+DEATH_CLASS_LINES = {
+    "hunter": ("Le pet a tenu plus longtemps que son maître.", "Feindre la mort. Le mot important, c’était « feindre »."),
+    "warrior": ("La charge était impeccable. Le retour, à pied.", "Le cimetière a pris l’aggro."),
+    "mage": ("Pierre de foyer annulée pour cause de décès.", "Le bloc de glace était probablement en recharge."),
+    "rogue": ("Disparition réussie. Réapparition au cimetière.", "Furtivité : 100 %. Survie : à revoir."),
+    "priest": ("Le rez commence toujours par un volontaire.", "La bulle avait visiblement pris sa pause."),
+    "paladin": ("Bubulle + pierre de foyer : il manquait la bubulle.", "La Lumière a laissé un message d’absence."),
+    "warlock": ("La pierre d’âme était dans l’autre sac.", "Même le diablotin a lâché un « gg »."),
+    "shaman": ("Le totem n’a rien vu, rien entendu.", "Le totem de vie n’a pas reçu le mémo."),
+    "druid": ("La forme de voyage n’était pas censée mener au cimetière.", "Nouvelle forme débloquée : esprit."),
+}
+DEATH_RACE_LINES = (
+    (("troll",), ("Les Loas ont demandé une rediffusion.", "Bwonsamdi note le rendez-vous.")),
+    (("orc",), ("Pour la Horde ! Et pour la réparatrice.", "Lok’tar ! On retentera le « ogar ».")),
+    (("tauren",), ("La Terre-Mère avait dit de regarder où poser les sabots.", "La Terre-Mère a vu le pull. Elle préfère garder le silence.")),
+    (("mort vivant", "mort-vivant", "undead", "reprouve"), ("Le cimetière : comme à la maison.", "Même pour un Réprouvé, ça compte.")),
+    (("nain", "dwarf"), ("Le tavernier garde une chope au frais.", "Forme de pierre, très convaincante cette fois.")),
+    (("gnome",), ("L’ingénierie décline toute responsabilité.", "Le plan B était encore au stade du prototype.")),
+    (("elfe", "elf"), ("Elune a regardé ailleurs au mauvais moment.", "La prochaine fois, on demandera un buff avant le pull.")),
+    (("humain", "human"), ("Hurlevent recommande un pull de moins.", "La garde de Hurlevent prend les paris sur le prochain pull.")),
+)
+DEATH_GENERIC_LINES = (
+    "Le cimetière a débloqué un nouveau point de vol.",
+    "Aggro prise. Respawn commandé.",
+    "Le réparateur vient de commander une deuxième échoppe.",
+)
+
+
+def death_message(who: str, new: dict, count: int) -> str:
+    class_lines = DEATH_CLASS_LINES.get(class_key(new.get("class_name") or ""), ())
+    race = _fold(new.get("race") or "")
+    race_lines = next((lines for aliases, lines in DEATH_RACE_LINES if any(alias in race for alias in aliases)), ())
+    lines = class_lines + race_lines or DEATH_GENERIC_LINES
+    joke = lines[(new["deaths"] - 1) % len(lines)]
+    label = f"{count} morts relevées" if count > 1 else "1 mort relevée"
+    return f"{who} · {label}. {joke}"
 
 
 def diff_events(who: str, old: dict, new: dict) -> list[NewEvent]:
@@ -238,7 +277,7 @@ def diff_events(who: str, old: dict, new: dict) -> list[NewEvent]:
     old_deaths, new_deaths = old.get("deaths"), new.get("deaths")
     if old_deaths is not None and new_deaths is not None and new_deaths > old_deaths:
         n = new_deaths - old_deaths
-        events.append(NewEvent("deaths", "💀", f"{who} est mort {n} fois" if n > 1 else f"{who} est mort",
+        events.append(NewEvent("deaths", "💀", death_message(who, new, n),
                                {"count": n, "total": new_deaths}))
 
     for key, kind, icon, label in (
@@ -312,8 +351,8 @@ async def fetch_state(bz: Blizzard, char: Character) -> tuple[dict, str]:
     """Nouvel état du perso et son statut. Lève NotFound si l'API ne connaît pas (encore) le perso."""
     profile = parse_profile(await bz.character_profile(char.slug))
     parts = ("/equipment", "/character-media", "/achievements", "/statistics", "/professions",
-             "/collections/mounts", "/pvp-summary", "/quests/completed", "/encounters/dungeons", "/encounters/raids")
-    equipment, media, achievements, statistics, professions, mounts, pvp, quests, dungeons, raids = await asyncio.gather(
+             "/collections/mounts", "/pvp-summary", "/achievements/statistics", "/quests/completed", "/encounters/dungeons", "/encounters/raids")
+    equipment, media, achievements, statistics, professions, mounts, pvp, achievement_stats, quests, dungeons, raids = await asyncio.gather(
         *(bz.character_part(char.slug, p) for p in parts))
     state = dict(profile)
     summary = (char.state or {}).get("account_summary") or {}
@@ -324,6 +363,7 @@ async def fetch_state(bz: Blizzard, char: Character) -> tuple[dict, str]:
     state["ilvl"] = parse_equipment(equipment) or profile["ilvl"]
     state["avatar_url"] = parse_media(media)
     state.update(parse_statistics(statistics))
+    state.update({key: value for key, value in parse_statistics(achievement_stats).items() if value is not None})
     if state.get("honorable_kills") is None and pvp:
         state["honorable_kills"] = _int(pvp.get("honorable_kills"))
     state["pvp_rank"] = _int((pvp or {}).get("pvp_rank"))

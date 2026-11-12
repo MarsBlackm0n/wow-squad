@@ -75,7 +75,7 @@
     <div class="kpi"><dt>Niveau d'objet</dt><dd><span class="kpi-value">{{ char.ilvl | number(1) if char.ilvl else '—' }}</span></dd></div>
     <div class="kpi"><dt>Hauts faits</dt><dd><span class="kpi-value">{{ (char.achievement_points if activity_state.get("achievement_points") is not none else none) | number }}</span><span class="kpi-note">points</span></dd></div>
     <div class="kpi"><dt>Montures</dt><dd><span class="kpi-value">{{ mounts | length if mounts is not none else '—' }}</span></dd></div>
-    <div class="kpi"><dt>Morts</dt><dd><span class="kpi-value">{{ char.deaths | number }}</span></dd></div>
+    <div class="kpi"><dt>Morts</dt><dd><span class="kpi-value">{{ char.deaths | number }}</span>{% if char.deaths is none %}<span class="kpi-note">Donnée indisponible</span>{% endif %}</dd></div>
   </dl>
 </section>
 
@@ -118,20 +118,13 @@
   <div class="split-main">
     <section aria-labelledby="progress-title">
       <h2 id="progress-title" class="block-title">Progression</h2>
-      {% if xp_chart %}
-      <figure class="chart-frame">
-        {{ xp_chart }}
-        <figcaption class="meta">Les anciens relevés de niveau donnent un minimum d’XP. {% if xp_has_launch %}Le point zéro représente le lancement de Forever, le 5 novembre 2026.{% endif %}</figcaption>
-      </figure>
-      {{ chart_table(xp_rows, ['Date', 'XP cumulée', 'Source'], 'Relevés d’XP de ' ~ char.display_name) }}
-      {% endif %}
       {% if level_chart %}
-      <figure class="chart-frame">{{ level_chart }}</figure>
+      <figure class="chart-frame">{{ level_chart }}{% if level_has_launch %}<figcaption class="meta">Le niveau 1 au 5 novembre est un repère de lancement. Le suivi commence au premier relevé Blizzard.</figcaption>{% endif %}</figure>
       {% if ilvl_chart %}<figure class="chart-frame">{{ ilvl_chart }}</figure>{% endif %}
       {% set rows = [] %}
       {% for s in snaps | reverse %}{% if loop.index <= 30 %}{% set _ = rows.append((s.taken_at | localtime, s.level, (s.ilvl | number(1)) if s.ilvl else '—', s.achievement_points | number)) %}{% endif %}{% endfor %}
       {{ chart_table(rows, ['Date', 'Niveau', 'ilvl', 'Points de HF'], 'Historique de ' ~ char.display_name) }}
-      {% elif not xp_chart %}
+      {% else %}
       <p class="empty">La courbe apparaîtra après quelques mises à jour.</p>
       {% endif %}
     </section>

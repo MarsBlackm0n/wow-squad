@@ -20,7 +20,7 @@ from .collector import apply_account_characters
 from .config import settings
 from .db import Account, Character, Event, MissionSignup, PlayerPhoto, SessionLocal, Snapshot, SquadMission, kv_get, kv_set, select, utcnow
 from .stats import compute_week, leaderboard
-from .ui import Series, class_color, class_key, experience_history, faction_key, frdate, line_chart, make_formatters, number, ruleset_label, xp_progress
+from .ui import Series, class_color, class_key, faction_key, frdate, level_history, line_chart, make_formatters, number, ruleset_label, xp_progress
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -237,13 +237,13 @@ async def character_page(request: Request, char_id: int):
                             .order_by(Event.at.desc()).limit(60)).all()
     color = class_color(char.class_name)
     level_chart = ilvl_chart = None
-    if len(snaps) > 1:
-        level_chart = line_chart([Series(char.display_name, color, [(s.taken_at, s.level) for s in snaps])],
+    level_points, level_has_launch = level_history(snaps)
+    if len(level_points) > 1:
+        level_chart = line_chart([Series(char.display_name, color, level_points)],
                                  f"Niveau de {char.display_name}",
-                                 f"Du niveau {snaps[0].level} au niveau {snaps[-1].level} "
-                                 f"entre le {localtime(snaps[0].taken_at, '%d/%m')} et le "
-                                 f"{localtime(snaps[-1].taken_at, '%d/%m')}.",
-                                 "level", y_label="Niveau", y_min=0, tz_name=settings.timezone)
+                                 "Niveaux observés par Wow Squad." + (" Niveau 1 au lancement comme repère." if level_has_launch else ""),
+                                 "level", y_label="Niveau", y_min=1, tz_name=settings.timezone)
+    if len(snaps) > 1:
         ilvl_points = [(s.taken_at, s.ilvl) for s in snaps if s.ilvl]
         if len(ilvl_points) > 1:
             ilvl_chart = line_chart([Series(char.display_name, color, ilvl_points)],
@@ -251,12 +251,6 @@ async def character_page(request: Request, char_id: int):
                                     f"De {number(ilvl_points[0][1], 1)} à {number(ilvl_points[-1][1], 1)} "
                                     f"de niveau d'objet moyen.", "ilvl", y_label="ilvl", step=False,
                                     tz_name=settings.timezone)
-    xp_rows = experience_history(snaps)
-    xp_chart = None
-    if len(xp_rows) > 1:
-        xp_chart = line_chart([Series(char.display_name, color, [(at, xp) for at, xp, _ in xp_rows])],
-                              "XP cumulée", "Relevés d’XP et minima estimés à partir du niveau.",
-                              "xp-history", y_label="XP", y_min=0, step=False, tz_name=settings.timezone)
     state = char.state or {}
     with SessionLocal() as db:
         goal_cfg = squad.get_goal(db)
@@ -266,9 +260,7 @@ async def character_page(request: Request, char_id: int):
                   mounts=state.get("mounts"), achievements=state.get("achievements"),
                   honorable_kills=state.get("honorable_kills"), can_manage=can_manage_character(request, char),
                   activity=insights.activity_totals(events), activity_state=state,
-                  xp=xp_progress(char.level, state.get("experience")), xp_chart=xp_chart,
-                  xp_rows=[(localtime(at), number(xp), source) for at, xp, source in xp_rows[-30:]],
-                  xp_has_launch=any(source == "Repère de lancement" for _, _, source in xp_rows),
+                  xp=xp_progress(char.level, state.get("experience")), level_has_launch=level_has_launch,
                   boss_totals={key: sum(row["count"] for row in state[key].values()) if state.get(key) is not None else None
                                for key in ("dungeon_encounters", "raid_encounters")})
 
