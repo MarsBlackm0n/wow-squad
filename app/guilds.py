@@ -36,6 +36,7 @@ def guild_details(profile: dict | None, roster: dict | None, activity: dict | No
                             "slug": char.get("slug") or character_slug(name, surname),
                             "level": _int(char.get("level"))})
     members.sort(key=lambda member: (-(member["level"] or 0), member["name"].casefold()))
+    levels = [member["level"] for member in members if member["level"] is not None]
     recent = []
     for event in (activity or {}).get("activities") or []:
         earned = event.get("character_achievement") or {}
@@ -52,8 +53,25 @@ def guild_details(profile: dict | None, roster: dict | None, activity: dict | No
     return {"name": _name(profile.get("name")), "faction": _ruleset_name(faction),
             "ruleset": _ruleset_name(profile.get("ruleset")), "created": _timestamp(profile.get("created_timestamp")),
             "count": _int(profile.get("member_count")), "roster_available": roster is not None,
+            "levels_known": len(levels),
+            "average_level": sum(levels) / len(levels) if levels else None,
+            "max_level_count": sum(level == 60 for level in levels),
             "members": members, "recent": sorted(recent, key=lambda item: item["at"], reverse=True)[:8],
             "achievement_points": _int(achievements.get("total_points"))}
+
+
+def guild_slug(character) -> str:
+    return (character.state or {}).get("guild_slug") or character_slug(character.guild)
+
+
+def tracked_guilds(characters) -> list[list]:
+    groups = {}
+    for character in characters:
+        if character.guild:
+            groups.setdefault((character.region, guild_slug(character)), []).append(character)
+    for members in groups.values():
+        members.sort(key=lambda member: member.display_name.casefold())
+    return sorted(groups.values(), key=lambda members: (members[0].guild.casefold(), members[0].region))
 
 
 async def fetch_guild(bz: Blizzard, slug: str) -> dict:

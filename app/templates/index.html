@@ -98,6 +98,7 @@
       <li><a class="tab" href="#journal" data-tab>Journal</a></li>
       <li><a class="tab" href="#carte" data-tab>Carte</a></li>
       <li><a class="tab" href="#palmares" data-tab>Palmarès</a></li>
+      <li><a class="tab" href="#guildes" data-tab>Guildes{% if guild_directory %} <span class="tab-count">{{ guild_directory | length }}</span>{% endif %}</a></li>
       <li><a class="tab" href="#squad" data-tab>La squad <span class="tab-count">{{ chars | length }}</span></a></li>
     </ul>
   </nav>
@@ -435,6 +436,31 @@
         {% else %}<p class="quiet">Aucun record pour l'instant.</p>{% endif %}
       </section>
     </div>
+  </section>
+
+  <section id="guildes" class="panel" data-panel aria-labelledby="guilds-title">
+    <header class="panel-head">
+      <h2 id="guilds-title">Guildes</h2>
+      <p class="lead">Les guildes des personnages suivis par la squad.</p>
+    </header>
+    {% if guild_directory %}
+    <ul class="member-list" role="list">
+      {% for members in guild_directory %}
+      {% set c = members[0] %}
+      <li class="member">
+        <div class="member-body">
+          <a class="member-name" href="/perso/{{ c.id }}/guilde">{{ c.guild }}</a>
+          <span class="meta">{{ members | map(attribute='display_name') | join(' · ') }}</span>
+        </div>
+        {{ faction_badge(c.faction) }}
+        {{ ruleset_badge(c) }}
+        <span class="pill">{{ members | length }} suivi{{ 's' if members | length > 1 }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">Aucune guilde connue pour les personnages suivis.</p>
+    {% endif %}
   </section>
 
   <section id="squad" class="panel" data-panel aria-labelledby="squad-title">

@@ -3,7 +3,7 @@
 {% block title %}{{ guild.name or char.guild }}{% endblock %}
 {% block content %}
 <nav class="breadcrumb" aria-label="Fil d’Ariane">
-  <ol><li><a href="/">QG</a></li><li><a href="/perso/{{ char.id }}">{{ char.display_name }}</a></li><li aria-current="page">Guilde</li></ol>
+  <ol><li><a href="/">QG</a></li><li><a href="/#guildes">Guildes</a></li><li aria-current="page">Guilde</li></ol>
 </nav>
 <header class="panel-head story-banner story-banner-hall">
   <h1 id="guild-title">{{ guild.name or char.guild }}</h1>
@@ -13,6 +13,10 @@
 <dl class="activity-metrics character-activity">
   <div class="panel-block"><dt>Membres de la guilde</dt><dd><strong>{{ (guild.count if guild.count is not none else (guild.members | length if guild.roster_available else none)) | number }}</strong></dd></div>
   <div class="panel-block"><dt>Persos suivis par la squad</dt><dd><strong>{{ tracked | length }}</strong></dd></div>
+  {% if guild.levels_known %}
+  <div class="panel-block"><dt>Niveau moyen</dt><dd><strong>{{ guild.average_level | round(1) | number }}</strong> <span class="meta">sur {{ guild.levels_known }} niveaux connus</span></dd></div>
+  <div class="panel-block"><dt>Personnages niveau 60</dt><dd><strong>{{ guild.max_level_count | number }}</strong></dd></div>
+  {% endif %}
   {% if guild.created %}<div class="panel-block"><dt>Fondée le</dt><dd><strong>{{ guild.created | localtime('%d/%m/%Y') }}</strong></dd></div>{% endif %}
   {% if guild.achievement_points is not none %}<div class="panel-block"><dt>Points de hauts faits</dt><dd><strong>{{ guild.achievement_points | number }}</strong></dd></div>{% endif %}
 </dl>

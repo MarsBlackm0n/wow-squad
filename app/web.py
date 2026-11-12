@@ -159,7 +159,7 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
     weekly_extra = sum(max(0, pace_by_char[gain.character.id].weekly_estimate - gain.levels)
                        for gain in week.gains if gain.character.id in pace_by_char
                        and pace_by_char[gain.character.id].weekly_estimate is not None)
-    return render(request, "index.html", chars=chars, week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
+    return render(request, "index.html", chars=chars, guild_directory=guilds.tracked_guilds(chars), week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
                   race_comparison=race_comparison, race_total=race_total, race_total_level=race_total_level, race_replay=race_replay,
                   days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
                   goal=insights.squad_goal(chars, goal_cfg.target, goal_cfg.deadline, pace_by_char),
@@ -321,9 +321,9 @@ async def guild_page(request: Request, char_id: int):
         char = db.get(Character, char_id)
         if not char or not char.guild:
             raise HTTPException(404, "Aucune guilde connue pour ce personnage.")
-        slug = (char.state or {}).get("guild_slug") or character_slug(char.guild)
-        candidates = db.scalars(select(Character).where(Character.region == char.region, Character.guild == char.guild)).all()
-        tracked = [member for member in candidates if ((member.state or {}).get("guild_slug") or character_slug(member.guild)) == slug]
+        slug = guilds.guild_slug(char)
+        candidates = db.scalars(select(Character).where(Character.region == char.region, Character.guild != "")).all()
+        tracked = [member for member in candidates if guilds.guild_slug(member) == slug]
     bz = request.app.state.worker.bz
     guild = await guilds.fetch_guild(bz, slug) if bz and slug and bz.region == char.region else guilds.guild_details(None, None, None, None)
     return render(request, "guild.html", char=char, guild=guild, tracked=tracked,
