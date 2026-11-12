@@ -191,12 +191,15 @@
     function draw() {
       var group = mode.value;
       var isSkills = group === "skills";
-      axes = Array.from(new Set(series.flatMap(function (row) { return Object.keys(row[group]); })));
+      axes = Array.from(new Set(series.flatMap(function (row) { return Object.keys(row[group] || {}); })));
       if (isSkills) axes.sort(function (a, b) { return a.localeCompare(b, "fr"); });
       var limits = axes.map(function (axis) {
-        var values = series.flatMap(function (row) { return isSkills ? Object.values(row.skills) : [row.activity[axis] ?? 0]; });
+        var values = series.flatMap(function (row) { return isSkills ? Object.values(row.skills || {}) : [row.activity[axis] ?? 0]; });
         return Math.max(isSkills ? 300 : axis === "Niveau" ? 60 : 1, ...values);
       });
+      function valueFor(row, axis) {
+        return isSkills && row.skills ? row.skills[axis] ?? 0 : row[group]?.[axis];
+      }
       var selected = series.map(function (row, i) {
         return {row: row, color: colors[i % colors.length], checked: inputs[i].checked};
       }).filter(function (item) { return item.checked; });
@@ -207,7 +210,7 @@
       note.textContent = !series.length ? "Aucun personnage suivi pour ce groupe."
         : !selected.length ? "Sélectionne au moins un personnage."
         : axes.length < 3 ? "Le radar apparaît à partir de trois métiers relevés. Les niveaux restent dans le tableau."
-        : isSkills ? "Les axes de métier partagent une échelle de 0 à " + limits[0] + ". Les valeurs non relevées laissent un espace."
+        : isSkills ? "Les axes de métier partagent une échelle de 0 à " + limits[0] + ". Les métiers absents d’une liste reçue valent 0."
         : "Chaque axe a sa propre échelle. Le tableau indique les valeurs brutes et le maximum de chaque axe. Plus loin du centre ne signifie pas toujours mieux.";
       if (!selected.length) return;
       var table = document.createElement("table");
@@ -227,7 +230,7 @@
         row.appendChild(th);
         row.insertCell().textContent = limits[index];
         selected.forEach(function (item) {
-          row.insertCell().textContent = item.row[group][axis] ?? "Non relevé";
+          row.insertCell().textContent = valueFor(item.row, axis) ?? "Non relevé";
         });
       });
       tableWrap.appendChild(table);
@@ -245,17 +248,18 @@
       });
       selected.forEach(function (item) {
         var dots = axes.map(function (axis, i) {
-          var value = item.row[group][axis];
+          var value = valueFor(item.row, axis);
           return typeof value === "number" ? point(i, value / limits[i] * 175) : null;
         });
-        if (dots.every(Boolean)) {
-          shape("polygon", {points: dots.map(function (dot) { return dot.join(","); }).join(" "),
-                            fill: item.color, "fill-opacity": .12, stroke: item.color, "stroke-width": 2});
+        var known = dots.filter(Boolean);
+        var coordinates = known.map(function (dot) { return dot.join(","); }).join(" ");
+        if (known.length >= 3) {
+          shape("polygon", {points: coordinates, fill: item.color, "fill-opacity": .23,
+                            stroke: item.color, "stroke-width": 2.4, "stroke-linejoin": "round"});
+        } else if (known.length === 2) {
+          shape("polyline", {points: coordinates, fill: "none", stroke: item.color, "stroke-width": 2.4});
         }
-        dots.forEach(function (dot, i) {
-          if (!dot) return;
-          var next = dots[(i + 1) % dots.length];
-          if (next && !dots.every(Boolean)) shape("line", {x1: dot[0], y1: dot[1], x2: next[0], y2: next[1], stroke: item.color, "stroke-width": 2});
+        known.forEach(function (dot) {
           shape("circle", {cx: dot[0], cy: dot[1], r: 4.5, fill: item.color});
         });
       });
