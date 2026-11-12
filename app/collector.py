@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from . import photos
 from .blizzard import Blizzard, NotFound, character_slug
-from .db import Account, Character, Event, PlayerPhoto, Snapshot, select, utcnow
+from .db import Account, Character, Event, PlayerPhoto, Snapshot, kv_get, select, utcnow
 
 log = logging.getLogger(__name__)
 
@@ -382,7 +382,8 @@ def _maybe_snapshot(db: Session, char: Character, state: dict) -> None:
     last = db.scalars(select(Snapshot).where(Snapshot.character_id == char.id)
                       .order_by(Snapshot.taken_at.desc()).limit(1)).first()
     values = {
-        "level": char.level, "ilvl": char.ilvl, "achievement_points": char.achievement_points,
+        "level": char.level, "ilvl": char.ilvl,
+        "experience": state.get("experience") if state.get("level") == char.level else None, "achievement_points": char.achievement_points,
         "deaths": char.deaths, "honorable_kills": state.get("honorable_kills"),
         "mounts": len(state["mounts"]) if state.get("mounts") is not None else None,
     }
@@ -436,10 +437,11 @@ async def sync_account(db: Session, bz: Blizzard, account: Account, user_token: 
 def apply_account_characters(db: Session, region: str, account: Account, entries: list[dict],
                              add_missing: bool = False) -> int:
     added = 0
+    removed = (kv_get(db, "removed_characters") or {}).get("items", {})
     first_import = add_missing and db.scalar(select(Character.id).where(Character.account_id == account.id).limit(1)) is None
     for entry in entries:
         slug = account_entry_slug(entry)
-        if not slug:
+        if not slug or removed.get(f"{region}:{slug}"):
             continue
         char = db.scalars(select(Character).where(Character.region == region, Character.slug == slug)).first()
         summary = account_entry_summary(entry)

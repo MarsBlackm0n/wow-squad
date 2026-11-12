@@ -118,13 +118,20 @@
   <div class="split-main">
     <section aria-labelledby="progress-title">
       <h2 id="progress-title" class="block-title">Progression</h2>
+      {% if xp_chart %}
+      <figure class="chart-frame">
+        {{ xp_chart }}
+        <figcaption class="meta">Les anciens relevés de niveau donnent un minimum d’XP. {% if xp_has_launch %}Le point zéro représente le lancement de Forever, le 5 novembre 2026.{% endif %}</figcaption>
+      </figure>
+      {{ chart_table(xp_rows, ['Date', 'XP cumulée', 'Source'], 'Relevés d’XP de ' ~ char.display_name) }}
+      {% endif %}
       {% if level_chart %}
       <figure class="chart-frame">{{ level_chart }}</figure>
       {% if ilvl_chart %}<figure class="chart-frame">{{ ilvl_chart }}</figure>{% endif %}
       {% set rows = [] %}
       {% for s in snaps | reverse %}{% if loop.index <= 30 %}{% set _ = rows.append((s.taken_at | localtime, s.level, (s.ilvl | number(1)) if s.ilvl else '—', s.achievement_points | number)) %}{% endif %}{% endfor %}
       {{ chart_table(rows, ['Date', 'Niveau', 'ilvl', 'Points de HF'], 'Historique de ' ~ char.display_name) }}
-      {% else %}
+      {% elif not xp_chart %}
       <p class="empty">La courbe apparaîtra après quelques mises à jour.</p>
       {% endif %}
     </section>
@@ -229,14 +236,7 @@
         <button type="submit" class="button button-secondary">Enregistrer</button>
       </form>
 
-      <details class="danger-zone">
-        <summary>{{ icon('chevron', 'summary-chevron') }} Retirer de la squad</summary>
-        <p>{{ char.display_name }} disparaîtra du QG avec tout son historique (courbes, journal). Ça ne touche évidemment pas au perso en jeu.</p>
-        <form method="post" action="/perso/{{ char.id }}/supprimer">
-          <input type="hidden" name="csrf" value="{{ csrf }}">
-          <button type="submit" class="button button-danger">Oui, retirer {{ char.name }}</button>
-        </form>
-      </details>
+
     </section>
     {% endif %}
   </div>

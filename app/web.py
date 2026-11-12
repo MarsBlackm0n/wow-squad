@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 import logging
+import os
 import secrets
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -17,9 +18,9 @@ from . import insights, photos, squad
 from .blizzard import BlizzardCredentialsError, BlizzardError, character_slug, split_slug
 from .collector import apply_account_characters
 from .config import settings
-from .db import Account, Character, Event, MissionSignup, PlayerPhoto, SessionLocal, Snapshot, SquadMission, select, utcnow
+from .db import Account, Character, Event, MissionSignup, PlayerPhoto, SessionLocal, Snapshot, SquadMission, kv_get, kv_set, select, utcnow
 from .stats import compute_week, leaderboard
-from .ui import Series, class_color, class_key, faction_key, frdate, line_chart, make_formatters, number, ruleset_label, xp_progress
+from .ui import Series, class_color, class_key, experience_history, faction_key, frdate, line_chart, make_formatters, number, ruleset_label, xp_progress
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -54,7 +55,7 @@ def flash(request: Request, message: str, kind: str = "success") -> None:
 def render(request: Request, template: str, status_code: int = 200, **context) -> HTMLResponse:
     context.update(request=request, csrf=csrf_token(request), flashes=request.session.pop("flash", []),
                    logged_in=bool(request.session.get("auth")), qg_access=is_authenticated(request),
-                   account_connected=bool(request.session.get("account_id")))
+                   account_connected=bool(request.session.get("account_id")), admin=is_admin(request))
     return templates.TemplateResponse(request, template, context, status_code=status_code)
 
 
@@ -62,10 +63,25 @@ def is_authenticated(request: Request) -> bool:
     return not settings.site_password or bool(request.session.get("auth"))
 
 
+def is_admin(request: Request) -> bool:
+    expected = os.environ.get("ADMIN_BATTLE_ID", "").strip()
+    account_id = request.session.get("account_id")
+    if not expected.isascii() or not expected.isdecimal() or account_id is None:
+        return False
+    with SessionLocal() as db:
+        account = db.get(Account, account_id)
+        return account is not None and str(account.battle_id) == expected
+
+
+def require_admin(request: Request) -> None:
+    if not is_admin(request):
+        raise HTTPException(403, "Cette action est réservée à l’administration de la squad.")
+
+
 def can_manage_character(request: Request, char: Character) -> bool:
     if char.account_id is not None:
         return char.account_id == request.session.get("account_id")
-    return not char.battletag
+    return is_admin(request) and not char.battletag
 
 
 def require_character_access(request: Request, char: Character | None) -> Character:
@@ -120,6 +136,7 @@ async def home(request: Request):
         accounts = db.scalars(select(Account).order_by(Account.battletag)).all()
         goal_cfg, groups = squad.get_goal(db), squad.get_groups(db)
         pace_by_char = insights.paces(db, chars, goal_cfg.target, tz)
+        targets = squad.community_targets(db)
         missions, completed_missions = squad.mission_rosters(db, pace_by_char, utcnow().astimezone(ZoneInfo(tz)).date())
         account_id = request.session.get("account_id")
         mission_chars = [c for c in chars if account_id is not None and c.account_id == account_id]
@@ -131,10 +148,46 @@ async def home(request: Request):
                   goal_cfg=goal_cfg, groups=groups, plans=insights.group_plans(groups, chars),
                   paces=pace_by_char, by_pace=by_pace, firsts=firsts, records=insights.records(events, tz),
                   seen=insights.recently_seen(chars), headlines=insights.headlines(events), accounts=accounts,
-                  missions=missions, completed_missions=completed_missions, mission_chars=mission_chars,
+                  targets=targets, missions=missions, completed_missions=completed_missions, mission_chars=mission_chars,
                   mission_kinds=squad.MISSION_KINDS, mission_roles=squad.MISSION_ROLES, account_id=account_id,
                   activity=insights.activity_totals(events), last_cycle=worker.last_cycle,
                   blizzard_ready=settings.blizzard_enabled, add_form=request.session.pop("add_form", None) or {})
+
+
+@router.get("/administration", response_class=HTMLResponse)
+async def admin_page(request: Request):
+    require_admin(request)
+    with SessionLocal() as db:
+        return render(request, "admin.html", chars=leaderboard(db), groups=squad.get_groups(db),
+                      goal_cfg=squad.get_goal(db), targets=squad.community_targets(db),
+                      metrics=squad.COMMUNITY_METRICS, add_form=request.session.pop("add_form", None) or {})
+
+
+@router.post("/administration/defis")
+async def add_target(request: Request, titre: str = Form(""), indicateur: str = Form(""),
+                     cible: int = Form(0), csrf: str = Form("")):
+    require_admin(request)
+    check_csrf(request, csrf)
+    titre = titre.strip()
+    if not 1 <= len(titre) <= 80 or indicateur not in squad.COMMUNITY_METRICS or not 1 <= cible <= 100000:
+        raise HTTPException(400, "Vérifie le nom, l’indicateur et la cible du défi.")
+    with SessionLocal() as db:
+        if squad.add_community_target(db, titre, indicateur, cible):
+            db.commit()
+            flash(request, "Défi publié dans « Ce soir ».")
+        else:
+            flash(request, "Retire un défi avant d’en ajouter un autre.", "error")
+    return back("/administration")
+
+
+@router.post("/administration/defis/{target_id}/supprimer")
+async def remove_target(request: Request, target_id: str, csrf: str = Form("")):
+    require_admin(request)
+    check_csrf(request, csrf)
+    with SessionLocal() as db:
+        squad.remove_community_target(db, target_id)
+        db.commit()
+    return back("/administration")
 
 
 @router.get("/compte", response_class=HTMLResponse)
@@ -198,6 +251,12 @@ async def character_page(request: Request, char_id: int):
                                     f"De {number(ilvl_points[0][1], 1)} à {number(ilvl_points[-1][1], 1)} "
                                     f"de niveau d'objet moyen.", "ilvl", y_label="ilvl", step=False,
                                     tz_name=settings.timezone)
+    xp_rows = experience_history(snaps)
+    xp_chart = None
+    if len(xp_rows) > 1:
+        xp_chart = line_chart([Series(char.display_name, color, [(at, xp) for at, xp, _ in xp_rows])],
+                              "XP cumulée", "Relevés d’XP et minima estimés à partir du niveau.",
+                              "xp-history", y_label="XP", y_min=0, step=False, tz_name=settings.timezone)
     state = char.state or {}
     with SessionLocal() as db:
         goal_cfg = squad.get_goal(db)
@@ -207,7 +266,9 @@ async def character_page(request: Request, char_id: int):
                   mounts=state.get("mounts"), achievements=state.get("achievements"),
                   honorable_kills=state.get("honorable_kills"), can_manage=can_manage_character(request, char),
                   activity=insights.activity_totals(events), activity_state=state,
-                  xp=xp_progress(char.level, state.get("experience")),
+                  xp=xp_progress(char.level, state.get("experience")), xp_chart=xp_chart,
+                  xp_rows=[(localtime(at), number(xp), source) for at, xp, source in xp_rows[-30:]],
+                  xp_has_launch=any(source == "Repère de lancement" for _, _, source in xp_rows),
                   boss_totals={key: sum(row["count"] for row in state[key].values()) if state.get(key) is not None else None
                                for key in ("dungeon_encounters", "raid_encounters")})
 
@@ -217,6 +278,7 @@ async def character_page(request: Request, char_id: int):
 @router.post("/persos")
 async def add_character(request: Request, prenom: str = Form(""), nom: str = Form(""), joueur: str = Form(""),
                         csrf: str = Form("")):
+    require_admin(request)
     check_csrf(request, csrf)
     name, surname = prenom.strip(), nom.strip()
     if name and not surname and " " in name:  # « Mars Blackmon » collé dans le premier champ
@@ -228,7 +290,7 @@ async def add_character(request: Request, prenom: str = Form(""), nom: str = For
         errors["nom"] = "Indique le nom du perso : sur Forever, chaque perso a un prénom et un nom."
     if errors:
         request.session["add_form"] = {"errors": errors, "prenom": prenom[:40], "nom": nom[:40], "joueur": joueur[:40]}
-        return back("/#squad")
+        return back("/administration")
     slug = character_slug(name, surname)
     with SessionLocal() as db:
         existing = db.scalars(select(Character).where(Character.region == settings.region,
@@ -238,6 +300,9 @@ async def add_character(request: Request, prenom: str = Form(""), nom: str = For
             return back(f"/perso/{existing.id}")
         char = Character(region=settings.region, slug=slug, name=name[:1].upper() + name[1:], surname=surname,
                          player=joueur.strip()[:40], state={})
+        removed = dict((kv_get(db, "removed_characters") or {}).get("items", {}))
+        if removed.pop(f"{settings.region}:{slug}", None):
+            kv_set(db, "removed_characters", {"items": removed})
         db.add(char)
         db.commit()
         char_id = char.id
@@ -267,59 +332,68 @@ async def set_player(request: Request, char_id: int, joueur: str = Form(""), csr
 
 @router.post("/perso/{char_id}/supprimer")
 async def delete_character(request: Request, char_id: int, csrf: str = Form("")):
+    require_admin(request)
     check_csrf(request, csrf)
     with SessionLocal() as db:
-        char = require_character_access(request, db.get(Character, char_id))
+        char = db.get(Character, char_id)
+        if char is None:
+            raise HTTPException(404, "Personnage introuvable.")
         name = char.display_name
         for signup in db.scalars(select(MissionSignup).where(MissionSignup.character_id == char.id)):
             db.delete(signup)
+        removed = dict((kv_get(db, "removed_characters") or {}).get("items", {}))
+        removed[f"{char.region}:{char.slug}"] = True
+        kv_set(db, "removed_characters", {"items": removed})
         db.delete(char)
         db.commit()
         flash(request, f"{name} a quitté la squad (historique supprimé).")
-    return back("/")
+    return back("/administration")
 
 # --- Réglages de la squad : objectif et groupes ---------------------------------------------------
 
 @router.post("/reglages/objectif")
 async def set_goal(request: Request, niveau: str = Form(""), echeance: str = Form(""), csrf: str = Form("")):
+    require_admin(request)
     check_csrf(request, csrf)
     try:
         target = int(niveau)
         deadline = date.fromisoformat(echeance) if echeance else None
     except ValueError:
         flash(request, "Objectif invalide : indique un niveau entre 2 et 60 et une date valide.", "error")
-        return back("/#squad")
+        return back("/administration")
     with SessionLocal() as db:
         squad.set_goal(db, target, deadline)
         db.commit()
     flash(request, f"Objectif enregistré : niveau {max(2, min(target, insights.MAX_LEVEL))}"
                    + (f" pour le {deadline.strftime('%d/%m/%Y')}." if deadline else "."))
-    return back("/#squad")
+    return back("/administration")
 
 
 @router.post("/groupes")
 async def save_group(request: Request, csrf: str = Form(""), nom: str = Form(""), groupe: str = Form("")):
+    require_admin(request)
     check_csrf(request, csrf)
     form = await request.form()
     members = [int(v) for v in form.getlist("membres") if str(v).isdigit()]
     if not nom.strip() or len(members) < 2:
         flash(request, "Un groupe a besoin d'un nom et d'au moins deux persos.", "error")
-        return back("/#squad")
+        return back("/administration")
     with SessionLocal() as db:
         squad.save_group(db, nom, members, groupe or None)
         db.commit()
     flash(request, f"Groupe « {nom.strip()[:40]} » enregistré. Il apparaît en tête de « Ce soir ».")
-    return back("/#ce-soir")
+    return back("/administration")
 
 
 @router.post("/groupes/{group_id}/supprimer")
 async def delete_group(request: Request, group_id: str, csrf: str = Form("")):
+    require_admin(request)
     check_csrf(request, csrf)
     with SessionLocal() as db:
         squad.delete_group(db, group_id)
         db.commit()
     flash(request, "Groupe supprimé.")
-    return back("/#squad")
+    return back("/administration")
 
 
 # --- Objectifs et inscriptions ------------------------------------------------------------------
@@ -478,11 +552,12 @@ def photo_response(key: str) -> Response:
 
 @router.post("/recap/envoyer")
 async def send_recap(request: Request, csrf: str = Form("")):
+    require_admin(request)
     check_csrf(request, csrf)
     await request.app.state.worker.send_recap_now()
     flash(request, "Récap envoyé sur le canal configuré." if request.app.state.worker.notifier.enabled
            else "Aucun canal configuré : le récap a été affiché dans les logs du serveur.", "info")
-    return back("/")
+    return back("/administration")
 
 
 # --- Connexion Battle.net (ajoute automatiquement ses persos Forever) ----------------------------

@@ -1,0 +1,17 @@
+{% if targets %}
+<section class="mission-board" aria-labelledby="community-heading">
+  <div class="mission-board-head"><h3 id="community-heading">Défis communs</h3></div>
+  <div class="mission-grid">
+    {% for target in targets %}
+    <article class="mission-card">
+      <h4>{{ target.title }}</h4>
+      <div class="mission-progress">
+        <label for="challenge-{{ target.id }}"><strong>{{ target.progress | number }} / {{ target.amount | number }}</strong> · {{ target.label }}</label>
+        <progress id="challenge-{{ target.id }}" max="{{ target.amount }}" value="{{ [target.progress, target.amount] | min }}"></progress>
+      </div>
+      {% if target.progress >= target.amount %}<p class="mission-ready">Défi accompli</p>{% endif %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}

@@ -9,6 +9,8 @@
   {% if account %}<p class="account-tag">{{ account.battletag }}</p>{% endif %}
 </section>
 
+{% if account %}<details class="account-identity"><summary>Identifiant Battle.net</summary><p><code>{{ account.battle_id }}</code></p></details>{% endif %}
+
 {% if chars %}
 <ul class="roster" role="list" aria-label="Mes personnages Forever">
   {% for char in chars %}

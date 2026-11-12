@@ -137,6 +137,27 @@ def xp_progress(level: int, experience: int | None) -> dict | None:
             "percent": 100 * experience / required}
 
 
+# Lancement mondial : 5 novembre 2026, 00 h 00 en France (CET).
+FOREVER_LAUNCH = datetime(2026, 11, 4, 23, tzinfo=timezone.utc)
+
+
+def experience_history(snapshots) -> list[tuple[datetime, int, str]]:
+    rows = []
+    for snap in snapshots:
+        if not 1 <= snap.level <= len(XP_TO_NEXT) + 1:
+            continue
+        at = _aware(snap.taken_at)
+        if at < FOREVER_LAUNCH:
+            continue
+        xp = xp_progress(snap.level, snap.experience)
+        total = sum(XP_TO_NEXT[:snap.level - 1])
+        exact = xp is not None or snap.level == len(XP_TO_NEXT) + 1
+        rows.append((at, total + (xp["current"] if xp else 0), "Mesuré" if exact else "Minimum d’après le niveau"))
+    if len(rows) == 1 and rows[0][0] > FOREVER_LAUNCH:
+        rows.insert(0, (FOREVER_LAUNCH, 0, "Repère de lancement"))
+    return rows
+
+
 def number(value, digits: int = 0) -> str:
     if value is None:
         return "—"

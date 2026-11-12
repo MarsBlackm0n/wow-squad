@@ -69,6 +69,7 @@ class Snapshot(Base):
     character_id: Mapped[int] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), index=True)
     taken_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     level: Mapped[int] = mapped_column(Integer, default=0)
+    experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
     ilvl: Mapped[float] = mapped_column(Float, default=0)
     achievement_points: Mapped[int] = mapped_column(Integer, default=0)
     deaths: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -160,6 +161,9 @@ def init_db() -> None:
         if not any(column["name"] == "account_id" for column in columns):
             connection.execute(text("ALTER TABLE characters ADD COLUMN account_id INTEGER REFERENCES accounts(id)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_characters_account_id ON characters (account_id)"))
+        snapshots = inspect(connection).get_columns("snapshots")
+        if not any(column["name"] == "experience" for column in snapshots):
+            connection.execute(text("ALTER TABLE snapshots ADD COLUMN experience INTEGER"))
 
 
 def kv_get(db: Session, key: str) -> dict | None:

@@ -15,99 +15,7 @@
     {% endif %}
   </div>
 
-  <form class="panel-block join-card" method="post" action="/persos" novalidate>
-    <h3>Ajouter un perso à la main</h3>
-    <input type="hidden" name="csrf" value="{{ csrf }}">
-    {% set errors = add_form.errors or {} %}
-    <fieldset class="name-fields">
-      <legend>Nom du perso, tel qu'affiché en jeu</legend>
-      <p id="name-hint" class="hint">Sur Forever, chaque perso a un prénom et un nom. Exemple : « Mars » et « Blackmon ».</p>
-      <div class="field-row">
-        <div class="field">
-          <label for="prenom">Prénom</label>
-          <input id="prenom" name="prenom" type="text" required autocomplete="off" spellcheck="false" maxlength="40"
-                 value="{{ add_form.prenom or '' }}" aria-describedby="name-hint{{ ' prenom-error' if errors.prenom }}"
-                 {% if errors.prenom %}aria-invalid="true" autofocus{% endif %}>
-          {% if errors.prenom %}<p id="prenom-error" class="field-error">{{ icon('alert') }} {{ errors.prenom }}</p>{% endif %}
-        </div>
-        <div class="field">
-          <label for="nom">Nom</label>
-          <input id="nom" name="nom" type="text" required autocomplete="off" spellcheck="false" maxlength="40"
-                 value="{{ add_form.nom or '' }}" aria-describedby="name-hint{{ ' nom-error' if errors.nom }}"
-                 {% if errors.nom %}aria-invalid="true"{% if not errors.prenom %} autofocus{% endif %}{% endif %}>
-          {% if errors.nom %}<p id="nom-error" class="field-error">{{ icon('alert') }} {{ errors.nom }}</p>{% endif %}
-        </div>
-      </div>
-    </fieldset>
-    <div class="field">
-      <label for="joueur">Joueur <span class="optional">(facultatif)</span></label>
-      <p id="joueur-hint" class="hint">Le pote derrière le perso, pour s'y retrouver entre les rerolls.</p>
-      <input id="joueur" name="joueur" type="text" autocomplete="off" maxlength="40" value="{{ add_form.joueur or '' }}" aria-describedby="joueur-hint">
-    </div>
-    <button type="submit" class="button button-primary">Ajouter à la squad</button>
-  </form>
 </div>
-
-{% if chars %}
-<div class="settings-grid">
-  <form class="panel-block" method="post" action="/reglages/objectif" aria-labelledby="goal-form-title">
-    <h3 id="goal-form-title">Objectif commun</h3>
-    <p class="hint">Affiché en haut du QG, avec la date d'arrivée estimée au rythme actuel.</p>
-    <input type="hidden" name="csrf" value="{{ csrf }}">
-    <div class="field-row">
-      <div class="field">
-        <label for="goal-level">Niveau visé</label>
-        <input id="goal-level" name="niveau" type="number" inputmode="numeric" min="2" max="{{ max_level }}" required value="{{ goal_cfg.target }}">
-      </div>
-      <div class="field">
-        <label for="goal-date">Pour le <span class="optional">(facultatif)</span></label>
-        <input id="goal-date" name="echeance" type="date" value="{{ goal_cfg.deadline.isoformat() if goal_cfg.deadline else '' }}">
-      </div>
-    </div>
-    <button type="submit" class="button button-secondary">Enregistrer l'objectif</button>
-  </form>
-
-  <section class="panel-block" aria-labelledby="groups-title">
-    <h3 id="groups-title">Groupes fixes <span class="count">{{ groups | length }}</span></h3>
-    <p class="hint">Ceux qui jouent souvent ensemble. « Ce soir » leur propose un donjon en priorité.</p>
-    {% if groups %}
-    <ul class="group-list" role="list">
-      {% for g in groups %}
-      <li class="group-item">
-        <div>
-          <p class="group-name">{{ g.name }}</p>
-          <p class="meta">{% for c in chars if c.id in g.members %}{{ c.name }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
-        </div>
-        <form method="post" action="/groupes/{{ g.id }}/supprimer">
-          <input type="hidden" name="csrf" value="{{ csrf }}">
-          <button type="submit" class="button button-ghost button-small">Supprimer<span class="visually-hidden"> le groupe {{ g.name }}</span></button>
-        </form>
-      </li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-    <details class="group-new" {% if not groups %}open{% endif %}>
-      <summary>{{ icon('chevron', 'summary-chevron') }} Créer un groupe</summary>
-      <form method="post" action="/groupes">
-        <input type="hidden" name="csrf" value="{{ csrf }}">
-        <div class="field">
-          <label for="group-name">Nom du groupe</label>
-          <input id="group-name" name="nom" type="text" maxlength="40" required placeholder="Les mardis soir" autocomplete="off">
-        </div>
-        <fieldset class="checkbox-group">
-          <legend>Membres <span class="optional">(au moins deux)</span></legend>
-          <ul role="list">
-            {% for c in chars | sort(attribute='name') %}
-            <li><label class="check"><input type="checkbox" name="membres" value="{{ c.id }}"> {{ avatar(c, 'xs') }} {{ c.name }} <span class="meta">{{ c.level or '?' }}</span></label></li>
-            {% endfor %}
-          </ul>
-        </fieldset>
-        <button type="submit" class="button button-secondary">Créer le groupe</button>
-      </form>
-    </details>
-  </section>
-</div>
-{% endif %}
 {% if chars %}
 <section class="members" aria-labelledby="members-title">
   <h3 id="members-title" class="block-title">Membres suivis <span class="count">{{ chars | length }}</span></h3>
@@ -161,7 +69,7 @@
 </section>
 
 {% if not chars %}
-<div id="ce-soir">{% include "_missions.html" %}</div>
+<div id="ce-soir">{% include "_community.html" %}{% include "_missions.html" %}</div>
 <section class="onboarding" aria-labelledby="onboarding-title">
   <h2 id="onboarding-title">Bienvenue au QG</h2>
   <ol class="steps">
@@ -193,6 +101,7 @@
       <h2 id="ce-soir-title">Ce soir, on fait quoi&nbsp;?</h2>
       <p class="lead">Vos groupes d'abord, puis les autres combinaisons possibles d'après vos niveaux actuels.</p>
     </header>
+    {% include "_community.html" %}
     {% include "_missions.html" %}
     {% if activity.values() | sum %}
     <section class="squad-activity" aria-labelledby="squad-activity-heading">
@@ -462,14 +371,10 @@
   <section id="squad" class="panel" data-panel aria-labelledby="squad-title">
     <header class="panel-head">
       <h2 id="squad-title">La squad</h2>
-      <p class="lead">Ajouter des persos, lier des comptes, voir qui est suivi.</p>
+      <p class="lead">Retrouvez les personnages suivis et les comptes liés.</p>
     </header>
     {{ squad_panel() }}
-    <form method="post" action="/recap/envoyer" class="recap-form">
-      <input type="hidden" name="csrf" value="{{ csrf }}">
-      <button type="submit" class="button button-ghost button-small">Envoyer le récap de la semaine maintenant</button>
-      <p class="hint">Il part aussi automatiquement chaque semaine sur Telegram ou Discord, si un canal est configuré.</p>
-    </form>
+
   </section>
 </div>
 {% endif %}

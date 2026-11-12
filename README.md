@@ -98,3 +98,12 @@ les écarts de faction ou de mode. Le créateur peut modifier l’objectif et le
 
 Les compteurs de la fiche sont ceux remontés par Battle.net. Le journal affiche les hausses détectées
 entre relevés de quêtes, de boss et de victoires honorables. Le premier relevé initialise les compteurs.
+
+
+## Administration
+
+Pour ouvrir l’administration à ton seul compte, lie ton compte Battle.net puis copie l’identifiant
+affiché dans « Mes personnages » → « Identifiant Battle.net ». Dans les variables du service web Railway,
+ajoute `ADMIN_BATTLE_ID` avec cet identifiant. Sans cette variable, les actions administratives sont verrouillées.
+La création des défis, les réglages des groupes et le retrait d’un personnage passent par « Administration ».
+Les inscriptions aux sorties et les propositions de sorties restent accessibles aux joueurs connectés.

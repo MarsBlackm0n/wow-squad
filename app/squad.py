@@ -6,11 +6,11 @@ import secrets
 from math import ceil
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session, joinedload
 
-from .db import MissionSignup, SquadMission, kv_get, kv_set, select
+from .db import Event, MissionSignup, SquadMission, kv_get, kv_set, select, utcnow
 from .insights import MAX_LEVEL, Pace
 from .ui import faction_key, ruleset_label
 
@@ -118,3 +118,40 @@ def mission_rosters(db: Session, paces: dict[int, Pace], today: date) -> tuple[l
     for roster in rosters:
         roster.level_dates = mission_level_dates(roster, paces, today)
     return rosters, list(completed)
+
+COMMUNITY_METRICS = {
+    "quests": "Quêtes terminées", "encounter": "Boss vaincus", "pvp": "Victoires honorables",
+    "outings": "Sorties accomplies", "level": "Niveaux gagnés",
+}
+
+
+def community_targets(db: Session) -> list[dict]:
+    targets = (kv_get(db, "community_targets") or {}).get("items", [])
+    results = []
+    for target in targets:
+        start = datetime.fromisoformat(target["start"])
+        kind = target["kind"]
+        if kind == "outings":
+            progress = len(db.scalars(select(SquadMission.id).where(SquadMission.completed_at >= start)).all())
+        else:
+            kinds = ("level", "level_milestone") if kind == "level" else (kind,)
+            rows = db.scalars(select(Event.data).where(Event.kind.in_(kinds), Event.at >= start)).all()
+            progress = sum(max(0, row.get("to", 0) - row.get("from", 0)) if kind == "level"
+                           else row.get("count", 0) for row in rows if row)
+        results.append({**target, "label": COMMUNITY_METRICS[kind], "progress": progress})
+    return results
+
+
+def add_community_target(db: Session, title: str, kind: str, amount: int) -> bool:
+    items = list((kv_get(db, "community_targets") or {}).get("items", []))
+    if len(items) >= 12:
+        return False
+    items.append({"id": secrets.token_hex(8), "title": title, "kind": kind, "amount": amount,
+                  "start": utcnow().isoformat()})
+    kv_set(db, "community_targets", {"items": items})
+    return True
+
+
+def remove_community_target(db: Session, target_id: str) -> None:
+    items = (kv_get(db, "community_targets") or {}).get("items", [])
+    kv_set(db, "community_targets", {"items": [item for item in items if item["id"] != target_id]})

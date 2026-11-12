@@ -933,3 +933,8 @@ html { scroll-padding-top: 5.5rem; }
 @media (max-width: 350px) {
   .brand-mark { display: none; }
 }
+
+
+.account-identity { margin: 1rem 0; }
+#contenu:has(#challenge-title) .panel-block { margin-block: .85rem; }
+@media (max-width: 680px) { .site-nav ul { flex-wrap: wrap; } }
