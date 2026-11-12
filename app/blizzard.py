@@ -24,6 +24,14 @@ class BlizzardError(Exception):
     pass
 
 
+class BlizzardCredentialsError(BlizzardError):
+    """Battle.net a refusé l'authentification du client OAuth."""
+
+    def __init__(self, grant_type: str):
+        super().__init__(f"OAuth {grant_type} : HTTP 401. Vérifie que BLIZZARD_CLIENT_ID et "
+                         "BLIZZARD_CLIENT_SECRET correspondent au même client API Battle.net.")
+
+
 def character_slug(name: str, surname: str = "") -> str:
     """« Thrall », « Fils-de-Durotan » -> « thrall-fils-de-durotan »."""
     parts = [p.strip().lower() for p in (name, surname) if p and p.strip()]
@@ -54,6 +62,7 @@ class Blizzard:
         self.http = http
         self._token: str | None = None
         self._token_exp = 0.0
+        self._token_lock = asyncio.Lock()
 
     @property
     def base(self) -> str:
@@ -62,17 +71,24 @@ class Blizzard:
     def namespace(self, kind: str) -> str:
         return f"{kind}-forever-{self.region}"
 
-    async def _app_token(self) -> str:
-        if self._token and time.time() < self._token_exp - 300:
-            return self._token
-        resp = await self.http.post(f"{OAUTH_HOST}/token", data={"grant_type": "client_credentials"},
-                                    auth=(self.client_id, self.client_secret))
+    async def _request_token(self, grant_type: str, **fields: str) -> dict:
+        resp = await self.http.post(f"{OAUTH_HOST}/token", data={"grant_type": grant_type, **fields},
+                                    auth=(self.client_id, self.client_secret), follow_redirects=False)
+        if resp.status_code == 401:
+            raise BlizzardCredentialsError(grant_type)
         if resp.status_code != 200:
-            raise BlizzardError(f"OAuth client_credentials : HTTP {resp.status_code}")
-        data = resp.json()
-        self._token = data["access_token"]
-        self._token_exp = time.time() + data.get("expires_in", 86400)
-        return self._token
+            raise BlizzardError(f"OAuth {grant_type} : HTTP {resp.status_code}")
+        return resp.json()
+
+    async def _app_token(self, rejected_token: str | None = None) -> str:
+        async with self._token_lock:
+            if self._token and self._token != rejected_token and time.time() < self._token_exp - 300:
+                return self._token
+            self._token = None
+            data = await self._request_token("client_credentials")
+            self._token = data["access_token"]
+            self._token_exp = time.time() + data.get("expires_in", 86400)
+            return self._token
 
     async def get(self, path: str, namespace: str = "profile", token: str | None = None) -> dict:
         url = path if path.startswith("http") else self.base + path
@@ -81,19 +97,25 @@ class Blizzard:
         params = dict(parsed.params)
         params.setdefault("namespace", self.namespace(namespace))
         params.setdefault("locale", self.locale)
-        bearer = token or await self._app_token()
-        for attempt in range(3):
-            resp = await self.http.get(parsed.copy_with(params=params), headers={"Authorization": f"Bearer {bearer}"})
-            if resp.status_code == 429 and attempt < 2:
-                await asyncio.sleep(1.5 * (attempt + 1))
+        bearer = token if token is not None else await self._app_token()
+        url = parsed.copy_with(params=params)
+        renewed = False
+        rate_limit_retries = 0
+        while True:
+            resp = await self.http.get(url, headers={"Authorization": f"Bearer {bearer}"})
+            if resp.status_code == 401 and token is None and not renewed:
+                bearer = await self._app_token(rejected_token=bearer)
+                renewed = True
+                continue
+            if resp.status_code == 429 and rate_limit_retries < 2:
+                rate_limit_retries += 1
+                await asyncio.sleep(1.5 * rate_limit_retries)
                 continue
             break
         if resp.status_code == 404:
             raise NotFound(path)
-        if resp.status_code == 401 and token is None:
-            self._token = None
         if resp.status_code != 200:
-            raise BlizzardError(f"{path} : HTTP {resp.status_code}")
+            raise BlizzardError(f"API Blizzard {parsed.path} : HTTP {resp.status_code}")
         return resp.json()
 
     # --- Persos (jeton applicatif) -------------------------------------------------------------
@@ -108,6 +130,8 @@ class Blizzard:
         """Sous-ressource optionnelle (/equipment, /statistics...) : None si elle n'est pas (encore) servie."""
         try:
             return await self.get(self._char_path(slug, suffix))
+        except BlizzardCredentialsError:
+            raise
         except (NotFound, BlizzardError):
             return None
 
@@ -128,12 +152,7 @@ class Blizzard:
         return f"{OAUTH_HOST}/authorize?{query}"
 
     async def exchange_code(self, code: str, redirect_uri: str) -> dict:
-        resp = await self.http.post(f"{OAUTH_HOST}/token", auth=(self.client_id, self.client_secret),
-                                    data={"grant_type": "authorization_code", "code": code,
-                                          "redirect_uri": redirect_uri, "scope": "openid wow.profile"})
-        if resp.status_code != 200:
-            raise BlizzardError(f"Échange du code OAuth : HTTP {resp.status_code} {resp.text[:200]}")
-        return resp.json()
+        return await self._request_token("authorization_code", code=code, redirect_uri=redirect_uri)
 
     async def userinfo(self, user_token: str) -> dict:
         resp = await self.http.get(f"{OAUTH_HOST}/userinfo", headers={"Authorization": f"Bearer {user_token}"})

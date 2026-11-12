@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from . import insights, photos, squad
-from .blizzard import BlizzardError, character_slug, split_slug
+from .blizzard import BlizzardCredentialsError, BlizzardError, character_slug, split_slug
 from .collector import sync_account
 from .config import settings
 from .db import Account, Character, Event, PlayerPhoto, SessionLocal, Snapshot, select, utcnow
@@ -364,7 +364,10 @@ async def battlenet_login(request: Request):
 @router.get("/auth/callback")
 async def battlenet_callback(request: Request, code: str = "", state: str = "", error: str = ""):
     worker = request.app.state.worker
-    if error or not code or not hmac.compare_digest(state, request.session.pop("oauth_state", "")):
+    expected_state = request.session.pop("oauth_state", "")
+    if error or not code or not expected_state or not hmac.compare_digest(
+        state.encode("utf-8"), expected_state.encode("utf-8")
+    ) or not worker.bz:
         flash(request, "Connexion Battle.net annulée ou expirée.", "error")
         return back("/")
     try:
@@ -372,7 +375,9 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         info = await worker.bz.userinfo(token["access_token"])
     except BlizzardError as exc:
         log.warning("OAuth Battle.net : %s", exc)
-        flash(request, "Battle.net a refusé la connexion. Réessaie dans un instant.", "error")
+        message = (str(exc) if isinstance(exc, BlizzardCredentialsError)
+                   else f"Battle.net a refusé la connexion ({exc}).")
+        flash(request, message, "error")
         return back("/")
 
     with SessionLocal() as db:

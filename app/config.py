@@ -68,8 +68,8 @@ def load_settings() -> Settings:
         database_url=_database_url(),
         region=_env("BLIZZARD_REGION", "eu").lower(),
         locale=_env("BLIZZARD_LOCALE", "fr_FR"),
-        blizzard_client_id=_env("BLIZZARD_CLIENT_ID"),
-        blizzard_client_secret=_env("BLIZZARD_CLIENT_SECRET"),
+        blizzard_client_id=(_env("BLIZZARD_CLIENT_ID") or "").strip() or None,
+        blizzard_client_secret=(_env("BLIZZARD_CLIENT_SECRET") or "").strip() or None,
         public_url=public_url,
         site_password=_env("SITE_PASSWORD"),
         # Sans SECRET_KEY, les sessions sautent à chaque redémarrage : à définir sur Railway.
