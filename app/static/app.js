@@ -188,7 +188,7 @@
       label.style.borderColor = colors[index % colors.length];
       var input = document.createElement("input");
       input.type = "checkbox";
-      input.checked = index < 2;
+      input.checked = row.main;
       input.addEventListener("change", draw);
       label.append(input, document.createTextNode(row.name));
       controls.appendChild(label);

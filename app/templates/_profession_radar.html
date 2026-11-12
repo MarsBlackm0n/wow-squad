@@ -5,7 +5,7 @@
     {% set state = c.state or {} %}
     {% set dungeons = state.get('dungeon_encounters') %}
     {% set raids = state.get('raid_encounters') %}
-    {{ {'name': c.display_name, 'skills': state.get('professions'), 'activity': {
+    {{ {'name': c.display_name, 'main': c.id in main_character_ids, 'skills': state.get('professions'), 'activity': {
       'Niveau': c.level or none, 'Niv. d’équipement': c.ilvl or none, 'Morts': c.deaths,
       'Boss de donjon': dungeons.values() | sum(attribute='count') if dungeons is not none else none,
       'Boss de raid': raids.values() | sum(attribute='count') if raids is not none else none,

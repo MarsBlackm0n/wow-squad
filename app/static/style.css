@@ -1258,3 +1258,17 @@ html { scroll-padding-top: 5.5rem; }
 .race-series-label { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; }
 .race-series-label:has(input:not(:checked)) .legend-swatch { opacity: .35; }
 .race-series-label:focus-within { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+.main-character-prompt { margin-block: 1rem; }
+.main-character-prompt h2 { color: var(--gold); margin-top: 0; }
+.main-character-prompt p { margin-bottom: 0; }
+.account-roster-entry > form { margin-top: .55rem; }
+.main-character-badge, .squad-member-level { color: var(--gold); font-weight: 700; }
+.main-character-glow { outline: 1px solid var(--gold); box-shadow: 0 0 10px rgb(208 159 67 / 24%); }
+@media (prefers-reduced-motion: no-preference) {
+  .main-character-glow { animation: main-character-shimmer 3.6s ease-in-out infinite; }
+}
+@keyframes main-character-shimmer {
+  0%, 100% { box-shadow: 0 0 8px rgb(208 159 67 / 20%); }
+  50% { box-shadow: 0 0 19px rgb(232 181 76 / 45%), 0 0 3px rgb(248 216 143 / 40%); }
+}

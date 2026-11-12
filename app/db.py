@@ -100,6 +100,7 @@ class Account(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     battle_id: Mapped[int] = mapped_column(BigInteger, unique=True)
+    main_character_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     battletag: Mapped[str] = mapped_column(String(64))
     linked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -192,6 +193,9 @@ SessionLocal = sessionmaker(engine, expire_on_commit=False)
 def init_db() -> None:
     Base.metadata.create_all(engine)
     with engine.begin() as connection:
+        accounts = inspect(connection).get_columns("accounts")
+        if not any(column["name"] == "main_character_id" for column in accounts):
+            connection.execute(text("ALTER TABLE accounts ADD COLUMN main_character_id INTEGER"))
         columns = inspect(connection).get_columns("characters")
         if not any(column["name"] == "account_id" for column in columns):
             connection.execute(text("ALTER TABLE characters ADD COLUMN account_id INTEGER REFERENCES accounts(id)"))

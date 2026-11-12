@@ -21,7 +21,7 @@
       <div class="member-body">
         <a href="/perso/{{ c.id }}" class="member-name">{{ c.display_name }}</a>
         <span class="meta">{% if c.player %}{{ c.player }} · {% endif %}{% if c.battletag %}compte lié{% else %}ajouté à la main{% endif %}</span>
-        <span class="squad-member-tags">{{ faction_badge(c.faction) }} {{ ruleset_badge(c) }}</span>
+        <span class="squad-member-tags">{{ faction_badge(c.faction) }} {{ ruleset_badge(c) }}{% if c.level %} <span class="pill squad-member-level">Niv. {{ c.level }}</span>{% endif %}</span>
       </div>
       <span class="status status-{{ c.status }}">{{ {'ok': 'Suivi', 'pending': 'En attente', 'error': 'Erreur'}[c.status] }}</span>
     </li>
@@ -273,7 +273,7 @@
               <figcaption><ul class="legend" role="list">
                 {% for c in race_charts %}
                 <li><label class="tag race-series-label" style="border-color: {{ c.color }}">
-                  <input type="checkbox" value="{{ c.id }}" data-race-toggle checked hidden>
+                  <input type="checkbox" value="{{ c.id }}" data-race-toggle{% if c.id in main_character_ids %} checked{% endif %} hidden>
                   <span class="legend-swatch" style="background: {{ c.color }}" aria-hidden="true"></span>
                   {{ c.name }} <strong>{{ c.last }}</strong>
                 </label></li>

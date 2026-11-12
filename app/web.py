@@ -159,7 +159,8 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
     weekly_extra = sum(max(0, pace_by_char[gain.character.id].weekly_estimate - gain.levels)
                        for gain in week.gains if gain.character.id in pace_by_char
                        and pace_by_char[gain.character.id].weekly_estimate is not None)
-    return render(request, "index.html", chars=chars, guild_directory=guilds.tracked_guilds(chars), week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
+    return render(request, "index.html", chars=chars, guild_directory=guilds.tracked_guilds(chars),
+                  main_character_ids={a.main_character_id for a in accounts if a.main_character_id is not None}, week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
                   race_comparison=race_comparison, race_total=race_total, race_total_level=race_total_level, race_replay=race_replay,
                   days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
                   goal=insights.squad_goal(chars, goal_cfg.target, goal_cfg.deadline, pace_by_char),
@@ -227,6 +228,21 @@ async def account_page(request: Request):
     if not account:
         request.session.pop("account_id", None)
     return render(request, "account.html", account=account, chars=chars)
+
+
+@router.post("/compte/personnage-principal")
+async def set_main_character(request: Request, personnage: int = Form(...), csrf: str = Form("")):
+    check_csrf(request, csrf)
+    with SessionLocal() as db:
+        account_id = mission_account(db, request)
+        account = db.get(Account, account_id, with_for_update=True)
+        char = db.get(Character, personnage)
+        if char is None or char.account_id != account_id:
+            raise HTTPException(403, "Choisis un personnage de ton compte.")
+        account.main_character_id = char.id
+        db.commit()
+    flash(request, "Personnage principal enregistré.")
+    return back("/compte")
 
 
 def _race_chart(db, chars: list[Character]):
@@ -325,9 +341,11 @@ async def guild_page(request: Request, char_id: int):
         candidates = db.scalars(select(Character).where(Character.region == char.region, Character.guild != "")).all()
         tracked = [member for member in candidates if guilds.guild_slug(member) == slug]
         movements = guilds.roster_movements(db, char.region, slug)
+        account_ids = {member.account_id for member in tracked if member.account_id is not None}
+        main_character_ids = set(db.scalars(select(Account.main_character_id).where(Account.id.in_(account_ids))))
     bz = request.app.state.worker.bz
     guild = await guilds.fetch_guild(bz, slug) if bz and slug and bz.region == char.region else guilds.guild_details(None, None, None, None)
-    return render(request, "guild.html", char=char, guild=guild, tracked=tracked, movements=movements,
+    return render(request, "guild.html", char=char, guild=guild, tracked=tracked, movements=movements, main_character_ids=main_character_ids,
                   tracked_by_slug={member.slug: member for member in tracked})
 
 
@@ -398,6 +416,9 @@ async def delete_character(request: Request, char_id: int, csrf: str = Form(""))
             raise HTTPException(404, "Personnage introuvable.")
         name = char.display_name
         if char.account_id is not None:
+            account = db.get(Account, char.account_id, with_for_update=True)
+            if account and account.main_character_id == char.id:
+                account.main_character_id = None
             today = utcnow().astimezone(ZoneInfo(settings.timezone)).date()
             availability = db.get(EveningAvailability, (today, char.account_id))
             if availability and char_id in availability.character_ids:

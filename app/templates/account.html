@@ -15,17 +15,25 @@
 {% if account %}<details class="account-identity"><summary>Identifiant Battle.net</summary><p><code>{{ account.battle_id }}</code></p></details>{% endif %}
 
 {% if chars %}
+{% set main_id = account.main_character_id %}
+{% if not main_id %}
+<section class="panel-block main-character-prompt main-character-glow" aria-labelledby="main-character-title">
+  <h2 id="main-character-title">Choisis ton personnage principal</h2>
+  <p>Il sera affiché par défaut dans les graphiques de comparaison. Tu peux changer de principal quand tu veux.</p>
+</section>
+{% endif %}
 <ul class="roster" role="list" aria-label="Mes personnages Forever">
   {% for char in chars %}
   {% set summary = (char.state or {}).get('account_summary', {}) %}
   {% set faction = char.faction or summary.faction or '' %}
-  <li>
-    <a class="roster-card" data-faction="{{ faction | faction_key }}" href="/perso/{{ char.id }}"
+  <li class="account-roster-entry">
+    <a class="roster-card{% if char.id == main_id %} main-character-glow{% endif %}" data-faction="{{ faction | faction_key }}" href="/perso/{{ char.id }}"
        style="--class-color: {{ char.class_name | class_color }}">
       <div class="roster-card-head">
         {{ avatar(char) }}
         <div>
           <h2>{{ char.display_name }}</h2>
+          {% if char.id == main_id %}<span class="main-character-badge">Personnage principal</span>{% endif %}
           <p class="meta">{{ [char.race or summary.race, char.class_name or summary.class_name] | select | join(' · ') }}</p>
         </div>
         {{ icon('chevron', 'roster-chevron') }}
@@ -35,6 +43,13 @@
         <div class="character-badges">{{ faction_badge(faction) }} {{ ruleset_badge(char) }}</div>
       </div>
     </a>
+    {% if char.id != main_id %}
+    <form method="post" action="/compte/personnage-principal">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="button button-secondary button-small" type="submit" name="personnage" value="{{ char.id }}"
+              aria-label="Choisir {{ char.display_name }} comme personnage principal">Choisir comme principal</button>
+    </form>
+    {% endif %}
   </li>
   {% endfor %}
 </ul>
