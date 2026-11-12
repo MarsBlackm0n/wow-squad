@@ -328,7 +328,7 @@
       </div>
       <div class="kpi">
         <dt>Rythme de la squad</dt>
-        <dd><span class="kpi-value">+{{ goal.average_pace | number(1) }}</span><span class="kpi-note">niv. par jour et par perso{% if goal.stalled %} · {{ goal.stalled }} à l'arrêt{% endif %}</span></dd>
+        <dd><span class="kpi-value">{{ ('+' ~ (goal.average_pace | number(1))) if goal.average_pace is not none else '—' }}</span><span class="kpi-note">niv. par jour par perso mesuré{% if goal.stalled %} · {{ goal.stalled }} sans gain observé{% endif %}</span></dd>
       </div>
       <div class="kpi">
         <dt>Cette semaine</dt>
@@ -336,7 +336,7 @@
       </div>
       <div class="kpi">
         <dt>Meilleur rythme</dt>
-        <dd>{% if goal.fastest %}<a class="kpi-value kpi-link" href="/perso/{{ goal.fastest.id }}">{{ goal.fastest.name }}</a><span class="kpi-note">+{{ goal.fastest_pace | number(1) }} niv. par jour</span>{% else %}<span class="kpi-value">—</span><span class="kpi-note">personne n'a bougé cette semaine</span>{% endif %}</dd>
+        <dd>{% if goal.fastest %}<a class="kpi-value kpi-link" href="/perso/{{ goal.fastest.id }}">{{ goal.fastest.name }}</a><span class="kpi-note">+{{ goal.fastest_pace | number(1) }} niv. par jour</span>{% else %}<span class="kpi-value">—</span><span class="kpi-note">aucun rythme positif mesuré</span>{% endif %}</dd>
       </div>
     </dl>
     {% endif %}
@@ -369,7 +369,7 @@
             {{ avatar(c, 'sm') }}
             <div class="rank-body">
               <a class="rank-name" href="/perso/{{ c.id }}"><span class="visually-hidden">{{ loop.index }}. </span>{{ c.display_name }}</a>
-              <span class="meta">{% if pc.reached %}objectif atteint{% elif pc.eta %}niv. {{ goal_cfg.target }} vers le {{ pc.eta.strftime('%d/%m') }}{% else %}à l'arrêt{% endif %}</span>
+              <span class="meta">{% if pc.reached %}objectif atteint{% elif pc.eta %}niv. {{ goal_cfg.target }} vers le {{ pc.eta.strftime('%d/%m') }}{% else %}{{ pc.gained }} niv. gagné{{ 's' if pc.gained > 1 }} sur {{ pc.observed_days | number(1) }} j{% endif %}</span>
             </div>
             <span class="pace"><strong>+{{ pc.per_day | number(1) }}</strong><span class="meta">/jour</span></span>
           </li>

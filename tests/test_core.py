@@ -88,12 +88,14 @@ def test_squad_goal_uses_target_and_pace():
     from datetime import date
     from app.insights import Pace
     chars = [_char(1, 30), _char(2, 40), _char(3, 45)]
-    paces = {1: Pace(3.0, 21, date(2026, 11, 20), False), 2: Pace(1.0, 7, date(2026, 11, 25), False),
-             3: Pace(0.0, 0, None, True)}
+    paces = {1: Pace(3.0, 21, date(2026, 11, 20), False, 7), 2: Pace(1.0, 7, date(2026, 11, 25), False, 7),
+             3: Pace(0.0, 0, None, True, 7)}
     goal = squad_goal(chars, 45, None, paces)
     assert goal.target == 45 and goal.at_target == 1
     assert goal.progress == round((30 + 40 + 45) / (3 * 45) * 100, 1)
     assert goal.fastest.id == 1 and goal.projected == date(2026, 11, 25) and goal.stalled == 0
+    assert squad_goal(chars, 45, None, {1: paces[1]}).projected is None
+    assert squad_goal(chars, 45, None, {}).average_pace is None
 
 
 def test_group_plans_pick_common_dungeon():
@@ -198,3 +200,28 @@ def test_ruleset_label_and_account_summary():
     assert ruleset_label("") == "Non renseigné"
     assert account_entry_summary({"ruleset": {"type": "RP_PVP"}})["ruleset"] == "RP_PVP"
     assert parse_profile({"ruleset": {"name": {"fr_FR": "Normal"}}})["ruleset"] == "Normal"
+
+
+def test_pace_requires_at_least_one_day_of_snapshots():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+
+    from app.db import Base, Snapshot
+    from app.insights import paces
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine) as db:
+        char = _char(1, 21)
+        db.add(char)
+        now = datetime.now(timezone.utc)
+        db.add(Snapshot(character_id=char.id, taken_at=now - timedelta(days=8), level=10))
+        db.add(Snapshot(character_id=char.id, taken_at=now - timedelta(days=2), level=20))
+        assert paces(db, [char], 60, "UTC") == {}
+
+        db.add(Snapshot(character_id=char.id, taken_at=now - timedelta(hours=36), level=20))
+        assert paces(db, [char], 60, "UTC") == {}
+
+        db.add(Snapshot(character_id=char.id, taken_at=now - timedelta(hours=24), level=21))
+        pace = paces(db, [char], 60, "UTC")[char.id]
+        assert pace.gained == 1 and pace.per_day == 1 and pace.observed_days == 1

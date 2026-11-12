@@ -192,6 +192,7 @@ class Pace:
     gained: int           # niveaux gagnés sur la fenêtre
     eta: date | None      # date estimée pour atteindre l'objectif (None : à l'arrêt ou déjà arrivé)
     reached: bool
+    observed_days: float
 
 
 def paces(db: Session, chars: list[Character], target: int, tz_name: str, days: int = 7) -> dict[int, Pace]:
@@ -202,23 +203,22 @@ def paces(db: Session, chars: list[Character], target: int, tz_name: str, days: 
     for c in chars:
         if c.status == "pending" or not c.level:
             continue
-        # Point de départ : dernier relevé avant la fenêtre, sinon le premier relevé dedans.
-        base = db.scalars(select(Snapshot).where(Snapshot.character_id == c.id, Snapshot.taken_at < since)
-                          .order_by(Snapshot.taken_at.desc()).limit(1)).first()
-        if base is None:
-            base = db.scalars(select(Snapshot).where(Snapshot.character_id == c.id)
-                              .order_by(Snapshot.taken_at).limit(1)).first()
-        if base is None:
+        window = select(Snapshot).where(Snapshot.character_id == c.id, Snapshot.taken_at >= since,
+                                        Snapshot.taken_at <= now, Snapshot.level > 0)
+        base = db.scalars(window.order_by(Snapshot.taken_at).limit(1)).first()
+        latest = db.scalars(window.order_by(Snapshot.taken_at.desc()).limit(1)).first()
+        if base is None or latest is None:
             continue
-        start = max(_aware(base.taken_at), since)
-        elapsed = max((now - start).total_seconds() / 86400, 1.0)
-        gained = max(c.level - base.level, 0)
+        elapsed = (_aware(latest.taken_at) - _aware(base.taken_at)).total_seconds() / 86400
+        if elapsed < 1:
+            continue
+        gained = max(latest.level - base.level, 0)
         per_day = gained / elapsed
         reached = c.level >= target
         eta = None
         if not reached and per_day > 0.05:
             eta = today + timedelta(days=round((target - c.level) / per_day))
-        out[c.id] = Pace(round(per_day, 1), gained, eta, reached)
+        out[c.id] = Pace(round(per_day, 1), gained, eta, reached, elapsed)
     return out
 
 
@@ -230,9 +230,9 @@ class SquadGoal:
     average_level: float
     progress: float  # 0-100, vers « tout le monde au niveau cible »
     at_target: int
-    average_pace: float
+    average_pace: float | None
     projected: date | None   # quand le dernier y arrivera, au rythme actuel
-    stalled: int             # persos à l'arrêt (aucun niveau sur la fenêtre)
+    stalled: int             # persos sous l’objectif sans gain de niveau observé
     fastest: Character | None
     fastest_pace: float
 
@@ -262,9 +262,9 @@ def squad_goal(chars: list[Character], target: int, deadline: date | None,
         average_level=total / len(active),
         progress=round(total / (len(active) * target) * 100, 1),
         at_target=sum(1 for c in active if c.level >= target),
-        average_pace=round(sum(p.per_day for _, p in rated) / len(rated), 1) if rated else 0.0,
-        projected=max(etas) if etas and len(etas) == len(pending) else None,
-        stalled=sum(1 for p in pending if not p.eta),
+        average_pace=round(sum(p.per_day for _, p in rated) / len(rated), 1) if rated else None,
+        projected=max(etas) if etas and len(etas) == sum(c.level < target for c in active) else None,
+        stalled=sum(1 for p in pending if p.gained == 0),
         fastest=fastest[0] if fastest[1] and fastest[1].per_day > 0 else None,
         fastest_pace=fastest[1].per_day if fastest[1] else 0.0,
     )

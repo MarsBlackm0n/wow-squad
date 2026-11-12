@@ -44,7 +44,21 @@
   <h2 id="stats-title" class="visually-hidden">Statistiques</h2>
   <dl class="kpis kpis-profile">
     <div class="kpi kpi-level"><dt>Niveau</dt><dd>{{ level_bar(char.level, max_level) }}</dd></div>
-    <div class="kpi"><dt>Rythme (7 jours)</dt><dd>{% if pace %}<span class="kpi-value">+{{ pace.per_day | number(1) }}</span><span class="kpi-note">{% if pace.reached %}objectif {{ goal_cfg.target }} atteint{% elif pace.eta %}niv. {{ goal_cfg.target }} vers le {{ pace.eta.strftime('%d/%m') }}{% else %}à l'arrêt cette semaine{% endif %}</span>{% else %}<span class="kpi-value">—</span>{% endif %}</dd></div>
+    <div class="kpi">
+      <dt>Rythme (7 jours)</dt>
+      <dd>
+        {% if pace %}
+        <span class="kpi-value">+{{ pace.per_day | number(1) }}</span>
+        <span class="kpi-note">niv. par jour sur {{ pace.observed_days | number(1) }} j suivis</span>
+        {% if pace.reached %}<span class="kpi-note">Objectif {{ goal_cfg.target }} atteint</span>
+        {% elif pace.eta %}<span class="kpi-note">Niv. {{ goal_cfg.target }} vers le {{ pace.eta.strftime('%d/%m') }}</span>
+        {% endif %}
+        {% else %}
+        <span class="kpi-value">—</span>
+        <span class="kpi-note">Historique insuffisant</span>
+        {% endif %}
+      </dd>
+    </div>
     <div class="kpi"><dt>Niveau d'objet</dt><dd><span class="kpi-value">{{ char.ilvl | number(1) if char.ilvl else '—' }}</span></dd></div>
     <div class="kpi"><dt>Hauts faits</dt><dd><span class="kpi-value">{{ char.achievement_points | number }}</span><span class="kpi-note">points</span></dd></div>
     <div class="kpi"><dt>Montures</dt><dd><span class="kpi-value">{{ mounts | length if mounts is not none else '—' }}</span></dd></div>
