@@ -13,7 +13,7 @@
     }} | tojson }}{% if not loop.last %},{% endif %}
     {% endfor %}
   ]</script>
-  <label>Indicateurs
+  <label class="radar-mode">Indicateurs
     <select data-radar-mode><option value="skills">Métiers</option><option value="activity">Progression et activité</option></select>
   </label>
   <fieldset><legend>Personnages à comparer</legend><div class="tag-list" data-radar-series></div></fieldset>

@@ -202,7 +202,8 @@
       }).filter(function (item) { return item.checked; });
       plot.replaceChildren();
       tableWrap.replaceChildren();
-      plot.hidden = axes.length < 3 || !selected.length;
+      var showPlot = axes.length >= 3 && selected.length > 0;
+      plot.toggleAttribute("hidden", !showPlot);
       note.textContent = !series.length ? "Aucun personnage suivi pour ce groupe."
         : !selected.length ? "Sélectionne au moins un personnage."
         : axes.length < 3 ? "Le radar apparaît à partir de trois métiers relevés. Les niveaux restent dans le tableau."
@@ -230,7 +231,7 @@
         });
       });
       tableWrap.appendChild(table);
-      if (plot.hidden) return;
+      if (!showPlot) return;
       [35, 70, 105, 140, 175].forEach(function (radius) {
         shape("polygon", {points: axes.map(function (_, i) { return point(i, radius).join(","); }).join(" "),
                           fill: "none", stroke: "var(--line)"});

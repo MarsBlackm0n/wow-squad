@@ -1209,3 +1209,28 @@ html { scroll-padding-top: 5.5rem; }
 .radar-table { overflow-x: auto; }
 .radar-table table { width: 100%; border-collapse: collapse; text-align: start; }
 .radar-table th, .radar-table td { text-align: start; padding: .35rem .55rem; border-bottom: 1px solid var(--line); }
+
+.profession-radar .radar-mode {
+  display: grid;
+  width: min(100%, 20rem);
+  gap: .35rem;
+  margin-block: .65rem 1rem;
+  font-weight: 650;
+}
+.radar-mode select {
+  appearance: none;
+  width: 100%;
+  min-height: 44px;
+  padding: .55rem 2.4rem .55rem .85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(45deg, transparent 50%, var(--muted) 50%) right 1.15rem center / .35rem .35rem no-repeat,
+              linear-gradient(135deg, var(--muted) 50%, transparent 50%) right .8rem center / .35rem .35rem no-repeat,
+              var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.radar-mode select:hover { border-color: var(--teal); }
+.radar-mode select:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.profession-radar [data-radar-plot] { width: min(100%, 39rem); height: auto; aspect-ratio: 620 / 485; }
