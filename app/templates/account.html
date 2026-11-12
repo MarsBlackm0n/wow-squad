@@ -15,13 +15,21 @@
 {% if account %}<details class="account-identity"><summary>Identifiant Battle.net</summary><p><code>{{ account.battle_id }}</code></p></details>{% endif %}
 
 {% if chars %}
-{% set main_id = account.main_character_id %}
-{% if not main_id %}
-<section class="panel-block main-character-prompt main-character-glow" aria-labelledby="main-character-title">
-  <h2 id="main-character-title">Choisis ton personnage principal</h2>
-  <p>Il sera affiché par défaut dans les graphiques de comparaison. Tu peux changer de principal quand tu veux.</p>
+<section id="personnage-principal" class="panel-block main-character-prompt{% if not main_id %} main-character-glow{% endif %}" aria-labelledby="main-character-title">
+  <h2 id="main-character-title">{{ 'Ton personnage principal' if main_id else 'Choisis ton personnage principal' }}</h2>
+  {% if not main_id %}<p>Il sera mis en avant dans La squad et affiché par défaut sur les graphiques.</p>{% endif %}
+  <form method="post" action="/compte/personnage-principal" class="main-character-form">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="field">
+      <label for="main-character-select">Personnage principal</label>
+      <select id="main-character-select" name="personnage" required>
+        {% if not main_id %}<option value="" selected disabled>Choisir un personnage</option>{% endif %}
+        {% for c in chars %}<option value="{{ c.id }}"{% if c.id == main_id %} selected{% endif %}>{{ c.display_name }}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="button button-secondary" type="submit">{{ 'Modifier le principal' if main_id else 'Confirmer le principal' }}</button>
+  </form>
 </section>
-{% endif %}
 <ul class="roster" role="list" aria-label="Mes personnages Forever">
   {% for char in chars %}
   {% set summary = (char.state or {}).get('account_summary', {}) %}
@@ -43,18 +51,11 @@
         <div class="character-badges">{{ faction_badge(faction) }} {{ ruleset_badge(char) }}</div>
       </div>
     </a>
-    {% if char.id != main_id %}
-    <form method="post" action="/compte/personnage-principal">
-      <input type="hidden" name="csrf" value="{{ csrf }}">
-      <button class="button button-secondary button-small" type="submit" name="personnage" value="{{ char.id }}"
-              aria-label="Choisir {{ char.display_name }} comme personnage principal">Choisir comme principal</button>
-    </form>
-    {% endif %}
   </li>
   {% endfor %}
 </ul>
 {% else %}
-<section class="panel-block account-empty">
+<section id="personnage-principal" class="panel-block account-empty">
   {% if account %}
   <h2>Aucun personnage importé</h2>
   <p>Battle.net peut mettre du temps à afficher un perso Forever. Une fois le niveau 10 atteint, déconnecte-toi du jeu puis relance la synchronisation.</p>

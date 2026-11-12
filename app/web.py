@@ -159,7 +159,11 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
     weekly_extra = sum(max(0, pace_by_char[gain.character.id].weekly_estimate - gain.levels)
                        for gain in week.gains if gain.character.id in pace_by_char
                        and pace_by_char[gain.character.id].weekly_estimate is not None)
-    return render(request, "index.html", chars=chars, guild_directory=guilds.tracked_guilds(chars),
+    current_account = next((account for account in accounts if account.id == account_id), None)
+    return render(request, "index.html", chars=chars,
+                  player_groups=_squad_players(chars, accounts),
+                  show_main_prompt=bool(current_account and not any(
+                      c.id == current_account.main_character_id for c in mission_chars)), guild_directory=guilds.tracked_guilds(chars),
                   main_character_ids={a.main_character_id for a in accounts if a.main_character_id is not None}, week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
                   race_comparison=race_comparison, race_total=race_total, race_total_level=race_total_level, race_replay=race_replay,
                   days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
@@ -227,7 +231,8 @@ async def account_page(request: Request):
                            .order_by(Character.level.desc(), Character.name, Character.surname)).all() if account else []
     if not account:
         request.session.pop("account_id", None)
-    return render(request, "account.html", account=account, chars=chars)
+    main_id = next((char.id for char in chars if char.id == account.main_character_id), None) if account else None
+    return render(request, "account.html", account=account, chars=chars, main_id=main_id)
 
 
 @router.post("/compte/personnage-principal")
@@ -243,6 +248,28 @@ async def set_main_character(request: Request, personnage: int = Form(...), csrf
         db.commit()
     flash(request, "Personnage principal enregistré.")
     return back("/compte")
+
+
+def _squad_players(chars, accounts):
+    by_id = {account.id: account for account in accounts}
+    groups = {}
+    for char in chars:
+        account = by_id.get(char.account_id)
+        player = char.player.strip()
+        if account:
+            key = f"account-{account.id}"
+            name = account.battletag.split("#")[0]
+        else:
+            key = f"manual-{player.casefold()}"
+            name = player or "Joueur non renseigné"
+        group = groups.setdefault(key, {"key": key, "name": name, "main": None, "characters": []})
+        if account and char.id == account.main_character_id:
+            group["main"] = char
+        else:
+            group["characters"].append(char)
+    for group in groups.values():
+        group["characters"].sort(key=lambda char: (-char.level, char.display_name.casefold()))
+    return sorted(groups.values(), key=lambda group: (group["name"].casefold(), group["key"]))
 
 
 def _race_chart(db, chars: list[Character]):

@@ -3,6 +3,21 @@
 
 {% set AWARD_ICONS = {'rocket': 'trend', 'hunter': 'trophy', 'collector': 'horseshoe', 'graveyard': 'skull', 'dungeon': 'shield', 'raid': 'trophy'} %}
 
+{% macro squad_member(c, main=false) %}
+<li class="member squad-member-card{% if main %} squad-main-card{% endif %}" data-faction="{{ c.faction | faction_key }}">
+  {{ avatar(c, 'sm' if main else 'xs') }}
+  <div class="member-body">
+    <a href="/perso/{{ c.id }}" class="member-name">{{ c.display_name }}</a>
+    <span class="squad-member-tags">
+      {% if main %}<span class="main-character-badge">Principal</span>{% endif %}
+      {{ faction_badge(c.faction) }} {{ ruleset_badge(c) }}
+      {% if c.level %}<span class="pill squad-member-level">Niv. {{ c.level }}</span>{% endif %}
+    </span>
+  </div>
+  <span class="status status-{{ c.status }}">{{ {'ok': 'Suivi', 'pending': 'En attente', 'error': 'Erreur'}[c.status] }}</span>
+</li>
+{% endmacro %}
+
 {% macro squad_panel() %}
 <div class="squad-directory">
 {% if not account_connected and settings.battlenet_login_enabled %}
@@ -14,19 +29,29 @@
 {% if chars %}
 <section class="panel-block squad-section squad-members" aria-labelledby="members-title">
   <h3 id="members-title" class="block-title">Membres suivis <span class="count">{{ chars | length }}</span></h3>
-  <ul class="member-list" role="list">
-    {% for c in chars | sort(attribute='name') %}
-    <li class="member squad-member-card" data-faction="{{ c.faction | faction_key }}">
-      {{ avatar(c, 'sm') }}
-      <div class="member-body">
-        <a href="/perso/{{ c.id }}" class="member-name">{{ c.display_name }}</a>
-        <span class="meta">{% if c.player %}{{ c.player }} · {% endif %}{% if c.battletag %}compte lié{% else %}ajouté à la main{% endif %}</span>
-        <span class="squad-member-tags">{{ faction_badge(c.faction) }} {{ ruleset_badge(c) }}{% if c.level %} <span class="pill squad-member-level">Niv. {{ c.level }}</span>{% endif %}</span>
-      </div>
-      <span class="status status-{{ c.status }}">{{ {'ok': 'Suivi', 'pending': 'En attente', 'error': 'Erreur'}[c.status] }}</span>
-    </li>
+  <div class="field squad-player-filter" data-player-filter hidden>
+    <label for="squad-player">Filtrer par joueur</label>
+    <select id="squad-player" data-player-select>
+      <option value="">Tous les joueurs</option>
+      {% for group in player_groups %}<option value="{{ group.key }}">{{ group.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="squad-player-grid">
+    {% for group in player_groups %}
+    {% set featured = group.main or group.characters[0] %}
+    {% set others = group.characters if group.main else group.characters[1:] %}
+    <article class="panel-block squad-player" data-squad-player="{{ group.key }}">
+      <h4>{{ group.name }}</h4>
+      <ul class="squad-character-list" role="list">{{ squad_member(featured, group.main is not none) }}</ul>
+      {% if others %}
+      <details>
+        <summary>{{ others | length }} autre{{ 's' if others | length > 1 }} personnage{{ 's' if others | length > 1 }}</summary>
+        <ul class="squad-character-list" role="list">{% for c in others %}{{ squad_member(c) }}{% endfor %}</ul>
+      </details>
+      {% endif %}
+    </article>
     {% endfor %}
-  </ul>
+  </div>
   {% if chars | selectattr('status', 'equalto', 'pending') | list %}
   <p class="hint">« En attente » : Blizzard n'expose un perso qu'à partir du niveau 10, après une déconnexion. Vérifie aussi l'orthographe du prénom et du nom.</p>
   {% endif %}
@@ -93,7 +118,7 @@
 </section>
 
 {% if not chars %}
-<div id="ce-soir">{% include "_evening.html" %}{% include "_community.html" %}{% include "_missions.html" %}</div>
+<div id="ce-soir">{% include "_main_character_prompt.html" %}{% include "_evening.html" %}{% include "_community.html" %}{% include "_missions.html" %}</div>
 <p><a href="/carte">Carte d’Azeroth</a></p>
 <section class="onboarding" aria-labelledby="onboarding-title">
   <h2 id="onboarding-title">Bienvenue au QG</h2>
@@ -128,6 +153,7 @@
       <h2 id="ce-soir-title">Ce soir, on fait quoi&nbsp;?</h2>
       <p class="lead">Vos groupes d'abord, puis les autres combinaisons possibles d'après vos niveaux actuels.</p>
     </header>
+    {% include "_main_character_prompt.html" %}
     {% include "_evening.html" %}
     {% include "_community.html" %}
     {% include "_missions.html" %}

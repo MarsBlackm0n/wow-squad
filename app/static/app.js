@@ -172,6 +172,19 @@
     update();
   });
 
+  document.querySelectorAll("[data-player-filter]").forEach(function (filter) {
+    var select = filter.querySelector("[data-player-select]");
+    var cards = filter.closest(".squad-members").querySelectorAll("[data-squad-player]");
+    function update() {
+      cards.forEach(function (card) {
+        card.hidden = Boolean(select.value) && card.dataset.squadPlayer !== select.value;
+      });
+    }
+    select.addEventListener("change", update);
+    filter.hidden = false;
+    update();
+  });
+
   document.querySelectorAll("[data-profession-radar]").forEach(function (radar) {
     var series = JSON.parse(radar.querySelector("[data-radar-data]").textContent);
     var controls = radar.querySelector("[data-radar-series]");
