@@ -952,3 +952,35 @@ html { scroll-padding-top: 5.5rem; }
 .chart-module .chart-frame { margin-top: 0; }
 .chart-frame[hidden] { display: none; }
 @media (max-width: 640px) { .chart-frame { padding-inline: .4rem; } }
+
+
+.story-banner {
+  display: grid; align-content: end; gap: .35rem; min-height: clamp(10rem, 22vw, 16rem);
+  padding: clamp(1rem, 3vw, 2rem); border: 1px solid #736147; border-radius: var(--radius);
+  background: linear-gradient(90deg, #0b101bea, #0b101b78 60%, transparent), var(--story-art) center / cover no-repeat, #151b28;
+}
+.story-banner-hall {
+  --story-art: url("palmares.jpg");
+  text-align: center; justify-items: center;
+  background-image: linear-gradient(0deg, #0b101bec, #0b101b32 65%, transparent), var(--story-art);
+}
+.story-banner-journal { --story-art: url("journal.jpg"); }
+.story-banner h2 {
+  color: #fff3da; font: 800 clamp(1.55rem, 4.5vw, 3.2rem)/1.08 var(--display-font);
+  text-shadow: 0 2px 10px #080a0f;
+}
+.story-banner .lead { margin: 0; color: #f3e9d6; }
+.palmares-grid { gap: 1rem; }
+.palmares-grid > section {
+  padding: 1rem; border: 1px solid var(--line-strong); border-top: 2px solid var(--gold);
+  border-radius: var(--radius); background: linear-gradient(150deg, var(--gold-soft), transparent 48%), var(--surface);
+}
+.palmares-grid h3 { display: flex; gap: .5rem; align-items: center; }
+.palmares-grid h3 .icon { color: var(--gold); flex: none; }
+.palmares-grid .award-icon { color: var(--gold); background: var(--gold-soft); }
+.palmares-grid .tone-danger .award-icon { color: var(--danger); background: var(--danger-soft); }
+.palmares-grid .award + .award { border-top: 1px solid var(--line); }
+#journal .timeline { gap: .75rem; }
+#journal .day { padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+#journal .day-title { color: var(--gold); }
+@media (max-width: 640px) { .story-banner { min-height: 10rem; background-position: center, 57% center; } }

@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from .db import Character, Event, select, utcnow
+from .insights import encounter_kind
 from .notify import esc
 
 
@@ -19,10 +20,12 @@ class Gains:
     deaths: int = 0
     mounts: int = 0
     ilvl: float = 0.0
+    dungeon_bosses: int = 0
+    raid_bosses: int = 0
 
     @property
     def active(self) -> bool:
-        return bool(self.levels or self.achievements or self.deaths or self.mounts or self.ilvl)
+        return bool(self.levels or self.achievements or self.deaths or self.mounts or self.ilvl or self.dungeon_bosses or self.raid_bosses)
 
 
 @dataclass
@@ -73,6 +76,13 @@ def compute_week(db: Session, since: datetime | None = None) -> Week:
         elif ev.kind == "ilvl":
             g.ilvl += float(data.get("to", 0)) - float(data.get("from", 0))
 
+        elif ev.kind == "encounter":
+            kind = encounter_kind(ev)
+            if kind == "donjon":
+                g.dungeon_bosses += int(data.get("count", 0))
+            elif kind == "raid":
+                g.raid_bosses += int(data.get("count", 0))
+
     week = Week(since=since, gains=sorted(gains.values(), key=lambda g: (g.levels, g.achievements), reverse=True))
     week.awards = _awards(week.gains)
     return week
@@ -92,6 +102,10 @@ def _awards(gains: list[Gains]) -> list[Award]:
         awards.append(Award("collector", "🐎", "L'écurie", g.character, f"{g.mounts} montures"))
     if g := best("deaths"):
         awards.append(Award("graveyard", "💀", "Abonné au cimetière", g.character, f"{g.deaths} morts"))
+    if g := best("dungeon_bosses"):
+        awards.append(Award("dungeon", "🏆", "As des donjons", g.character, f"{g.dungeon_bosses} boss de donjon"))
+    if g := best("raid_bosses"):
+        awards.append(Award("raid", "🏆", "Fléau des raids", g.character, f"{g.raid_bosses} boss de raid"))
     return awards
 
 

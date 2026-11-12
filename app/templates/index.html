@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, avatar, faction_badge, level_bar, event_item, chart_table, ring, ruleset_badge %}
 
-{% set AWARD_ICONS = {'rocket': 'trend', 'hunter': 'trophy', 'collector': 'horseshoe', 'graveyard': 'skull'} %}
+{% set AWARD_ICONS = {'rocket': 'trend', 'hunter': 'trophy', 'collector': 'horseshoe', 'graveyard': 'skull', 'dungeon': 'shield', 'raid': 'trophy'} %}
 
 {% macro squad_panel() %}
 <div class="squad-grid">
@@ -142,9 +142,7 @@
       </li>
       {% endfor %}
     </ul>
-    <h3 class="block-title plans-after">Autres combinaisons</h3>
-    {% else %}
-    <p class="hint plans-hint">Astuce : déclarez vos groupes fixes dans <a href="#squad">La squad</a> pour qu'ils apparaissent ici en premier.</p>
+    {% if ideas %}<h3 class="block-title plans-after">Autres combinaisons</h3>{% endif %}
     {% endif %}
     {% if ideas %}
     <ul class="ideas" role="list">
@@ -167,8 +165,6 @@
       </li>
       {% endfor %}
     </ul>
-    {% else %}
-    <p class="empty">Pas encore de groupe en vue : il faut au moins deux persos de la même faction dans une même tranche de niveaux de donjon. Le premier à 13 ouvre le bal.</p>
     {% endif %}
   </section>
 
@@ -273,7 +269,7 @@
   </section>
 
   <section id="journal" class="panel" data-panel aria-labelledby="journal-title">
-    <header class="panel-head">
+    <header class="panel-head story-banner story-banner-journal">
       <h2 id="journal-title">Journal de la squad</h2>
       <p class="lead">Ce qui s'est passé, jour après jour.</p>
     </header>
@@ -331,13 +327,13 @@
   </section>
 
   <section id="palmares" class="panel" data-panel aria-labelledby="palmares-title">
-    <header class="panel-head">
+    <header class="panel-head story-banner story-banner-hall">
       <h2 id="palmares-title">Palmarès</h2>
       <p class="lead">Les trophées de la semaine, les premières fois et les records de la squad.</p>
     </header>
     <div class="palmares-grid">
       <section aria-labelledby="awards-title">
-        <h3 id="awards-title" class="block-title">Trophées de la semaine</h3>
+        <h3 id="awards-title" class="block-title">{{ icon('trophy') }} Trophées de la semaine</h3>
         {% if week.awards %}
         <ul class="awards" role="list">
           {% for a in week.awards %}
@@ -351,18 +347,18 @@
       </section>
 
       <section aria-labelledby="pantheon-title">
-        <h3 id="pantheon-title" class="block-title">Panthéon des premières fois</h3>
+        <h3 id="pantheon-title" class="block-title">{{ icon('star') }} Panthéon des premières fois</h3>
         {% if firsts %}
         <dl class="firsts">
           {% for f in firsts %}
           <div class="first"><dt>{{ f.label }}</dt><dd><a href="/perso/{{ f.character.id }}">{{ f.character.name }}</a><span class="meta">{{ f.at | localtime('%d/%m') }}</span></dd></div>
           {% endfor %}
         </dl>
-        {% else %}<p class="quiet">Le premier à passer un palier de 10 niveaux entrera ici.</p>{% endif %}
+        {% else %}<p class="quiet">Les premiers paliers, montures et boss relevés apparaîtront ici.</p>{% endif %}
       </section>
 
       <section aria-labelledby="records-title">
-        <h3 id="records-title" class="block-title">Records</h3>
+        <h3 id="records-title" class="block-title">{{ icon('bolt') }} Records</h3>
         {% if records %}
         <ul class="awards" role="list">
           {% for r in records %}

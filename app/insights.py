@@ -17,7 +17,7 @@ from .ui import FOREVER_LAUNCH, class_key, faction_key
 
 MAX_LEVEL = 60
 TOGETHER_WINDOW = timedelta(minutes=90)
-HIGHLIGHT_KINDS = ("level_milestone", "achievement", "mount", "profession_rank", "guild", "joined")
+HIGHLIGHT_KINDS = ("level_milestone", "encounter", "achievement", "mount", "profession_rank", "guild", "joined")
 TANK_CLASSES = {"warrior", "paladin", "druid"}
 HEAL_CLASSES = {"priest", "paladin", "druid", "shaman"}
 
@@ -349,20 +349,35 @@ class First:
     at: datetime
 
 
+def encounter_kind(event: Event) -> str | None:
+    kind = (event.data or {}).get("instance_kind")
+    if kind in ("donjon", "raid"):
+        return kind
+    # Les premières versions n’enregistraient le type que dans le texte.
+    for kind in ("donjon", "raid"):
+        if f"boss vaincu(s) en {kind}" in event.text:
+            return kind
+    return None
+
+
 def firsts(db: Session) -> list[First]:
     """Le premier de la squad à atteindre chaque palier de 10 niveaux, et la première monture."""
     out: dict[str, First] = {}
-    rows = db.scalars(select(Event).where(Event.kind.in_(("level", "level_milestone", "mount")))
+    rows = db.scalars(select(Event).where(Event.kind.in_(("level", "level_milestone", "mount", "encounter")))
                       .order_by(Event.at)).all()
     for e in rows:
         data = e.data or {}
         if e.kind == "mount":
             out.setdefault("mount", First("Première monture", e.character, e.at))
             continue
+        if e.kind == "encounter":
+            if kind := encounter_kind(e):
+                out.setdefault(kind, First(f"Premier boss relevé en {kind}", e.character, e.at))
+            continue
         for milestone in range(10, MAX_LEVEL + 1, 10):
             if int(data.get("from", 0)) < milestone <= int(data.get("to", 0)):
                 out.setdefault(f"lvl{milestone}", First(f"Niveau {milestone}", e.character, e.at))
-    order = [f"lvl{m}" for m in range(10, MAX_LEVEL + 1, 10)] + ["mount"]
+    order = [f"lvl{m}" for m in range(10, MAX_LEVEL + 1, 10)] + ["mount", "donjon", "raid"]
     return [out[k] for k in order if k in out]
 
 
@@ -380,6 +395,7 @@ def records(events: list[Event], tz_name: str) -> list[Record]:
     tz = ZoneInfo(tz_name)
     levels: dict[tuple[int, date], int] = defaultdict(int)
     deaths: dict[tuple[int, date], int] = defaultdict(int)
+    encounters = {"donjon": defaultdict(int), "raid": defaultdict(int)}
     chars: dict[int, Character] = {}
     for e in events:
         if not e.character:
@@ -391,6 +407,8 @@ def records(events: list[Event], tz_name: str) -> list[Record]:
             levels[key] += max(int(data.get("to", 0)) - int(data.get("from", 0)), 0)
         elif e.kind == "deaths":
             deaths[key] += int(data.get("count", 1))
+        elif e.kind == "encounter" and (kind := encounter_kind(e)):
+            encounters[kind][key] += int(data.get("count", 0))
     out = []
     if levels:
         (cid, day), n = max(levels.items(), key=lambda kv: kv[1])
@@ -400,6 +418,11 @@ def records(events: list[Event], tz_name: str) -> list[Record]:
         (cid, day), n = max(deaths.items(), key=lambda kv: kv[1])
         if n:
             out.append(Record("skull", "Pire hécatombe en une journée", chars[cid], f"{n} morts", day))
+    for kind, scores in encounters.items():
+        if scores:
+            (cid, day), n = max(scores.items(), key=lambda kv: kv[1])
+            if n:
+                out.append(Record("trophy", f"Boss en {kind} sur une journée", chars[cid], f"{n} boss vaincus", day))
     return out
 
 

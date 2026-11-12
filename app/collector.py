@@ -300,7 +300,7 @@ def diff_events(who: str, old: dict, new: dict) -> list[NewEvent]:
             names = list(dict.fromkeys(name for name, _ in gains if name))
             detail = f" · {', '.join(names[:3])}" if names else ""
             events.append(NewEvent("encounter", "⚔️", f"{who} · {total} boss vaincu(s) en {label}{detail}",
-                                   {"count": total}))
+                                   {"count": total, "instance_kind": label, "bosses": names[:3]}))
 
     # Une nouvelle date de connexion = une session de jeu (sert au journal et à détecter les soirées en groupe).
     if new.get("last_login") and old.get("last_login") and new["last_login"] > old["last_login"]:
