@@ -61,6 +61,8 @@ def parse_profile(profile: dict) -> dict:
         "name": _name(profile.get("name")),
         "surname": _name(profile.get("surname")),
         "level": _int(profile.get("level")) or 0,
+        "experience": _int(profile.get("experience")),
+        "experience_to_next_level": _int(profile.get("experience_to_next_level")),
         "class_name": _name(profile.get("character_class") or profile.get("playable_class")),
         "race": _name(profile.get("race") or profile.get("playable_race")),
         "faction": _name(profile.get("faction")),
@@ -82,6 +84,34 @@ def parse_equipment(equipment: dict | None) -> float | None:
         if slot not in IGNORED_SLOTS and level:
             levels.append(level)
     return round(sum(levels) / len(levels), 1) if levels else None
+
+
+def completed_quests(data: dict | None) -> int | None:
+    if data is None:
+        return None
+    quests = data.get("quests")
+    if quests is None:
+        return 0 if "character" in data else None
+    return len({quest["id"] for quest in quests if "id" in quest})
+
+
+def encounter_counts(data: dict | None) -> dict | None:
+    """Victoires par boss et difficulté, telles qu'exposées par l'armurerie."""
+    if data is None or not ("character" in data or "expansions" in data):
+        return None
+    counts = {}
+    for expansion in data.get("expansions") or []:
+        for instance in expansion.get("instances") or []:
+            instance_id = (instance.get("instance") or {}).get("id")
+            for mode in instance.get("modes") or []:
+                difficulty = (mode.get("difficulty") or {}).get("type") or "default"
+                for row in (mode.get("progress") or {}).get("encounters") or []:
+                    encounter = row.get("encounter") or {}
+                    count = _int(row.get("completed_count"))
+                    if encounter.get("id") is not None and count is not None:
+                        key = f"{instance_id}:{difficulty}:{encounter['id']}"
+                        counts[key] = {"count": count, "name": _name(encounter)}
+    return counts
 
 
 def parse_media(media: dict | None) -> str:
@@ -212,6 +242,28 @@ def diff_events(who: str, old: dict, new: dict) -> list[NewEvent]:
         events.append(NewEvent("deaths", "💀", f"{who} est mort {n} fois" if n > 1 else f"{who} est mort",
                                {"count": n, "total": new_deaths}))
 
+    for key, kind, icon, label in (
+        ("quests_completed", "quests", "📜", "quête(s) terminée(s)"),
+        ("honorable_kills", "pvp", "⚔️", "victoire(s) honorable(s)"),
+    ):
+        before, after = old.get(key), new.get(key)
+        if before is not None and after is not None and after > before:
+            gain = after - before
+            events.append(NewEvent(kind, icon, f"{who} · +{gain} {label}", {"count": gain}))
+
+    for key, label in (("dungeon_encounters", "donjon"), ("raid_encounters", "raid")):
+        before, after = old.get(key), new.get(key)
+        if before is None or after is None:
+            continue
+        gains = [(row["name"], row["count"] - before.get(boss, {}).get("count", 0))
+                 for boss, row in after.items() if row["count"] > before.get(boss, {}).get("count", 0)]
+        if gains:
+            total = sum(gain for _, gain in gains)
+            names = list(dict.fromkeys(name for name, _ in gains if name))
+            detail = f" · {', '.join(names[:3])}" if names else ""
+            events.append(NewEvent("encounter", "⚔️", f"{who} · {total} boss vaincu(s) en {label}{detail}",
+                                   {"count": total}))
+
     # Une nouvelle date de connexion = une session de jeu (sert au journal et à détecter les soirées en groupe).
     if new.get("last_login") and old.get("last_login") and new["last_login"] > old["last_login"]:
         events.append(NewEvent("session", "🎮", f"{who} était en jeu", {"login": new["last_login"]}))
@@ -260,8 +312,8 @@ async def fetch_state(bz: Blizzard, char: Character) -> tuple[dict, str]:
     """Nouvel état du perso et son statut. Lève NotFound si l'API ne connaît pas (encore) le perso."""
     profile = parse_profile(await bz.character_profile(char.slug))
     parts = ("/equipment", "/character-media", "/achievements", "/statistics", "/professions",
-             "/collections/mounts", "/pvp-summary")
-    equipment, media, achievements, statistics, professions, mounts, pvp = await asyncio.gather(
+             "/collections/mounts", "/pvp-summary", "/quests/completed", "/encounters/dungeons", "/encounters/raids")
+    equipment, media, achievements, statistics, professions, mounts, pvp, quests, dungeons, raids = await asyncio.gather(
         *(bz.character_part(char.slug, p) for p in parts))
     state = dict(profile)
     state["ilvl"] = parse_equipment(equipment) or profile["ilvl"]
@@ -269,6 +321,10 @@ async def fetch_state(bz: Blizzard, char: Character) -> tuple[dict, str]:
     state.update(parse_statistics(statistics))
     if state.get("honorable_kills") is None and pvp:
         state["honorable_kills"] = _int(pvp.get("honorable_kills"))
+    state["pvp_rank"] = _int((pvp or {}).get("pvp_rank"))
+    state["quests_completed"] = completed_quests(quests)
+    state["dungeon_encounters"] = encounter_counts(dungeons)
+    state["raid_encounters"] = encounter_counts(raids)
     state["achievements"] = parse_achievements(achievements)
     state["mounts"] = parse_mounts(mounts)
     state["professions"] = parse_professions(professions)
@@ -278,7 +334,8 @@ async def fetch_state(bz: Blizzard, char: Character) -> tuple[dict, str]:
 def apply_state(db: Session, char: Character, state: dict, status: str, message: str = "") -> list[Event]:
     old = dict(char.state or {})
     # On conserve les collections déjà connues si l'endpoint n'a pas répondu cette fois-ci.
-    for key in ("achievements", "mounts", "professions", "deaths", "honorable_kills", "avatar_url"):
+    for key in ("achievements", "mounts", "professions", "deaths", "honorable_kills", "avatar_url",
+                "pvp_rank", "quests_completed", "dungeon_encounters", "raid_encounters"):
         if state.get(key) is None and old.get(key) is not None:
             state[key] = old[key]
     state["synced"] = True

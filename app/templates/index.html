@@ -161,6 +161,7 @@
 </section>
 
 {% if not chars %}
+<div id="ce-soir">{% include "_missions.html" %}</div>
 <section class="onboarding" aria-labelledby="onboarding-title">
   <h2 id="onboarding-title">Bienvenue au QG</h2>
   <ol class="steps">
@@ -192,6 +193,18 @@
       <h2 id="ce-soir-title">Ce soir, on fait quoi&nbsp;?</h2>
       <p class="lead">Vos groupes d'abord, puis les autres combinaisons possibles d'après vos niveaux actuels.</p>
     </header>
+    {% include "_missions.html" %}
+    {% if activity.values() | sum %}
+    <section class="squad-activity" aria-labelledby="squad-activity-heading">
+      <h3 id="squad-activity-heading">En 7 jours de suivi</h3>
+      <ul class="tag-list" role="list">
+        {% for key, label in [('quests', 'quêtes terminées'), ('encounter', 'boss vaincus'), ('pvp', 'victoires honorables')] %}
+        {% if activity[key] %}<li class="tag"><strong>+{{ activity[key] | number }}</strong> {{ label }}</li>{% endif %}
+        {% endfor %}
+      </ul>
+      <a href="#journal">Voir le journal</a>
+    </section>
+    {% endif %}
     {% if plans %}
     <h3 class="block-title">Vos groupes</h3>
     <ul class="ideas plans" role="list">

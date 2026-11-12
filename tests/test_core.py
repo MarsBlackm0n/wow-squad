@@ -225,3 +225,49 @@ def test_pace_requires_at_least_one_day_of_snapshots():
         db.add(Snapshot(character_id=char.id, taken_at=now - timedelta(hours=24), level=21))
         pace = paces(db, [char], 60, "UTC")[char.id]
         assert pace.gained == 1 and pace.per_day == 1 and pace.observed_days == 1
+
+
+def test_activity_uses_comparable_blizzard_counters():
+    from app.collector import completed_quests, encounter_counts
+
+    assert parse_profile({"level": 21, "experience": 0})["experience"] == 0
+    assert completed_quests(None) is None
+    assert completed_quests({"quests": [{"id": 1}, {"id": 1}, {"id": 2}]}) == 2
+    assert encounter_counts(None) is None
+    assert encounter_counts({"character": {}}) == {}
+    bosses = encounter_counts({"expansions": [{"instances": [{
+        "instance": {"id": 1},
+        "modes": [{"difficulty": {"type": "NORMAL"}, "progress": {"encounters": [
+            {"encounter": {"id": 2, "name": "Boss"}, "completed_count": 2},
+        ]}}],
+    }]}]})
+    assert bosses == {"1:NORMAL:2": {"count": 2, "name": "Boss"}}
+    current = {"quests_completed": 32, "honorable_kills": 23, "dungeon_encounters": bosses}
+    assert diff_events("Gates", {"synced": True}, current) == []
+    events = diff_events("Gates", {"synced": True, "quests_completed": 30, "honorable_kills": 20,
+                                  "dungeon_encounters": {}}, current)
+    assert [(event.kind, event.data["count"]) for event in events] == [
+        ("quests", 2), ("pvp", 3), ("encounter", 2),
+    ]
+
+
+def test_mission_roster_counts_roles_and_flags_preparation():
+    from app.db import MissionSignup, SquadMission
+    from app.insights import Pace
+    from app.squad import MissionRoster, mission_level_dates
+
+    low = _char(1, 20, faction="Horde")
+    low.ruleset = "JcJ"
+    high = _char(2, 30, faction="Alliance")
+    high.ruleset = "Normal"
+    roster = MissionRoster(SquadMission(kind="dungeon", target_size=5, min_level=25), [
+        MissionSignup(character=low, role="damage"), MissionSignup(character=high, role="tank"),
+    ])
+    assert roster.open_slots == 3
+    assert roster.missing_levels[0].character is low
+    assert roster.roles["tank"] == 1
+    assert roster.warnings == ["Alliance et Horde inscrites", "Plusieurs modes de jeu", "Soigneur à désigner"]
+    today = datetime(2026, 11, 12).date()
+    assert mission_level_dates(roster, {low.id: Pace(2.0, 4, None, False, 2)}, today) == {
+        low.id: today + timedelta(days=3),
+    }

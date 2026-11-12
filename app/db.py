@@ -104,6 +104,30 @@ class Account(Base):
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class SquadMission(Base):
+    __tablename__ = "squad_missions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    creator_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"))
+    title: Mapped[str] = mapped_column(String(80))
+    kind: Mapped[str] = mapped_column(String(16))
+    notes: Mapped[str] = mapped_column(String(320), default="")
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    target_size: Mapped[int] = mapped_column(Integer)
+    min_level: Mapped[int] = mapped_column(Integer)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class MissionSignup(Base):
+    __tablename__ = "mission_signups"
+
+    mission_id: Mapped[int] = mapped_column(ForeignKey("squad_missions.id", ondelete="CASCADE"), primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True)
+    character_id: Mapped[int] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"), index=True)
+    role: Mapped[str] = mapped_column(String(12))
+    character: Mapped[Character] = relationship()
+
+
 class PlayerPhoto(Base):
     """Photo de profil d'un joueur (pas d'un perso) : partagée par tous les persos dont le champ `player` correspond."""
     __tablename__ = "player_photos"

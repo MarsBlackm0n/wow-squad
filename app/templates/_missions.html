@@ -1,0 +1,145 @@
+{% from "_macros.html" import avatar, icon, ruleset_badge with context %}
+
+{% macro mission_form(m=none) %}
+{% set prefix = 'mission-' ~ (m.id if m else 'new') %}
+<form class="mission-form" method="post" action="/objectifs">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if m %}<input type="hidden" name="objectif" value="{{ m.id }}">{% endif %}
+  <div class="field-row">
+    <div class="field">
+      <label for="{{ prefix }}-title">Objectif</label>
+      <input id="{{ prefix }}-title" type="text" name="titre" required maxlength="80" value="{{ m.title if m else '' }}" placeholder="Ex. Cœur du Magma">
+    </div>
+    <div class="field">
+      <label for="{{ prefix }}-kind">Activité</label>
+      <select id="{{ prefix }}-kind" name="type_objectif">
+        {% for key, label in mission_kinds.items() %}<option value="{{ key }}"{% if (m.kind if m else 'dungeon') == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="mission-settings">
+    <div class="field">
+      <label for="{{ prefix }}-date">Date et heure <span class="optional">({{ settings.timezone }}, facultatif)</span></label>
+      <input id="{{ prefix }}-date" type="datetime-local" name="date_prevue" value="{{ m.starts_at | localtime('%Y-%m-%dT%H:%M') if m else '' }}">
+    </div>
+    <div class="field">
+      <label for="{{ prefix }}-size">Joueurs visés</label>
+      <input id="{{ prefix }}-size" name="effectif" type="number" min="2" max="40" required value="{{ m.target_size if m else 5 }}">
+    </div>
+    <div class="field">
+      <label for="{{ prefix }}-level">Niveau minimum</label>
+      <input id="{{ prefix }}-level" name="niveau" type="number" min="1" max="{{ max_level }}" required value="{{ m.min_level if m else 1 }}">
+    </div>
+  </div>
+  <div class="field">
+    <label for="{{ prefix }}-notes">Préparation <span class="optional">(facultatif)</span></label>
+    <textarea id="{{ prefix }}-notes" name="notes" maxlength="320" rows="2" placeholder="Accès à débloquer, consommables à prévoir…">{{ m.notes if m else '' }}</textarea>
+  </div>
+  <button class="button button-primary" type="submit">{{ 'Enregistrer les modifications' if m else 'Publier l’objectif' }}</button>
+</form>
+{% endmacro %}
+
+<section class="mission-board" aria-labelledby="mission-heading">
+  <div class="mission-board-head">
+    <h3 id="mission-heading">Objectifs de la squad</h3>
+    {% if account_id %}
+    <details class="mission-create">
+      <summary>{{ icon('chevron', 'summary-chevron') }} Proposer un objectif</summary>
+      {{ mission_form() }}
+    </details>
+    {% elif settings.battlenet_login_enabled %}
+    <a class="button button-secondary button-small" href="/auth/battlenet">Connecter Battle.net pour participer</a>
+    {% endif %}
+  </div>
+
+  {% if missions %}
+  <div class="mission-grid">
+    {% for roster in missions %}
+    {% set m = roster.mission %}
+    {% set signup = roster.signups | selectattr('account_id', 'equalto', account_id) | first | default(none) %}
+    <article class="mission-card" aria-labelledby="mission-title-{{ m.id }}">
+      <header>
+        <p class="meta">{{ mission_kinds[m.kind] }} · {% if m.starts_at %}{{ m.starts_at | localtime('%d/%m à %H:%M') }}{% else %}Date à convenir{% endif %}</p>
+        <h4 id="mission-title-{{ m.id }}">{{ m.title }}</h4>
+        {% if m.notes %}<p class="mission-notes">{{ m.notes }}</p>{% endif %}
+      </header>
+      <div class="mission-progress">
+        <label for="mission-progress-{{ m.id }}"><strong>{{ roster.signups | length }}/{{ m.target_size }}</strong> inscrits · niveau {{ m.min_level }} minimum</label>
+        <progress id="mission-progress-{{ m.id }}" max="{{ m.target_size }}" value="{{ [roster.signups | length, m.target_size] | min }}"></progress>
+      </div>
+      {% if m.kind in ('raid', 'dungeon') %}
+      <p class="meta">{{ roster.roles.tank or 0 }} tank · {{ roster.roles.heal or 0 }} soins · {{ roster.roles.damage or 0 }} dégâts{% if roster.roles.flex %} · {{ roster.roles.flex }} flexible{% endif %}</p>
+      {% endif %}
+      {% set warnings = roster.warnings %}
+      {% set missing_levels = roster.missing_levels %}
+      {% if roster.open_slots == 0 and not missing_levels and not warnings %}
+      <p class="mission-ready">{{ icon('check') }} Effectif et niveau requis atteints</p>
+      {% elif roster.open_slots %}
+      <p class="meta">{{ roster.open_slots }} place{{ 's' if roster.open_slots > 1 }} à remplir</p>
+      {% endif %}
+      {% if missing_levels or warnings %}
+      <ul class="mission-warnings" role="list">
+        {% if missing_levels %}<li>{{ missing_levels | length }} sous le niveau requis</li>{% endif %}
+        {% for warning in warnings %}<li>{{ warning }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      {% if roster.signups %}
+      <ul class="mission-roster" role="list">
+        {% for row in roster.signups %}
+        {% set c = row.character %}
+        {% set eta = roster.level_dates.get(c.id) %}
+        <li>{{ avatar(c, 'xs') }} <a href="/perso/{{ c.id }}">{{ c.display_name }}</a>
+          <span class="meta">{{ mission_roles[row.role] }} · {% if c.level %}niv. {{ c.level }}{% if c.level < m.min_level %} (−{{ m.min_level - c.level }}){% endif %}{% else %}niveau inconnu{% endif %}</span>
+          {{ ruleset_badge(c) }}
+          {% if eta %}
+          <span class="meta mission-eta">Niv. {{ m.min_level }} estimé le {{ eta.strftime('%d/%m') }}{% if m.starts_at and eta.isoformat() > (m.starts_at | localtime('%Y-%m-%d')) %} · après la sortie{% endif %}</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if mission_chars %}
+      <form method="post" action="/objectifs/{{ m.id }}/participation" class="mission-signup">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <div class="field">
+          <label for="signup-char-{{ m.id }}">Mon personnage</label>
+          <select id="signup-char-{{ m.id }}" name="personnage">
+            {% for c in mission_chars %}<option value="{{ c.id }}"{% if signup and signup.character_id == c.id %} selected{% endif %}>{{ c.display_name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="signup-role-{{ m.id }}">Rôle</label>
+          <select id="signup-role-{{ m.id }}" name="role">
+            {% for key, label in mission_roles.items() %}<option value="{{ key }}"{% if (signup.role if signup else 'flex') == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <button class="button button-primary button-small" name="action" value="inscrire" type="submit">{{ 'Mettre à jour' if signup else 'Je participe' }}</button>
+        {% if signup %}<button class="button button-ghost button-small" name="action" value="retirer" type="submit">Me désinscrire</button>{% endif %}
+      </form>
+      {% endif %}
+      {% if account_id == m.creator_id %}
+      <details class="mission-manage">
+        <summary>{{ icon('chevron', 'summary-chevron') }} Gérer l’objectif</summary>
+        {{ mission_form(m) }}
+        <form method="post" action="/objectifs/{{ m.id }}/terminer">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button class="button button-secondary button-small" type="submit">Marquer comme terminé</button>
+        </form>
+      </details>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="quiet">Aucun objectif ouvert.</p>
+  {% endif %}
+
+  {% if completed_missions %}
+  <details class="mission-archive">
+    <summary>{{ icon('chevron', 'summary-chevron') }} Derniers objectifs accomplis</summary>
+    <ul class="mission-roster" role="list">
+      {% for m in completed_missions %}<li><strong>{{ m.title }}</strong> <span class="meta">{{ mission_kinds[m.kind] }} · {{ m.completed_at | localtime('%d/%m') }}</span></li>{% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+</section>

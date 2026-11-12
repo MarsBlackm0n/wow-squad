@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import secrets
-from dataclasses import dataclass
-from datetime import date
+from math import ceil
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field
+from datetime import date, timedelta
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from .db import kv_get, kv_set
-from .insights import MAX_LEVEL
+from .db import MissionSignup, SquadMission, kv_get, kv_set, select
+from .insights import MAX_LEVEL, Pace
+from .ui import faction_key, ruleset_label
 
 MAX_GROUPS = 12
 
@@ -47,3 +50,71 @@ def save_group(db: Session, name: str, members: list[int], group_id: str | None 
 
 def delete_group(db: Session, group_id: str) -> None:
     kv_set(db, "groups", {"items": [g for g in get_groups(db) if g.get("id") != group_id]})
+
+MISSION_KINDS = {"raid": "Raid", "dungeon": "Donjon", "pvp": "PvP", "other": "Autre"}
+MISSION_ROLES = {"tank": "Tank", "heal": "Soins", "damage": "Dégâts", "flex": "Flexible"}
+
+
+@dataclass
+class MissionRoster:
+    mission: SquadMission
+    signups: list[MissionSignup]
+    level_dates: dict[int, date] = field(default_factory=dict)
+
+    @property
+    def roles(self) -> Counter:
+        return Counter(row.role for row in self.signups)
+
+    @property
+    def missing_levels(self) -> list[MissionSignup]:
+        return [row for row in self.signups if row.character.level < self.mission.min_level]
+
+    @property
+    def open_slots(self) -> int:
+        return max(self.mission.target_size - len(self.signups), 0)
+
+    @property
+    def warnings(self) -> list[str]:
+        factions = {faction_key(row.character.faction) for row in self.signups} - {"neutral"}
+        modes = {ruleset_label(row.character.ruleset) for row in self.signups if row.character.ruleset}
+        warnings = []
+        if len(factions) > 1:
+            warnings.append("Alliance et Horde inscrites")
+        if len(modes) > 1:
+            warnings.append("Plusieurs modes de jeu")
+        if self.signups and self.mission.kind in ("raid", "dungeon"):
+            roles = self.roles
+            if not roles["tank"]:
+                warnings.append("Tank à désigner")
+            if not roles["heal"]:
+                warnings.append("Soigneur à désigner")
+        return warnings
+
+
+def mission_level_dates(roster: MissionRoster, paces: dict[int, Pace], today: date) -> dict[int, date]:
+    dates = {}
+    for signup in roster.missing_levels:
+        char = signup.character
+        pace = paces.get(char.id)
+        if char.level and pace and pace.per_day > 0:
+            dates[char.id] = today + timedelta(days=ceil((roster.mission.min_level - char.level) / pace.per_day))
+    return dates
+
+
+def mission_rosters(db: Session, paces: dict[int, Pace], today: date) -> tuple[list[MissionRoster], list[SquadMission]]:
+    opened = db.scalars(select(SquadMission).where(SquadMission.completed_at.is_(None))
+                        .order_by(SquadMission.starts_at.asc().nulls_last(), SquadMission.id.desc())).all()
+    completed = db.scalars(select(SquadMission).where(SquadMission.completed_at.is_not(None))
+                           .order_by(SquadMission.completed_at.desc()).limit(5)).all()
+    if not opened:
+        return [], list(completed)
+    signups = db.scalars(select(MissionSignup).where(MissionSignup.mission_id.in_([m.id for m in opened]))
+                         .options(joinedload(MissionSignup.character, innerjoin=True))
+                         .order_by(MissionSignup.account_id)).all()
+    by_mission = defaultdict(list)
+    for row in signups:
+        by_mission[row.mission_id].append(row)
+    rosters = [MissionRoster(m, by_mission[m.id]) for m in opened]
+    for roster in rosters:
+        roster.level_dates = mission_level_dates(roster, paces, today)
+    return rosters, list(completed)

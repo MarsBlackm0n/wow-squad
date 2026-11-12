@@ -20,7 +20,6 @@
       {% if char.player %}<li><span class="fact-label">Joueur</span> {{ char.player }}</li>{% endif %}
       {% if char.guild %}<li><span class="fact-label">Guilde</span> &lt;{{ char.guild }}&gt;</li>{% endif %}
       <li><span class="fact-label">Vu en jeu</span> {{ char.last_login | time_tag }}</li>
-      {% if honorable_kills %}<li><span class="fact-label">Victoires honorables</span> {{ honorable_kills | number }}</li>{% endif %}
     </ul>
   </div>
   <form method="post" action="/perso/{{ char.id }}/rafraichir" class="profile-action">
@@ -63,6 +62,36 @@
     <div class="kpi"><dt>Hauts faits</dt><dd><span class="kpi-value">{{ char.achievement_points | number }}</span><span class="kpi-note">points</span></dd></div>
     <div class="kpi"><dt>Montures</dt><dd><span class="kpi-value">{{ mounts | length if mounts is not none else '—' }}</span></dd></div>
     <div class="kpi"><dt>Morts</dt><dd><span class="kpi-value">{{ char.deaths | number }}</span></dd></div>
+  </dl>
+</section>
+
+<section class="character-activity" aria-labelledby="character-activity-title">
+  <h2 id="character-activity-title" class="block-title">Activité de {{ char.name }}</h2>
+  <dl class="activity-metrics">
+    <div class="panel-block">
+      <dt>XP dans le niveau</dt>
+      <dd><strong>{{ activity_state.get('experience') | number }}</strong> XP</dd>
+      {% if activity_state.get('experience_to_next_level') is not none %}
+      <dd class="meta">{{ activity_state.experience_to_next_level | number }} XP avant le prochain niveau</dd>
+      {% endif %}
+    </div>
+    <div class="panel-block">
+      <dt>Quêtes terminées</dt>
+      <dd><strong>{{ activity_state.get('quests_completed') | number }}</strong></dd>
+      {% if activity.quests %}<dd class="meta">+{{ activity.quests | number }} relevées sur 7 j</dd>{% endif %}
+    </div>
+    <div class="panel-block">
+      <dt>Boss vaincus</dt>
+      <dd><strong>{{ boss_totals.dungeon_encounters | number }}</strong> en donjon</dd>
+      <dd><strong>{{ boss_totals.raid_encounters | number }}</strong> en raid</dd>
+      {% if activity.encounter %}<dd class="meta">+{{ activity.encounter | number }} relevés sur 7 j</dd>{% endif %}
+    </div>
+    <div class="panel-block">
+      <dt>PvP</dt>
+      <dd><strong>{{ honorable_kills | number }}</strong> victoires honorables</dd>
+      {% if activity_state.get('pvp_rank') is not none %}<dd>Rang {{ activity_state.pvp_rank }}</dd>{% endif %}
+      {% if activity.pvp %}<dd class="meta">+{{ activity.pvp | number }} relevées sur 7 j</dd>{% endif %}
+    </div>
   </dl>
 </section>
 

@@ -5,8 +5,9 @@ from __future__ import annotations
 import hmac
 import logging
 import secrets
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -16,7 +17,7 @@ from . import insights, photos, squad
 from .blizzard import BlizzardCredentialsError, BlizzardError, character_slug, split_slug
 from .collector import apply_account_characters
 from .config import settings
-from .db import Account, Character, Event, PlayerPhoto, SessionLocal, Snapshot, select, utcnow
+from .db import Account, Character, Event, MissionSignup, PlayerPhoto, SessionLocal, Snapshot, SquadMission, select, utcnow
 from .stats import compute_week, leaderboard
 from .ui import Series, class_color, class_key, faction_key, frdate, line_chart, make_formatters, number, ruleset_label
 
@@ -119,6 +120,9 @@ async def home(request: Request):
         accounts = db.scalars(select(Account).order_by(Account.battletag)).all()
         goal_cfg, groups = squad.get_goal(db), squad.get_groups(db)
         pace_by_char = insights.paces(db, chars, goal_cfg.target, tz)
+        missions, completed_missions = squad.mission_rosters(db, pace_by_char, utcnow().astimezone(ZoneInfo(tz)).date())
+        account_id = request.session.get("account_id")
+        mission_chars = [c for c in chars if account_id is not None and c.account_id == account_id]
     worker = request.app.state.worker
     by_pace = sorted((c for c in chars if c.id in pace_by_char), key=lambda c: -pace_by_char[c.id].per_day)
     return render(request, "index.html", chars=chars, week=week, race_chart=race_chart, race_rows=race_rows,
@@ -127,7 +131,9 @@ async def home(request: Request):
                   goal_cfg=goal_cfg, groups=groups, plans=insights.group_plans(groups, chars),
                   paces=pace_by_char, by_pace=by_pace, firsts=firsts, records=insights.records(events, tz),
                   seen=insights.recently_seen(chars), headlines=insights.headlines(events), accounts=accounts,
-                  last_cycle=worker.last_cycle,
+                  missions=missions, completed_missions=completed_missions, mission_chars=mission_chars,
+                  mission_kinds=squad.MISSION_KINDS, mission_roles=squad.MISSION_ROLES, account_id=account_id,
+                  activity=insights.activity_totals(events), last_cycle=worker.last_cycle,
                   blizzard_ready=settings.blizzard_enabled, add_form=request.session.pop("add_form", None) or {})
 
 
@@ -199,7 +205,10 @@ async def character_page(request: Request, char_id: int):
     return render(request, "character.html", char=char, pace=pace, goal_cfg=goal_cfg, snaps=snaps, events=events, level_chart=level_chart,
                   ilvl_chart=ilvl_chart, professions=state.get("professions") or {},
                   mounts=state.get("mounts"), achievements=state.get("achievements"),
-                  honorable_kills=state.get("honorable_kills"), can_manage=can_manage_character(request, char))
+                  honorable_kills=state.get("honorable_kills"), can_manage=can_manage_character(request, char),
+                  activity=insights.activity_totals(events), activity_state=state,
+                  boss_totals={key: sum(row["count"] for row in state[key].values()) if state.get(key) is not None else None
+                               for key in ("dungeon_encounters", "raid_encounters")})
 
 
 # --- Actions -------------------------------------------------------------------------------------
@@ -261,6 +270,8 @@ async def delete_character(request: Request, char_id: int, csrf: str = Form(""))
     with SessionLocal() as db:
         char = require_character_access(request, db.get(Character, char_id))
         name = char.display_name
+        for signup in db.scalars(select(MissionSignup).where(MissionSignup.character_id == char.id)):
+            db.delete(signup)
         db.delete(char)
         db.commit()
         flash(request, f"{name} a quitté la squad (historique supprimé).")
@@ -308,6 +319,96 @@ async def delete_group(request: Request, group_id: str, csrf: str = Form("")):
         db.commit()
     flash(request, "Groupe supprimé.")
     return back("/#squad")
+
+
+# --- Objectifs et inscriptions ------------------------------------------------------------------
+
+def mission_account(db, request: Request) -> int:
+    account_id = request.session.get("account_id")
+    if account_id is None or db.get(Account, account_id) is None:
+        raise HTTPException(403, "Connecte ton compte Battle.net pour participer aux objectifs.")
+    return account_id
+
+
+@router.post("/objectifs")
+async def create_mission(request: Request, titre: str = Form(""), type_objectif: str = Form(""),
+                         date_prevue: str = Form(""), effectif: int = Form(5), niveau: int = Form(1),
+                         notes: str = Form(""), csrf: str = Form(""), objectif: int = Form(0)):
+    check_csrf(request, csrf)
+    try:
+        starts_at = datetime.fromisoformat(date_prevue) if date_prevue else None
+        if starts_at is not None:
+            if starts_at.tzinfo is not None:
+                raise ValueError
+            starts_at = starts_at.replace(tzinfo=ZoneInfo(settings.timezone)).astimezone(utcnow().tzinfo)
+    except (ValueError, OverflowError):
+        flash(request, "Choisis une date et une heure valides.", "error")
+        return back("/#ce-soir")
+    if (not titre.strip() or len(titre.strip()) > 80 or len(notes.strip()) > 320 or
+            type_objectif not in squad.MISSION_KINDS or not 2 <= effectif <= 40 or not 1 <= niveau <= insights.MAX_LEVEL):
+        flash(request, "Vérifie le titre, le type, le niveau et l’effectif de l’objectif.", "error")
+        return back("/#ce-soir")
+    with SessionLocal() as db:
+        account_id = mission_account(db, request)
+        if objectif:
+            mission = db.get(SquadMission, objectif, with_for_update=True)
+            if mission is None or mission.completed_at is not None:
+                raise HTTPException(404, "Cet objectif n’est plus ouvert.")
+            if mission.creator_id != account_id:
+                raise HTTPException(403, "Seul le créateur peut modifier cet objectif.")
+        else:
+            mission = SquadMission(creator_id=account_id)
+            db.add(mission)
+        mission.title, mission.kind, mission.notes = titre.strip(), type_objectif, notes.strip()
+        mission.starts_at, mission.target_size, mission.min_level = starts_at, effectif, niveau
+        db.commit()
+    flash(request, "Objectif mis à jour." if objectif else "Objectif publié dans « Ce soir ».")
+    return back("/#ce-soir")
+
+
+@router.post("/objectifs/{mission_id}/participation")
+async def mission_participation(request: Request, mission_id: int, personnage: int = Form(0),
+                                role: str = Form("flex"), action: str = Form("inscrire"), csrf: str = Form("")):
+    check_csrf(request, csrf)
+    with SessionLocal() as db:
+        account_id = mission_account(db, request)
+        mission = db.get(SquadMission, mission_id, with_for_update=True)
+        if mission is None or mission.completed_at is not None:
+            raise HTTPException(404, "Cet objectif n’est plus ouvert.")
+        signup = db.get(MissionSignup, (mission_id, account_id))
+        if action == "retirer":
+            if signup:
+                db.delete(signup)
+        elif action == "inscrire" and role in squad.MISSION_ROLES:
+            char = db.get(Character, personnage)
+            if char is None or char.account_id != account_id:
+                raise HTTPException(403, "Choisis un personnage de ton compte.")
+            if signup:
+                signup.character_id, signup.role = char.id, role
+            else:
+                db.add(MissionSignup(mission_id=mission_id, account_id=account_id, character_id=char.id, role=role))
+        else:
+            raise HTTPException(400, "Participation invalide.")
+        db.commit()
+    flash(request, "Participation retirée." if action == "retirer" else "Participation enregistrée.")
+    return back("/#ce-soir")
+
+
+@router.post("/objectifs/{mission_id}/terminer")
+async def complete_mission(request: Request, mission_id: int, csrf: str = Form("")):
+    check_csrf(request, csrf)
+    with SessionLocal() as db:
+        account_id = mission_account(db, request)
+        mission = db.get(SquadMission, mission_id, with_for_update=True)
+        if mission is None:
+            raise HTTPException(404, "Objectif introuvable.")
+        if mission.creator_id != account_id:
+            raise HTTPException(403, "Seul le créateur peut terminer cet objectif.")
+        if mission.completed_at is None:
+            mission.completed_at = utcnow()
+            db.commit()
+    flash(request, "Objectif marqué comme terminé.")
+    return back("/#ce-soir")
 
 
 # --- Photos de profil (par joueur, partagées par tous ses persos) --------------------------------

@@ -7,13 +7,13 @@ la course au niveau, les trophées, et un récap chaque semaine sur Telegram ou 
 
 | Zone | Contenu |
 |---|---|
-| **Ce soir** | Un donjon pour chacun de vos groupes fixes, puis les autres combinaisons possibles ; alerte s'il manque un tank ou un soigneur |
+| **Ce soir** | Objectifs de raid, donjon ou PvP avec inscriptions et composition, activité récente, puis un donjon pour chacun de vos groupes fixes, puis les autres combinaisons possibles ; alerte s'il manque un tank ou un soigneur |
 | **Journal** | Moments forts, activité des dernières 24 h et résumé par jour : qui a joué, soirées passées ensemble, paliers, hauts faits, montures, morts |
 | **Progression** | Objectif commun et arrivée estimée, course au niveau sur 30 jours, classement **au rythme** (niveaux par jour sur 7 jours, date d'arrivée estimée) puis au niveau |
 | **Palmarès** | Trophées de la semaine, panthéon des premières fois (premier 10, 20… 60, première monture), records |
 | **La squad** | Lier son compte Battle.net, ajouter un perso (prénom + nom), régler l'objectif, gérer les groupes fixes |
 
-Chaque perso a sa fiche : rythme, courbes niveau et ilvl, métiers, écurie, son histoire, et la **photo du joueur**
+Chaque perso a sa fiche : rythme, courbes niveau et ilvl, XP, quêtes, boss, rang PvP, métiers, écurie, son histoire, et la **photo du joueur**
 (une par joueur, partagée par tous ses persos ; zoom et cadrage avant l'envoi, réencodée en WebP 256×256 sans
 métadonnées, stockée dans Postgres).
 
@@ -87,3 +87,14 @@ Visé : WCAG 2.1 AA. Vérifié avec axe-core sur toutes les pages et tous les on
 - Graphiques en SVG avec titre, description et tableau de données équivalent ; la couleur n'est jamais le seul indice.
 - Erreurs de formulaire reliées aux champs (`aria-invalid`, `aria-describedby`), messages annoncés (`role="status"`).
 - Thèmes sombre et clair (suit le système, bascule mémorisée), `prefers-reduced-motion`, mode contraste élevé.
+
+
+## Objectifs de la squad
+
+Depuis « Ce soir », un joueur lié peut proposer un raid, un donjon, une sortie PvP ou une activité libre.
+Il peut fixer une date, un niveau minimum, un effectif et ajouter des notes de préparation. Chaque compte
+s’inscrit avec un de ses personnages et un rôle. Le tableau montre les places remplies, les niveaux et
+les écarts de faction ou de mode. Le créateur peut modifier l’objectif et le marquer comme terminé.
+
+Les compteurs de la fiche sont ceux remontés par Battle.net. Le journal affiche les hausses détectées
+entre relevés de quêtes, de boss et de victoires honorables. Le premier relevé initialise les compteurs.

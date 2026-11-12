@@ -83,6 +83,15 @@ class Day:
         return " · ".join(parts)
 
 
+def activity_totals(events: list[Event], days: int = 7) -> dict[str, int]:
+    since = utcnow() - timedelta(days=days)
+    totals = {"quests": 0, "encounter": 0, "pvp": 0}
+    for event in events:
+        if event.kind in totals and _aware(event.at) >= since:
+            totals[event.kind] += (event.data or {}).get("count", 0)
+    return totals
+
+
 def chronicle(events: list[Event], tz_name: str, days: int = 7) -> list[Day]:
     tz = ZoneInfo(tz_name)
     by_day: dict[date, Day] = {}
