@@ -869,20 +869,6 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         flash(request, message, "error")
         return back(return_to)
 
-    if direct_login:
-        with SessionLocal() as db:
-            account = db.scalar(select(Account).where(Account.battle_id == int(info["id"])))
-            if account is None:
-                flash(request, "Première connexion ? Entre le mot de passe du QG puis lie ton compte Battle.net.", "info")
-                return back("/connexion")
-            account_id = account.id
-            battle_id = account.battle_id
-        request.session.clear()
-        request.session.update(auth=True, account_id=account_id)
-        worker.remember_user_token(battle_id, token["access_token"], int(token.get("expires_in", 86400)))
-        worker.trigger_cycle()
-        return back("/compte")
-
     try:
         entries = await worker.bz.account_characters(token["access_token"])
     except BlizzardError as exc:
@@ -899,12 +885,12 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         added = -1
         if entries is not None:
             added = apply_account_characters(db, worker.bz.region, account, entries, add_missing=True,
-                                             reimport_removed=True)
+                                             reimport_removed=not direct_login)
         db.commit()
         photos.refresh(db)
     worker.remember_user_token(account.battle_id, token["access_token"], int(token.get("expires_in", 86400)))
-    request.session["account_id"] = account.id
-    request.session.pop("battletag", None)
+    request.session.clear()
+    request.session.update(auth=True, account_id=account.id)
     if added >= 0:
         worker.trigger_cycle()
     if added > 0:
@@ -912,7 +898,7 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
     elif added == 0:
         flash(request, "Compte lié. Aucun nouveau perso : ils sont déjà suivis, ou pas encore niveau 10.", "info")
     else:
-        flash(request, "Compte lié, mais Battle.net ne renvoie pas encore tes persos Forever. Ajoute-les à la main en attendant.", "error")
+        flash(request, "Compte lié, mais Battle.net ne renvoie pas encore tes persos Forever. Relance la synchronisation dans Mes personnages.", "error")
     return back("/compte")
 
 
