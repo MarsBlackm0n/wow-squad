@@ -1500,3 +1500,11 @@ html { scroll-padding-top: 5.5rem; }
 }
 .site-nav .nav-destination[aria-current="page"] { box-shadow: inset 0 -2px var(--nav-tone); }
 .site-nav .nav-destination:focus-visible { outline: 2px solid var(--nav-tone); outline-offset: 2px; }
+
+.evening-suggestions .idea { gap: .6rem; padding: .8rem .9rem; }
+.evening-suggestions .idea-head { gap: .2rem; }
+.evening-suggestions .idea-title { margin: 0; line-height: 1.3; }
+.evening-suggestions .idea-range { margin: 0; }
+.evening-suggestions .idea-range .instance-guide-link { min-height: 24px; gap: .25rem; }
+.evening-suggestions .idea-members { margin: 0; gap: .3rem; }
+.evening-suggestions .idea .roles { padding-top: .55rem; }

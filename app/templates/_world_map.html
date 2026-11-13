@@ -9,7 +9,7 @@
       {% for key,label in kinds.items() %}<label data-map-kind="{{ key }}"><input type="checkbox" value="{{ key }}" checked> {{ label }}</label>{% endfor %}
     </fieldset>
     <button class="button button-secondary button-small" type="submit" data-map-submit>Afficher la zone</button>
-    <a class="button button-ghost button-small" href="https://forever.azerpug.com/">Ouvrir la carte détaillée d’Azeroth</a>
+    <a class="button button-ghost button-small" href="https://forever.azerpug.com/" target="_blank" rel="noopener noreferrer">Ouvrir la carte détaillée d’Azeroth</a>
   </form>
   <div class="world-map-board" data-map-board>
     <div class="map-plot" aria-label="Carte de zone et repères">
@@ -21,7 +21,7 @@
       {% endfor %}
     </div>
     <p class="meta" data-map-unavailable hidden>Fond de carte indisponible. Les repères restent accessibles dans la liste.</p>
-    <p class="meta">Carte © Blizzard Entertainment · <a href="https://warcraftforever.games/maps/azeroth">Warcraft Forever</a></p>
+    <p class="meta">Carte © Blizzard Entertainment · <a href="https://warcraftforever.games/maps/azeroth" target="_blank" rel="noopener noreferrer">Warcraft Forever</a></p>
   </div>
   <div class="world-map-places panel-block" aria-labelledby="map-places-title">
     <h2 id="map-places-title" class="block-title" data-map-places-title>Repères de la zone</h2>
@@ -53,7 +53,7 @@
         {% else %}<p class="meta">Coordonnées non documentées dans le catalogue.</p>{% endif %}
         <p><button type="button" class="button button-secondary button-small"
                    data-copy-link="{{ '/' if chars else '/carte' }}?repere={{ point.key | urlencode }}{{ '#carte' if chars else '' }}" hidden>Copier le lien du repère</button></p>
-        <p><a href="{{ point.guide }}">Ouvrir le guide de ce repère</a></p>
+        <p><a href="{{ point.guide }}" target="_blank" rel="noopener noreferrer">Ouvrir le guide de ce repère</a></p>
       </details>
       {% endfor %}
     </div>

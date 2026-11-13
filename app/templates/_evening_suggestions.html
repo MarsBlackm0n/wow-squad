@@ -73,8 +73,7 @@
         <p class="plan-name">{{ plan.name }}</p>
         {% if plan.dungeon %}
         <h5 class="idea-title">{{ plan.dungeon }}</h5>
-        {{ instance_map_link(plan.instance_key, chars) }}
-        <p class="idea-range"><span class="pill">Niv. {{ plan.min_level }}–{{ plan.max_level }}</span>{% if plan.spread %} <span class="meta">écart de {{ plan.spread }} niv. dans le groupe</span>{% endif %}</p>
+        <div class="idea-range"><span class="pill">Niv. {{ plan.min_level }}–{{ plan.max_level }}</span>{% if plan.spread %} <span class="meta">écart de {{ plan.spread }} niv. dans le groupe</span>{% endif %} {{ instance_map_link(plan.instance_key, chars) }}</div>
         {% else %}
         <h5 class="idea-title">Pas de donjon commun</h5>
         <p class="meta">Les niveaux sont trop éloignés{% if plan.spread %} ({{ plan.spread }} niv. d'écart){% endif %}.</p>
@@ -102,8 +101,7 @@
     <li class="idea">
       <div class="idea-head">
         <h5 class="idea-title">{{ idea.dungeon }}</h5>
-        {{ instance_map_link(idea.instance_key, chars) }}
-        <p class="idea-range"><span class="pill">Niv. {{ idea.min_level }}–{{ idea.max_level }}</span> {{ faction_badge(idea.faction | capitalize if idea.faction != 'neutral' else '') }}</p>
+        <div class="idea-range"><span class="pill">Niv. {{ idea.min_level }}–{{ idea.max_level }}</span> {{ faction_badge(idea.faction | capitalize if idea.faction != 'neutral' else '') }} {{ instance_map_link(idea.instance_key, chars) }}</div>
       </div>
       <ul class="idea-members" role="list" aria-label="Joueurs possibles">
         {% for m in idea.members %}
