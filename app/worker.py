@@ -66,7 +66,7 @@ class Worker:
                     token = self.user_token(account.battle_id)
                     if token:
                         try:
-                            await sync_account(db, self.bz, account, token)
+                            await sync_account(db, self.bz, account, token, add_missing=True)
                             db.commit()
                         except Exception as exc:  # noqa: BLE001
                             db.rollback()
