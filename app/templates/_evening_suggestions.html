@@ -73,7 +73,7 @@
         <p class="plan-name">{{ plan.name }}</p>
         {% if plan.dungeon %}
         <h5 class="idea-title">{{ plan.dungeon }}</h5>
-        {{ instance_map_link(instance_keys_by_name.get(plan.dungeon), chars) }}
+        {{ instance_map_link(plan.instance_key, chars) }}
         <p class="idea-range"><span class="pill">Niv. {{ plan.min_level }}–{{ plan.max_level }}</span>{% if plan.spread %} <span class="meta">écart de {{ plan.spread }} niv. dans le groupe</span>{% endif %}</p>
         {% else %}
         <h5 class="idea-title">Pas de donjon commun</h5>
@@ -102,7 +102,7 @@
     <li class="idea">
       <div class="idea-head">
         <h5 class="idea-title">{{ idea.dungeon }}</h5>
-        {{ instance_map_link(instance_keys_by_name.get(idea.dungeon), chars) }}
+        {{ instance_map_link(idea.instance_key, chars) }}
         <p class="idea-range"><span class="pill">Niv. {{ idea.min_level }}–{{ idea.max_level }}</span> {{ faction_badge(idea.faction | capitalize if idea.faction != 'neutral' else '') }}</p>
       </div>
       <ul class="idea-members" role="list" aria-label="Joueurs possibles">
@@ -114,7 +114,7 @@
         <span class="role {{ 'is-ok' if idea.has_tank else 'is-missing' }}">{{ icon('shield') }} {{ 'Tank possible' if idea.has_tank else 'Pas de tank' }}</span>
         <span class="role {{ 'is-ok' if idea.has_heal else 'is-missing' }}">{{ icon('heal') }} {{ 'Soins possibles' if idea.has_heal else 'Pas de soigneur' }}</span>
       </p>
-      {% if idea.alternatives %}<p class="idea-alt">Sinon : {{ idea.alternatives[:3] | join(', ') }}</p>{% endif %}
+      {% if idea.alternatives %}<p class="idea-alt">Sinon : {% for key in idea.alternatives[:3] %}<a href="/?repere={{ key | urlencode }}#carte">{{ instance_catalog[key].name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
     </li>
     {% endfor %}
   </ul>

@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 
 from .db import Character, Event, Snapshot, select, utcnow
+from .instances import INSTANCE_CATALOG
 from .ui import FOREVER_LAUNCH, class_key, faction_key
 
 MAX_LEVEL = 60
@@ -23,25 +24,25 @@ HEAL_CLASSES = {"priest", "paladin", "druid", "shaman"}
 
 # Donjons de l'Azeroth de 2004 (tranche de niveaux conseillée). Liste à ajuster si Forever en ajoute.
 DUNGEONS = [
-    ("Gouffre de Ragefeu", 13, 18, "horde"),
-    ("Les Mortemines", 17, 26, None),
-    ("Cavernes des lamentations", 17, 24, None),
-    ("Donjon d'Ombrecroc", 22, 30, None),
-    ("Profondeurs de Brassenoire", 24, 32, None),
-    ("La Prison", 24, 32, "alliance"),
-    ("Gnomeregan", 29, 38, None),
-    ("Kraal de Tranchebauge", 29, 38, None),
-    ("Monastère écarlate", 34, 45, None),
-    ("Souilles de Tranchebauge", 37, 46, None),
-    ("Uldaman", 41, 51, None),
-    ("Zul'Farrak", 44, 54, None),
-    ("Maraudon", 46, 55, None),
-    ("Temple d'Atal'Hakkar", 50, 56, None),
-    ("Profondeurs de Rochenoire", 52, 60, None),
-    ("Pic Rochenoire inférieur", 55, 60, None),
-    ("Hache-Tripes", 55, 60, None),
-    ("Scholomance", 58, 60, None),
-    ("Stratholme", 58, 60, None),
+    ("ragefire", 13, 18, "horde"),
+    ("deadmines", 17, 26, None),
+    ("wailing", 17, 24, None),
+    ("shadowfang", 22, 30, None),
+    ("blackfathom", 24, 32, None),
+    ("stockade", 24, 32, "alliance"),
+    ("gnomeregan", 29, 38, None),
+    ("razorfen-kraul", 29, 38, None),
+    ("scarlet", 34, 45, None),
+    ("razorfen-downs", 37, 46, None),
+    ("uldaman", 41, 51, None),
+    ("zul-farrak", 44, 54, None),
+    ("maraudon", 46, 55, None),
+    ("sunken-temple", 50, 56, None),
+    ("blackrock-depths", 52, 60, None),
+    ("lower-spire", 55, 60, None),
+    ("dire-maul", 55, 60, None),
+    ("scholomance", 58, 60, None),
+    ("stratholme", 58, 60, None),
 ]
 
 
@@ -146,7 +147,8 @@ def _evenings(items: list[tuple[datetime, Character]]) -> list[Evening]:
 
 @dataclass
 class GroupIdea:
-    dungeon: str
+    instance_key: str
+
     min_level: int
     max_level: int
     faction: str
@@ -154,6 +156,10 @@ class GroupIdea:
     has_tank: bool
     has_heal: bool
     alternatives: list[str] = field(default_factory=list)
+
+    @property
+    def dungeon(self) -> str:
+        return INSTANCE_CATALOG[self.instance_key].name
 
     @property
     def roles_hint(self) -> str:
@@ -182,7 +188,7 @@ def character_roles(char: Character, evening_role: str = "flex") -> set[str]:
 def group_ideas(chars: list[Character], limit: int = 4) -> list[GroupIdea]:
     playable = [c for c in chars if c.status != "pending" and c.level]
     ideas = []
-    for name, lo, hi, only in DUNGEONS:
+    for instance_key, lo, hi, only in DUNGEONS:
         by_faction: dict[str, list[Character]] = defaultdict(list)
         for c in playable:
             if lo - 2 <= c.level <= hi:
@@ -191,7 +197,7 @@ def group_ideas(chars: list[Character], limit: int = 4) -> list[GroupIdea]:
             if len(members) < 2 or (only and faction not in (only, "neutral")):
                 continue
             roles = set().union(*(character_roles(m) for m in members))
-            ideas.append(GroupIdea(name, lo, hi, faction, sorted(members, key=lambda m: -m.level),
+            ideas.append(GroupIdea(instance_key, lo, hi, faction, sorted(members, key=lambda m: -m.level),
                                    "tank" in roles, "heal" in roles))
     # Le plus de monde d'abord, puis le donjon le plus « pile dans la tranche » pour le groupe.
     ideas.sort(key=lambda i: (-len(i.members), abs((i.min_level + i.max_level) / 2
@@ -201,7 +207,7 @@ def group_ideas(chars: list[Character], limit: int = 4) -> list[GroupIdea]:
     for idea in ideas:
         key = frozenset(m.id for m in idea.members)
         if key in unique:
-            unique[key].alternatives.append(idea.dungeon)
+            unique[key].alternatives.append(idea.instance_key)
         else:
             unique[key] = idea
     return list(unique.values())[:limit]
@@ -317,7 +323,7 @@ class GroupPlan:
     name: str
     group_id: str
     members: list[Character]
-    dungeon: str | None
+    instance_key: str | None
     min_level: int
     max_level: int
     fits: list[Character]        # dans la tranche (à 2 niveaux près)
@@ -325,6 +331,10 @@ class GroupPlan:
     mixed_factions: bool
     has_tank: bool
     has_heal: bool
+
+    @property
+    def dungeon(self) -> str | None:
+        return INSTANCE_CATALOG[self.instance_key].name if self.instance_key else None
 
     @property
     def spread(self) -> int:
@@ -340,20 +350,20 @@ def group_plans(groups: list[dict], chars: list[Character]) -> list[GroupPlan]:
         playable = [m for m in members if m.status != "pending" and m.level]
         factions = {faction_key(m.faction) for m in playable} - {"neutral"}
         best = None
-        for name, lo, hi, only in DUNGEONS:
+        for instance_key, lo, hi, only in DUNGEONS:
             if only and factions and factions != {only}:
                 continue
             fits = [m for m in playable if lo - 2 <= m.level <= hi]
             score = (len(fits), -abs((lo + hi) / 2 - (sum(m.level for m in fits) / len(fits) if fits else 0)))
             if fits and (best is None or score > best[0]):
-                best = (score, name, lo, hi, fits)
+                best = (score, instance_key, lo, hi, fits)
         roles = set().union(*(character_roles(m) for m in playable))
         if best:
-            _, name, lo, hi, fits = best
+            _, instance_key, lo, hi, fits = best
             out = [m for m in playable if m not in fits]
         else:
-            name, lo, hi, fits, out = None, 0, 0, [], playable
-        plans.append(GroupPlan(g.get("name", "Groupe"), g.get("id", ""), members, name, lo, hi, fits, out,
+            instance_key, lo, hi, fits, out = None, 0, 0, [], playable
+        plans.append(GroupPlan(g.get("name", "Groupe"), g.get("id", ""), members, instance_key, lo, hi, fits, out,
                                len(factions) > 1, "tank" in roles, "heal" in roles))
     return plans
 
