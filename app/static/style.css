@@ -1372,3 +1372,27 @@ html { scroll-padding-top: 5.5rem; }
 .squad-ranking-grid > section + section { border-top-color: var(--teal); }
 .squad-rank-more { border-top: 1px solid var(--line); margin-top: .5rem; }
 .squad-rank-more summary { padding: .65rem 0; cursor: pointer; color: var(--link); }
+
+.guild-directory {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem; padding: 0; margin: 0; list-style: none;
+}
+.guild-directory-card {
+  --guild-tone: var(--faction-accent, var(--violet));
+  display: flex; flex-direction: column; gap: .9rem; height: 100%; padding: 1rem;
+  border: 1px solid var(--line); border-top: 2px solid var(--guild-tone); border-radius: var(--radius);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--guild-tone) 12%, var(--surface)), var(--surface) 65%);
+  color: var(--text); text-decoration: none; overflow-wrap: anywhere;
+}
+.guild-directory-card:hover { border-color: var(--guild-tone); }
+.guild-directory-heading { display: flex; align-items: center; gap: .75rem; }
+.guild-directory-heading h3 { margin: 0 0 .35rem; font-size: 1.2rem; }
+.guild-directory-emblem {
+  display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem;
+  border: 1px solid var(--guild-tone); border-radius: .7rem; color: var(--guild-tone);
+}
+.guild-directory-emblem svg { width: 1.45rem; height: 1.45rem; }
+.guild-directory-tags { display: flex; flex-wrap: wrap; gap: .35rem; }
+.guild-directory-members { display: grid; gap: .3rem; border-top: 1px solid var(--line); padding-top: .75rem; }
+.guild-directory-link { display: flex; align-items: center; gap: .35rem; margin-top: auto; font-weight: 650; color: var(--link); }
+.guild-directory-link svg { width: 1rem; height: 1rem; }

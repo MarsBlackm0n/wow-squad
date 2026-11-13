@@ -353,18 +353,22 @@
       <p class="lead">Les guildes des personnages suivis par la squad.</p>
     </header>
     {% if guild_directory %}
-    <ul class="member-list" role="list">
+    <ul class="guild-directory" role="list">
       {% for members in guild_directory %}
       {% set c = members[0] %}
-      <li class="member">
-        <div class="member-body">
-          <a class="member-name" href="/perso/{{ c.id }}/guilde">{{ c.guild }}</a>
-          <span class="meta">{{ members | map(attribute='display_name') | join(' · ') }}</span>
+      <li><a class="guild-directory-card" data-faction="{{ c.faction | faction_key }}" href="/perso/{{ c.id }}/guilde">
+        <div class="guild-directory-heading">
+          <span class="guild-directory-emblem">{{ icon('shield') }}</span>
+          <div><h3>{{ c.guild }}</h3>
+            <div class="guild-directory-tags">{{ faction_badge(c.faction) }} {{ ruleset_badge(c) }}</div>
+          </div>
         </div>
-        {{ faction_badge(c.faction) }}
-        {{ ruleset_badge(c) }}
-        <span class="pill">{{ members | length }} suivi{{ 's' if members | length > 1 }}</span>
-      </li>
+        <div class="guild-directory-members">
+          <span class="meta">{{ members | length }} personnage{{ 's' if members | length > 1 }} de la squad</span>
+          <span>{{ members | map(attribute='display_name') | join(' · ') }}</span>
+        </div>
+        <span class="guild-directory-link">Voir la guilde {{ icon('chevron') }}</span>
+      </a></li>
       {% endfor %}
     </ul>
     {% else %}
