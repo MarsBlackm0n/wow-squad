@@ -1464,3 +1464,32 @@ html { scroll-padding-top: 5.5rem; }
   background: var(--surface); color: var(--text); border: 1px solid var(--line-strong);
   border-radius: .45rem; font-size: .8rem; box-shadow: 0 4px 16px #0005;
 }
+
+.evening-overview {
+  display: grid;
+  align-items: start;
+  gap: .75rem;
+  margin-bottom: .75rem;
+}
+.evening-overview > :is(.evening-board, .mission-board) {
+  min-width: 0;
+  margin: 0;
+  padding: .8rem .95rem;
+}
+.evening-overview .mission-board-head { gap: .5rem; margin-bottom: .5rem; }
+.evening-overview .mission-heading h3 { font-size: 1.05rem; }
+.evening-overview .mission-heading-icon { flex-basis: 1.85rem; height: 1.85rem; }
+.evening-overview .mission-empty { padding: .4rem .55rem; font-size: .85rem; }
+.evening-overview .mission-grid { gap: .65rem; }
+.evening-overview .evening-controls { gap: .25rem .5rem; }
+.evening-overview .tag-list { margin-bottom: 0; }
+.evening-suggestions {
+  border-top: 2px solid var(--link);
+  background: linear-gradient(145deg, var(--accent-soft), transparent 45%), var(--surface);
+}
+.evening-suggestions h3 { display: flex; align-items: center; gap: .5rem; }
+.evening-suggestions .chart-toolbar .meta { margin: .25rem 0 0; }
+.suggestion-create .button { min-height: 44px; }
+@media (min-width: 960px) {
+  .evening-overview { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}

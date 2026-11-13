@@ -120,7 +120,7 @@
 </section>
 
 {% if not chars %}
-<div id="ce-soir">{% include "_main_character_prompt.html" %}{% include "_evening.html" %}{% include "_community.html" %}{% include "_missions.html" %}</div>
+<div id="ce-soir">{% include "_main_character_prompt.html" %}{% include "_evening_overview.html" %}</div>
 <p><a href="/carte">Carte d’Azeroth</a></p>
 <section class="onboarding" aria-labelledby="onboarding-title">
   <h2 id="onboarding-title">Bienvenue au QG</h2>
@@ -152,12 +152,9 @@
   <section id="ce-soir" class="panel" data-panel aria-labelledby="ce-soir-title">
     <header class="panel-head">
       <h2 id="ce-soir-title">Ce soir, on fait quoi&nbsp;?</h2>
-      <p class="lead">Vos groupes d'abord, puis les autres combinaisons possibles d'après vos niveaux actuels.</p>
     </header>
     {% include "_main_character_prompt.html" %}
-    {% include "_evening.html" %}
-    {% include "_community.html" %}
-    {% include "_missions.html" %}
+    {% include "_evening_overview.html" %}
     {% if activity.values() | sum %}
     <section class="squad-activity" aria-labelledby="squad-activity-heading">
       <h3 id="squad-activity-heading">En 7 jours de suivi</h3>
@@ -166,7 +163,6 @@
         {% if activity[key] %}<li class="tag"><strong>+{{ activity[key] | number }}</strong> {{ label }}</li>{% endif %}
         {% endfor %}
       </ul>
-      <a href="#journal">Voir le journal</a>
     </section>
     {% endif %}
     {% if plans %}

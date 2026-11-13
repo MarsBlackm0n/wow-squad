@@ -47,74 +47,9 @@
     <a class="button button-secondary" href="/auth/battlenet">Connecter Battle.net</a>
     {% endif %}
   </header>
-  <p><a href="{{ '#carte' if chars else '/carte' }}">Carte des donjons, raids, quêtes et mobs</a></p>
   {% if availability %}
   <ul class="tag-list" role="list">
     {% for row in availability %}<li class="tag evening-status" data-status="{{ row.status }}"><strong>{{ availability_names.get(row.account_id, 'Joueur') }}</strong> · {{ availability_labels[row.status] }}</li>{% endfor %}
   </ul>
-  {% endif %}
-  {% if suggestions %}
-  <form class="evening-priority" method="get" action="/#ce-soir">
-    <label for="evening-priority">Priorité</label>
-    <select id="evening-priority" name="priorite">{% for key,label in priority_labels.items() %}<option value="{{ key }}"{% if priority == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
-    <button class="button button-secondary button-small">Appliquer</button>
-  </form>
-  <div class="mission-grid">
-    {% for idea in suggestions %}
-    <article class="mission-card" data-objective="dungeon">
-      <div class="mission-card-meta"><span class="objective-badge">Donjon</span><span class="meta">{{ idea.mode }} · {{ 'Horde' if idea.side == 'horde' else 'Alliance' }}</span></div>
-      <h4>{{ idea.instance.name }}</h4>
-      <a href="/?repere={{ idea.instance.key }}#carte">Voir sur la carte</a>
-      <p><strong>{{ idea.score[1] }}/5 disponibles</strong>{% if idea.score[0] > idea.score[1] %} · {{ idea.score[0] - idea.score[1] }} à confirmer{% endif %}</p>
-      <ol class="lineup" aria-label="Composition proposée">
-        {% for slot in idea.team %}
-        {% set role = ('tank','heal','damage','damage','damage')[loop.index0] %}
-        <li data-role="{{ role }}">
-          <span class="lineup-icon">{% if slot %}{{ avatar(slot.character, 'sm') }}{% else %}{{ icon({'tank':'shield','heal':'heal','damage':'bolt'}[role]) }}{% endif %}</span>
-          <span class="meta">{{ mission_roles[role] }}</span>
-          {% if slot %}
-          <a href="/perso/{{ slot.character.id }}">{{ slot.character.name }}</a>
-          {% if slot.tentative %}<span class="meta">Peut-être</span>{% endif %}
-          {% else %}<span>À pourvoir</span>{% endif %}
-          {% set choices = idea.alternatives[loop.index0] %}
-          {% if choices %}
-          <div class="lineup-alternatives"><details><summary>Autres persos</summary><ul role="list">
-            {% for choice in choices %}<li><a href="/perso/{{ choice.character.id }}">{{ choice.character.display_name }}</a>{% if choice.tentative %} <span class="meta">· Peut-être</span>{% endif %}</li>{% endfor %}
-          </ul></details></div>
-          {% endif %}
-        </li>
-        {% endfor %}
-      </ol>
-      <details class="instance-prep">
-        <summary>{{ icon('chevron', 'summary-chevron') }} Ce que le groupe y gagne</summary>
-        <ul class="group-list" role="list">
-          {% for slot in idea.team if slot and (slot.quest or slot.discovery) %}
-          <li class="group-item">{{ slot.character.display_name }} <span class="meta">{{ 'Quête sans validation relevée' if slot.quest else 'Aucun boss de ce donjon relevé' }}</span></li>
-          {% else %}<li class="meta">Pas de bénéfice individuel confirmé par les relevés disponibles.</li>
-          {% endfor %}
-        </ul>
-      </details>
-      {% if account_id %}
-      <details class="instance-prep">
-        <summary class="button button-primary">Lancer cette sortie</summary>
-        <form class="mission-form" method="post" action="/objectifs">
-          <input type="hidden" name="csrf" value="{{ csrf }}">
-          <input type="hidden" name="instance_key" value="{{ idea.instance.key }}">
-          <input type="hidden" name="suggestion_side" value="{{ idea.side }}">
-          <input type="hidden" name="suggestion_mode" value="{{ idea.mode }}">
-          <input type="hidden" name="suggestion_priority" value="{{ priority }}">
-          <div class="field">
-            <label for="departure-{{ idea.instance.key }}">Date et heure de départ ({{ settings.timezone }})</label>
-            <input id="departure-{{ idea.instance.key }}" type="datetime-local" name="date_prevue" required>
-          </div>
-          <button class="button button-primary" type="submit">Publier la sortie</button>
-        </form>
-      </details>
-      {% endif %}
-    </article>
-    {% endfor %}
-  </div>
-  {% else %}
-  <p class="meta">Les propositions apparaissent dès que deux joueurs ont des personnages compatibles et au niveau conseillé.</p>
   {% endif %}
 </section>

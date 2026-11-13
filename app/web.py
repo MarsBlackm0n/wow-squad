@@ -771,8 +771,10 @@ async def create_mission(request: Request, titre: str = Form(""), type_objectif:
         return back("/#ce-soir")
     instance = INSTANCE_CATALOG.get(instance_key)
     if suggestion_side:
-        if (objectif or not instance or instance.kind != "dungeon" or starts_at is None
-                or starts_at <= utcnow() or suggestion_priority not in expedition.PREFERENCES):
+        if objectif or not instance or instance.kind != "dungeon" or suggestion_priority not in expedition.PREFERENCES:
+            flash(request, "Cette proposition n’est plus disponible.", "error")
+            return back("/#ce-soir")
+        if starts_at is not None and starts_at <= utcnow():
             flash(request, "Choisis une heure de départ à venir pour cette sortie.", "error")
             return back("/#ce-soir")
         effectif, niveau = instance.size, instance.level

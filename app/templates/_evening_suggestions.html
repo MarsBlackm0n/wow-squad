@@ -1,0 +1,65 @@
+{% from "_macros.html" import avatar, icon %}
+<section class="evening-board evening-suggestions" aria-labelledby="evening-suggestions-title">
+  <header class="chart-toolbar">
+    <div>
+      <h3 id="evening-suggestions-title">Sorties proposées{% if suggestions %} <span class="tag">{{ suggestions | length }}</span>{% endif %}</h3>
+      {% if suggestions %}<p class="meta">Compositions basées sur les disponibilités, niveaux et rôles. La date se fixe après la création.</p>{% endif %}
+    </div>
+  </header>
+  {% if suggestions %}
+  <form class="evening-priority" method="get" action="/#ce-soir">
+    <label for="evening-priority">Priorité</label>
+    <select id="evening-priority" name="priorite">{% for key,label in priority_labels.items() %}<option value="{{ key }}"{% if priority == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <button class="button button-secondary button-small">Appliquer</button>
+  </form>
+  <div class="mission-grid">
+    {% for idea in suggestions %}
+    <article class="mission-card" data-objective="dungeon">
+      <div class="mission-card-meta"><span class="objective-badge">Donjon</span><span class="meta">{{ idea.mode }} · {{ 'Horde' if idea.side == 'horde' else 'Alliance' }}</span></div>
+      <h4>{{ idea.instance.name }}</h4>
+      <p><strong>{{ idea.score[1] }}/5 disponibles</strong>{% if idea.score[0] > idea.score[1] %} · {{ idea.score[0] - idea.score[1] }} à confirmer{% endif %}</p>
+      {% if account_id %}
+      <form class="suggestion-create" method="post" action="/objectifs">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input type="hidden" name="instance_key" value="{{ idea.instance.key }}">
+          <input type="hidden" name="suggestion_side" value="{{ idea.side }}">
+          <input type="hidden" name="suggestion_mode" value="{{ idea.mode }}">
+          <input type="hidden" name="suggestion_priority" value="{{ priority }}">
+          <button class="button button-primary button-small" type="submit">{{ icon('flag') }} Créer l’objectif</button>
+      </form>
+      {% endif %}
+      <ol class="lineup" aria-label="Composition proposée">
+        {% for slot in idea.team %}
+        {% set role = ('tank','heal','damage','damage','damage')[loop.index0] %}
+        <li data-role="{{ role }}">
+          <span class="lineup-icon">{% if slot %}{{ avatar(slot.character, 'sm') }}{% else %}{{ icon({'tank':'shield','heal':'heal','damage':'bolt'}[role]) }}{% endif %}</span>
+          <span class="meta">{{ mission_roles[role] }}</span>
+          {% if slot %}
+          <a href="/perso/{{ slot.character.id }}">{{ slot.character.name }}</a>
+          {% if slot.tentative %}<span class="meta">Peut-être</span>{% endif %}
+          {% else %}<span>À pourvoir</span>{% endif %}
+          {% set choices = idea.alternatives[loop.index0] %}
+          {% if choices %}
+          <div class="lineup-alternatives"><details><summary>Autres persos</summary><ul role="list">
+            {% for choice in choices %}<li><a href="/perso/{{ choice.character.id }}">{{ choice.character.display_name }}</a>{% if choice.tentative %} <span class="meta">· Peut-être</span>{% endif %}</li>{% endfor %}
+          </ul></details></div>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+      <details class="instance-prep">
+        <summary>{{ icon('chevron', 'summary-chevron') }} Ce que le groupe y gagne</summary>
+        <ul class="group-list" role="list">
+          {% for slot in idea.team if slot and (slot.quest or slot.discovery) %}
+          <li class="group-item">{{ slot.character.display_name }} <span class="meta">{{ 'Quête sans validation relevée' if slot.quest else 'Aucun boss de ce donjon relevé' }}</span></li>
+          {% else %}<li class="meta">Pas de bénéfice individuel confirmé par les relevés disponibles.</li>
+          {% endfor %}
+        </ul>
+      </details>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="meta">Les propositions apparaissent dès que deux joueurs ont des personnages compatibles et au niveau conseillé.</p>
+  {% endif %}
+</section>
