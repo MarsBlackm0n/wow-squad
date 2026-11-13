@@ -1398,9 +1398,9 @@ html { scroll-padding-top: 5.5rem; }
 @media (min-width: 960px) {
   .squad-chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-#squad-race .chart-frame > svg, #squad-gear-history .chart-frame > svg { display: block; width: min(100%, 34rem); max-height: 14rem; margin-inline: auto; }
+#squad-race .chart-frame > svg, #squad-gear-history .chart-frame > svg { display: block; width: min(100%, 38rem); max-height: 16rem; margin-inline: auto; }
 #squad-equipment [data-replay-plot] { height: 13.5rem; }
-#squad-comparison [data-radar-plot] { width: min(100%, 23rem); }
+#squad-comparison [data-radar-plot] { width: min(100%, 27rem); }
 .squad-chart-grid .chart-players { gap: .4rem; margin-block: .45rem .7rem; }
 .squad-chart-grid .chart-player-picker { width: max-content; }
 .squad-chart-grid .chart-player-picker > summary {
@@ -1426,12 +1426,12 @@ html { scroll-padding-top: 5.5rem; }
 .squad-chart-grid .chart-player-active > .tag-list {
   flex: 1 1 12rem; flex-wrap: wrap; min-width: 0; padding-block: .2rem;
 }
-.squad-chart-grid .chart-player-active .tag { font-size: .72rem; padding: .16rem .38rem; gap: .25rem; min-height: 0; max-width: 100%; }
+.squad-chart-grid .chart-player-active .tag { font-size: .68rem; padding: .08rem .3rem; gap: .2rem; min-height: 0; max-width: 100%; }
 .squad-chart-grid .chart-player-active .tag span { overflow-wrap: anywhere; }
-.squad-chart-grid [data-chart-clear] { flex: none; padding: .2rem .4rem; min-height: 2rem; }
+.squad-chart-grid [data-chart-clear] { flex: none; padding: .1rem .35rem; min-height: 1.65rem; font-size: .72rem; }
 .squad-chart-grid [data-chart-clear][hidden] { display: none; }
 .squad-chart-grid .chart-player-picker[open] { width: min(100%, 25rem); }
-.squad-chart-grid .chart-player-picker > summary { min-height: 2.15rem; padding-block: .25rem; }
+.squad-chart-grid .chart-player-picker > summary { min-height: 1.65rem; padding: .15rem .45rem; font-size: .72rem; }
 .squad-chart-grid .chart-frame figcaption { padding-inline: 0; }
 @media (min-width: 960px) {
   #squad-race .chart-toolbar, #squad-gear-history .chart-toolbar { min-height: 4.1rem; }

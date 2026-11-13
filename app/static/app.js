@@ -312,7 +312,8 @@
         : !selected.length ? "Sélectionne au moins un personnage."
         : axes.length < 3 ? "Le radar apparaît à partir de trois métiers relevés. Les niveaux restent dans le tableau."
         : isSkills ? "Les axes de métier partagent une échelle de 0 à " + limits[0] + ". Les métiers absents d’une liste reçue valent 0."
-        : "Chaque axe a sa propre échelle. Le tableau indique les valeurs brutes et le maximum de chaque axe. Plus loin du centre ne signifie pas toujours mieux.";
+        : "";
+      note.hidden = !note.textContent;
       if (!selected.length) return;
       var table = document.createElement("table");
       var header = table.createTHead().insertRow();
