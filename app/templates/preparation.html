@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import avatar, icon %}
+{% from "_macros.html" import avatar, icon, instance_map_link %}
 {% block title %}Préparer {{ mission.title }}{% endblock %}
 {% block content %}
 <nav class="breadcrumb" aria-label="Fil d’Ariane"><ol><li><a href="/#ce-soir">Ce soir</a></li><li aria-current="page">Préparation</li></ol></nav>
@@ -15,7 +15,7 @@
         {% if instance %}
         <li><h3>Se retrouver</h3><p>{{ instance.access }}</p>
           {% if instance.coordinates %}<div class="route-coordinate"><code>{{ instance.coordinates }}</code><button type="button" class="button button-secondary button-small" data-copy-coordinate="{{ instance.coordinates }}" hidden>Copier</button></div>{% endif %}
-          <p>{% if map_zone %}<a href="/carte?repere={{ instance.key }}">Voir le repère sur la carte</a> · {% endif %}<a href="{{ instance.guide }}">Guide d’accès</a></p>
+          <p>{% if map_zone %}{{ instance_map_link(instance.key, true) }} · {% endif %}<a href="{{ instance.guide }}">Guide d’accès</a></p>
           {% if instance.availability %}<p class="meta">{{ instance.availability }}</p>{% endif %}
         </li>
         <li><h3>Préparer l’accès et le combat</h3><p>{{ instance.preparation }}</p></li>

@@ -1,4 +1,4 @@
-{% from "_macros.html" import avatar, icon, ruleset_badge with context %}
+{% from "_macros.html" import avatar, icon, instance_map_link, ruleset_badge with context %}
 
 {% macro instance_guide(entry) %}
 <dl class="instance-guide">
@@ -101,6 +101,7 @@
           <span class="meta">{% if m.starts_at %}<time datetime="{{ m.starts_at.isoformat() }}">{{ m.starts_at | localtime('%d/%m à %H:%M') }}</time>{% else %}Date à convenir{% endif %}</span>
         </div>
         <h4 id="mission-title-{{ m.id }}">{{ m.title }}</h4>
+        {{ instance_map_link(m.instance_key if m.instance_key in instance_catalog else none, chars) }}
         {% if signup %}<p class="mission-confirmed">{{ icon('check') }} Tu participes</p>{% endif %}
         {% if m.notes %}<p class="mission-notes">{{ m.notes }}</p>{% endif %}
       </header>

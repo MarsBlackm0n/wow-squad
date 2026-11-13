@@ -1,4 +1,4 @@
-{% from "_macros.html" import avatar, faction_badge, icon %}
+{% from "_macros.html" import avatar, faction_badge, icon, instance_map_link %}
 <section class="evening-board evening-suggestions" aria-labelledby="evening-suggestions-title">
   <header class="chart-toolbar">
     <div>
@@ -18,6 +18,7 @@
     <article class="mission-card" data-objective="dungeon">
       <div class="mission-card-meta"><span class="objective-badge">Donjon</span><span class="meta">{{ idea.mode }} · {{ 'Horde' if idea.side == 'horde' else 'Alliance' }}</span></div>
       <h4>{{ idea.instance.name }}</h4>
+        {{ instance_map_link(idea.instance.key, chars) }}
       <p><strong>{{ idea.score[1] }}/5 disponibles</strong>{% if idea.score[0] > idea.score[1] %} · {{ idea.score[0] - idea.score[1] }} à confirmer{% endif %}</p>
       {% if account_id %}
       <form class="suggestion-create" method="post" action="/objectifs">
@@ -72,6 +73,7 @@
         <p class="plan-name">{{ plan.name }}</p>
         {% if plan.dungeon %}
         <h5 class="idea-title">{{ plan.dungeon }}</h5>
+        {{ instance_map_link(instance_keys_by_name.get(plan.dungeon), chars) }}
         <p class="idea-range"><span class="pill">Niv. {{ plan.min_level }}–{{ plan.max_level }}</span>{% if plan.spread %} <span class="meta">écart de {{ plan.spread }} niv. dans le groupe</span>{% endif %}</p>
         {% else %}
         <h5 class="idea-title">Pas de donjon commun</h5>
@@ -100,6 +102,7 @@
     <li class="idea">
       <div class="idea-head">
         <h5 class="idea-title">{{ idea.dungeon }}</h5>
+        {{ instance_map_link(instance_keys_by_name.get(idea.dungeon), chars) }}
         <p class="idea-range"><span class="pill">Niv. {{ idea.min_level }}–{{ idea.max_level }}</span> {{ faction_badge(idea.faction | capitalize if idea.faction != 'neutral' else '') }}</p>
       </div>
       <ul class="idea-members" role="list" aria-label="Joueurs possibles">

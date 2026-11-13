@@ -1,4 +1,8 @@
 {# Icône du sprite (_icons.html). Décorative par défaut : le texte voisin porte le sens. #}
+{% macro instance_map_link(key, chars) -%}
+{% if key %}<a class="instance-guide-link" href="{{ '/' if chars else '/carte' }}?repere={{ key | urlencode }}{{ '#carte' if chars else '' }}">{{ icon('flag') }} Voir sur la carte</a>{% endif %}
+{%- endmacro %}
+
 {% macro icon(name, cls='') -%}
 <svg class="icon {{ cls }}" aria-hidden="true" focusable="false"><use href="#i-{{ name }}"/></svg>
 {%- endmacro %}

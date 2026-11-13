@@ -611,7 +611,9 @@ def _map_context(missions, zone: str = "", repere: str = "") -> dict:
     for mission in missions:
         if mission.instance_key:
             objectives.setdefault(mission.instance_key, []).append(mission)
-    return dict(points=points, zones=zones, active_zone=active_zone, selected=selected, kinds=worldmap.KINDS,
+    return dict(points=points, instance_keys_by_name={
+                    point["name"]: point["key"] for point in points if point["key"] in INSTANCE_CATALOG
+                }, zones=zones, active_zone=active_zone, selected=selected, kinds=worldmap.KINDS,
                 backgrounds=worldmap.map_backgrounds(), mob_counts=mob_counts, map_objectives=objectives)
 
 
