@@ -138,9 +138,26 @@
 
 <section class="panel-block" aria-labelledby="admin-roster-title">
   <h2 id="admin-roster-title">Personnages suivis</h2>
-  <ul class="group-list" role="list">
-  {% for c in chars %}
-    <li class="group-item"><a href="/perso/{{ c.id }}">{{ c.display_name }}</a>
+  {% for group in player_groups %}
+    {% set members = ([group.main] if group.main else []) + group.characters %}
+    <section class="panel-block" id="admin-player-{{ group.key }}">
+      <h3>{{ group.account.battletag if group.account else group.name }} <span class="meta">· {{ members | length }}</span></h3>
+      {% if group.account %}
+      <form method="post" action="/administration/comptes/{{ group.account.id }}/personnage-principal" class="main-character-form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <div class="field">
+          <label for="admin-main-{{ group.account.id }}">Personnage principal</label>
+          <select id="admin-main-{{ group.account.id }}" name="personnage">
+            <option value="0"{% if not group.main %} selected{% endif %}>Aucun</option>
+            {% for c in members %}<option value="{{ c.id }}"{% if group.main and c.id == group.main.id %} selected{% endif %}>{{ c.display_name }}</option>{% endfor %}
+          </select>
+        </div>
+        <button class="button button-secondary" type="submit">Enregistrer</button>
+      </form>
+      {% else %}<p class="meta">Compte Battle.net non lié.</p>{% endif %}
+      <ul class="group-list" role="list">
+{% for c in members %}
+    <li class="group-item"><a href="/perso/{{ c.id }}">{{ c.display_name }}</a> {% if c.level %}<span class="pill">Niv. {{ c.level }}</span>{% endif %} {% if group.main and c.id == group.main.id %}<span class="main-character-badge">Principal</span>{% endif %}
       <details><summary>Retirer de la squad</summary>
         <form method="post" action="/perso/{{ c.id }}/supprimer">
           <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -151,6 +168,8 @@
     </li>
   {% endfor %}
   </ul>
+    </section>
+    {% else %}<p class="meta">Aucun personnage suivi.</p>{% endfor %}
   <form method="post" action="/recap/envoyer">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <button class="button button-secondary">Envoyer le récapitulatif</button>

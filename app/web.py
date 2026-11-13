@@ -190,10 +190,31 @@ async def admin_page(request: Request):
     with SessionLocal() as db:
         admin_missions = db.scalars(select(SquadMission)
                                    .order_by(SquadMission.completed_at.is_not(None), SquadMission.id.desc())).all()
-        return render(request, "admin.html", chars=leaderboard(db), groups=squad.get_groups(db),
+        chars = leaderboard(db)
+        accounts = db.scalars(select(Account)).all()
+        return render(request, "admin.html", chars=chars, player_groups=_squad_players(chars, accounts),
+                      groups=squad.get_groups(db),
                       admin_missions=admin_missions, mission_kinds=squad.MISSION_KINDS,
                       goal_cfg=squad.get_goal(db), targets=squad.community_targets(db),
                       metrics=squad.COMMUNITY_METRICS, add_form=request.session.pop("add_form", None) or {})
+
+
+@router.post("/administration/comptes/{account_id}/personnage-principal")
+async def admin_main_character(request: Request, account_id: int, personnage: int = Form(0), csrf: str = Form("")):
+    require_admin(request)
+    check_csrf(request, csrf)
+    with SessionLocal() as db:
+        account = db.get(Account, account_id, with_for_update=True)
+        if account is None:
+            raise HTTPException(404, "Compte introuvable.")
+        if personnage != 0:
+            char = db.get(Character, personnage)
+            if char is None or char.account_id != account.id:
+                raise HTTPException(400, "Choisis un personnage de ce compte.")
+        account.main_character_id = personnage or None
+        db.commit()
+    flash(request, "Personnage principal mis à jour.")
+    return back(f"/administration#admin-player-account-{account_id}")
 
 
 @router.post("/administration/defis")
@@ -285,7 +306,7 @@ def _squad_players(chars, accounts):
         else:
             key = f"manual-{player.casefold()}"
             name = player or "Joueur non renseigné"
-        group = groups.setdefault(key, {"key": key, "name": name, "main": None, "characters": []})
+        group = groups.setdefault(key, {"key": key, "name": name, "account": account, "main": None, "characters": []})
         if account and char.id == account.main_character_id:
             group["main"] = char
         else:
