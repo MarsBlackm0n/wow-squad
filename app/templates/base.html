@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&amp;family=Inter:opsz,wght@14..32,400..800&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=48">
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=49">
   <script>
     // Appliqué avant l'affichage pour éviter un flash du mauvais thème.
     try { var t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
@@ -33,10 +33,27 @@
       </a>
       <nav class="site-nav" aria-label="Navigation principale">
         <ul>
-          <li><a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>QG</a></li>
+          <li>
+            <a class="nav-destination nav-hq" href="/"{% if request.url.path == '/' %} aria-current="page"{% endif %}>
+              <svg class="nav-emblem" aria-hidden="true" focusable="false" viewBox="0 0 32 32">
+                <path d="M5 13h6v-3h3v3h4v-3h3v3h6v12l-11 4L5 25Z" fill="currentColor" fill-opacity=".18" stroke="currentColor" stroke-linejoin="round"/>
+                <path d="M8 13V6h3v3h3V6h4v3h3V6h3v7M5 19h6m10 0h6M12 27v-7a4 4 0 0 1 8 0v7M16 6V2l6 2-6 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              QG
+            </a>
+          </li>
           {% if qg_access %}
-          <li><a href="/compte" {% if request.url.path == '/compte' %}aria-current="page"{% endif %}>Mes personnages</a></li>
-          <li><a href="/#squad">La squad</a></li>
+          <li>
+            <a class="nav-destination nav-characters" href="/compte"{% if request.url.path == '/compte' %} aria-current="page"{% endif %}>
+              <svg class="nav-emblem" aria-hidden="true" focusable="false" viewBox="0 0 32 32">
+                <path d="m4 9 17-5 7 18-17 5Z" fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-linejoin="round"/>
+                <path d="M7 5h16l3 3v18l-3 3H7l-3-3V8Z" fill="var(--surface)" stroke="currentColor" stroke-linejoin="round"/>
+                <path d="M8 22c1-3 4-4 7-4s6 1 7 4v2H8Zm3-10 4-3 4 3-1 5h-6Z" fill="currentColor" fill-opacity=".24" stroke="currentColor" stroke-linejoin="round"/>
+                <path d="M13 13h4m-2 0v3m8-7v4m-2-2h4" stroke="currentColor" stroke-linecap="round"/>
+              </svg>
+              Mes personnages
+            </a>
+          </li>
           {% if admin %}<li><a href="/administration" {% if request.url.path == "/administration" %}aria-current="page"{% endif %}>Administration</a></li>{% endif %}
           {% endif %}
         </ul>

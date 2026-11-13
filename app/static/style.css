@@ -1476,3 +1476,27 @@ html { scroll-padding-top: 5.5rem; }
 @media (min-width: 960px) {
   .evening-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
 }
+
+.site-nav ul { gap: .4rem; align-items: center; }
+.site-nav .nav-destination {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  padding: .35rem .65rem;
+  border: 1px solid color-mix(in srgb, var(--nav-tone) 34%, var(--line));
+  border-radius: var(--radius-sm);
+  background: linear-gradient(120deg, color-mix(in srgb, var(--nav-tone) 12%, var(--surface)), var(--surface));
+  color: var(--text);
+  font-weight: 750;
+  white-space: nowrap;
+}
+.nav-hq { --nav-tone: var(--link); }
+.nav-characters { --nav-tone: var(--teal); }
+.nav-emblem { width: 1.65rem; height: 1.65rem; flex: none; color: var(--nav-tone); }
+.site-nav .nav-destination:is(:hover, [aria-current="page"]) {
+  border-color: var(--nav-tone);
+  background: color-mix(in srgb, var(--nav-tone) 17%, var(--surface));
+}
+.site-nav .nav-destination[aria-current="page"] { box-shadow: inset 0 -2px var(--nav-tone); }
+.site-nav .nav-destination:focus-visible { outline: 2px solid var(--nav-tone); outline-offset: 2px; }
