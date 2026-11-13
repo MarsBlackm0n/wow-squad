@@ -164,6 +164,21 @@ class GroupIdea:
         return "Pas de tank naturel" if not self.has_tank else "Pas de soigneur naturel"
 
 
+def character_roles(char: Character, evening_role: str = "flex") -> set[str]:
+    cls = class_key(char.class_name)
+    roles = {"damage"}
+    if cls in TANK_CLASSES:
+        roles.add("tank")
+    if cls in HEAL_CLASSES:
+        roles.add("heal")
+    preferred = getattr(char, "preferred_role", None)
+    if preferred in ("tank", "heal", "damage"):
+        roles.add(preferred)
+    if evening_role != "flex":
+        return roles & {evening_role}
+    return {preferred} if preferred in roles else roles
+
+
 def group_ideas(chars: list[Character], limit: int = 4) -> list[GroupIdea]:
     playable = [c for c in chars if c.status != "pending" and c.level]
     ideas = []
@@ -175,9 +190,9 @@ def group_ideas(chars: list[Character], limit: int = 4) -> list[GroupIdea]:
         for faction, members in by_faction.items():
             if len(members) < 2 or (only and faction not in (only, "neutral")):
                 continue
-            classes = {class_key(m.class_name) for m in members}
+            roles = set().union(*(character_roles(m) for m in members))
             ideas.append(GroupIdea(name, lo, hi, faction, sorted(members, key=lambda m: -m.level),
-                                   bool(classes & TANK_CLASSES), bool(classes & HEAL_CLASSES)))
+                                   "tank" in roles, "heal" in roles))
     # Le plus de monde d'abord, puis le donjon le plus « pile dans la tranche » pour le groupe.
     ideas.sort(key=lambda i: (-len(i.members), abs((i.min_level + i.max_level) / 2
                                                    - sum(m.level for m in i.members) / len(i.members))))
@@ -332,14 +347,14 @@ def group_plans(groups: list[dict], chars: list[Character]) -> list[GroupPlan]:
             score = (len(fits), -abs((lo + hi) / 2 - (sum(m.level for m in fits) / len(fits) if fits else 0)))
             if fits and (best is None or score > best[0]):
                 best = (score, name, lo, hi, fits)
-        classes = {class_key(m.class_name) for m in playable}
+        roles = set().union(*(character_roles(m) for m in playable))
         if best:
             _, name, lo, hi, fits = best
             out = [m for m in playable if m not in fits]
         else:
             name, lo, hi, fits, out = None, 0, 0, [], playable
         plans.append(GroupPlan(g.get("name", "Groupe"), g.get("id", ""), members, name, lo, hi, fits, out,
-                               len(factions) > 1, bool(classes & TANK_CLASSES), bool(classes & HEAL_CLASSES)))
+                               len(factions) > 1, "tank" in roles, "heal" in roles))
     return plans
 
 @dataclass

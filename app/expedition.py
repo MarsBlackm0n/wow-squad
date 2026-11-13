@@ -8,9 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from .db import Event, MissionSignup
-from .insights import HEAL_CLASSES, TANK_CLASSES
+from .insights import character_roles
 from .instances import DUNGEON_CATALOG, DUNGEON_GUIDES
-from .ui import _fold, class_key, faction_key, ruleset_label
+from .ui import _fold, faction_key, ruleset_label
 
 AVAILABILITY = {"yes": "Disponible", "maybe": "Peut-être", "no": "Absent"}
 PREFERENCES = {"group": "Former un groupe", "quests": "Avancer les quêtes", "discover": "Découvrir"}
@@ -57,11 +57,6 @@ def discovery_candidate(char, instance):
     return not any(row["count"] and normalized(row["instance"]) in names for row in records.values())
 
 
-def _eligible_roles(char):
-    cls = class_key(char.class_name)
-    return {"damage"} | ({"tank"} if cls in TANK_CLASSES else set()) | ({"heal"} if cls in HEAL_CLASSES else set())
-
-
 def _score(team, priority):
     filled = [slot for slot in team if slot]
     gain = sum(slot.quest if priority == "quests" else slot.discovery if priority == "discover" else 0 for slot in filled)
@@ -96,9 +91,7 @@ def evening_suggestions(rows, chars, priority):
                 for char, row in options:
                     if char.level < instance.level:
                         continue
-                    roles = _eligible_roles(char)
-                    if row.role != "flex":
-                        roles &= {row.role}
+                    roles = character_roles(char, row.role)
                     quest = quest_status(char, instance.key)
                     discovery = discovery_candidate(char, instance)
                     for mask, lineup in states.items():
@@ -130,8 +123,7 @@ def alternatives(team, players, instance):
             if account_id in assigned and (not slot or slot.character.account_id != account_id):
                 continue
             choices.extend({"character": char, "tentative": row.status == "maybe"} for char, row in options
-                           if char.level >= instance.level and role in _eligible_roles(char)
-                           and row.role in ("flex", role) and (not slot or slot.character.id != char.id))
+                           if char.level >= instance.level and role in character_roles(char, row.role) and (not slot or slot.character.id != char.id))
         results.append(choices)
     return results
 

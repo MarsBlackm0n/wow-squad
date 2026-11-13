@@ -26,7 +26,7 @@
             {% for key, label in availability_labels.items() %}<option value="{{ key }}"{% if my_availability and my_availability.status == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
           </select></div>
           <div class="field"><label for="evening-role">Rôle</label><select id="evening-role" name="role">
-            {% for key, label in mission_roles.items() %}<option value="{{ key }}"{% if (my_availability.role if my_availability else 'flex') == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            {% for key, label in mission_roles.items() %}<option value="{{ key }}"{% if (my_availability.role if my_availability else 'flex') == key %} selected{% endif %}>{{ 'Selon le personnage' if key == 'flex' else label }}</option>{% endfor %}
           </select></div>
         </div>
         <fieldset class="checkbox-group"><legend>Personnages que tu peux jouer</legend>
