@@ -321,7 +321,6 @@ def _race_chart(db, chars: list[Character]):
     series = []
     histories = []
     equipment_series = []
-    current_points = []
     for index, c in enumerate(sorted(chars, key=lambda char: char.id)):
         if c.status == "pending":
             continue
@@ -329,9 +328,6 @@ def _race_chart(db, chars: list[Character]):
                            .order_by(Snapshot.taken_at)).all()
         points, launch_anchor = progression_points(snaps, "level")
         comparison_color = squad_chart_color(index)
-        if c.level > 0 and c.ilvl > 0:
-            current_points.append({"id": c.id, "name": c.display_name, "color": comparison_color,
-                                   "level": c.level, "gear": round(c.ilvl, 1)})
         equipment_points, _ = progression_points(snaps, "ilvl")
         if equipment_points:
             equipment_series.append(Series(c.display_name, comparison_color, equipment_points, character_id=c.id))
@@ -354,8 +350,6 @@ def _race_chart(db, chars: list[Character]):
     rows = [(item["name"], item["first"], item["last"], item["gain"]) for item in charts]
     now = utcnow()
     replay = progression_replay(histories, now, settings.timezone)
-    if not replay and len(current_points) >= 2:
-        replay = [{"date": localtime(now, "%d/%m"), "points": current_points, "current": True}]
     equipment_chart = line_chart(equipment_series, "Historique de l’équipement",
                                  "Niveau moyen des objets équipés au fil des relevés.", "equipment-history",
                                  y_label="Équipement", y_min=0, step=False, tz_name=settings.timezone)

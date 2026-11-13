@@ -12,6 +12,7 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from html import escape
+from statistics import median
 from zoneinfo import ZoneInfo
 
 from markupsafe import Markup
@@ -178,10 +179,26 @@ def progression_replay(histories, now: datetime, tz_name: str) -> list[dict]:
             if len(window) < 2 or window[-1][0] - window[0][0] < timedelta(days=1):
                 continue
             first, last = window[0], window[-1]
-            points.append({"id": character_id, "name": name, "color": color, "level": last[1] - first[1],
-                           "gear": round(last[2] - first[2], 1), "days": round((last[0] - first[0]).total_seconds() / 86400, 1)})
-        if len(points) >= 2:
-            frames.append({"date": end.astimezone(tz).strftime("%d/%m"), "points": points})
+            days = (last[0] - first[0]).total_seconds() / 86400
+            points.append({"id": character_id, "name": name, "color": color,
+                           "character_level": last[1], "equipment": last[2],
+                           "weekly": (last[1] - first[1]) * 7 / days, "days": round(days, 1)})
+        if len(points) < 3:
+            continue
+        levels = [p["character_level"] for p in points]
+        gear = [p["equipment"] for p in points]
+        mean_level, mean_gear = sum(levels) / len(points), sum(gear) / len(points)
+        variance = sum((level - mean_level) ** 2 for level in levels)
+        if not variance:
+            continue
+        slope = sum((level - mean_level) * (value - mean_gear) for level, value in zip(levels, gear)) / variance
+        typical_pace = median(p["weekly"] for p in points)
+        for point in points:
+            expected = mean_gear + slope * (point["character_level"] - mean_level)
+            point["level"] = round(point["weekly"] - typical_pace, 2)
+            point["gear"] = round(point["equipment"] - expected, 2)
+            point["expected"] = round(expected, 1)
+        frames.append({"date": end.astimezone(tz).strftime("%d/%m"), "points": points})
     return frames
 
 

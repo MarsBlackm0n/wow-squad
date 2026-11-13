@@ -1427,11 +1427,12 @@ html { scroll-padding-top: 5.5rem; }
 }
 .squad-chart-grid .chart-toolbar { align-items: start; margin-bottom: .35rem; }
 .squad-chart-grid .chart-player-active > strong { display: none; }
-.squad-chart-grid .chart-player-active { flex-wrap: nowrap; min-width: 0; }
+.squad-chart-grid .chart-player-active { flex-wrap: wrap; min-width: 0; }
 .squad-chart-grid .chart-player-active > .tag-list {
-  flex: 1; flex-wrap: nowrap; overflow-x: auto; min-width: 0; padding-block: .2rem;
+  flex: 1 1 12rem; flex-wrap: wrap; min-width: 0; padding-block: .2rem;
 }
-.squad-chart-grid .chart-player-active .tag { flex: none; white-space: nowrap; }
+.squad-chart-grid .chart-player-active .tag { font-size: .72rem; padding: .16rem .38rem; gap: .25rem; min-height: 0; max-width: 100%; }
+.squad-chart-grid .chart-player-active .tag span { overflow-wrap: anywhere; }
 .squad-chart-grid [data-chart-clear] { flex: none; padding: .2rem .4rem; min-height: 2rem; }
 .squad-chart-grid [data-chart-clear][hidden] { display: none; }
 .squad-chart-grid .chart-player-picker[open] { width: min(100%, 25rem); }

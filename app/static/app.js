@@ -366,19 +366,17 @@
     var date = replay.querySelector("[data-replay-date]");
     var plot = replay.querySelector("[data-replay-plot]");
     var legend = replay.querySelector("[data-replay-legend]");
-    var current = Boolean(frames[0].current);
     var observations = frames.flatMap(function (frame) { return frame.points; });
     var empty = replay.querySelector("[data-replay-empty]");
     var colors = new Map(observations.map(function (point) { return [String(point.id), point.color]; }));
     var picker = chartPlayers(replay, colors, draw);
-    var lowX = Math.floor(Math.min(0, ...observations.map(function (p) { return p.level; })));
-    var highX = Math.max(lowX + 4, Math.ceil(Math.max(0, ...observations.map(function (p) { return p.level; }))));
-    var lowY = Math.floor(Math.min(0, ...observations.map(function (p) { return p.gear; })));
-    var highY = Math.max(lowY + 4, Math.ceil(Math.max(0, ...observations.map(function (p) { return p.gear; }))));
+    var highX = Math.max(2, Math.ceil(Math.max(...observations.map(function (p) { return Math.abs(p.level); }))));
+    var highY = Math.max(2, Math.ceil(Math.max(...observations.map(function (p) { return Math.abs(p.gear); }))));
+    var lowX = -highX;
+    var lowY = -highY;
     var timer;
     var format = new Intl.NumberFormat("fr-FR", {signDisplay: "exceptZero", maximumFractionDigits: 1});
     var axisFormat = new Intl.NumberFormat("fr-FR", {maximumFractionDigits: 1});
-    if (current) format = axisFormat;
     var ns = "http://www.w3.org/2000/svg";
     function svg(parent, tag, attrs, label) {
       var node = document.createElementNS(ns, tag);
@@ -398,16 +396,18 @@
       plot.replaceChildren();
       legend.replaceChildren();
       date.textContent = frame.date;
-      svg(plot, "text", {x: 43, y: 15}, current ? "Niveau moyen d’équipement" : "Équipement gagné (ilvl)");
-      svg(plot, "text", {x: width - 15, y: 263, "text-anchor": "end"}, current ? "Niveau du personnage" : "Niveaux gagnés");
+      svg(plot, "text", {x: 43, y: 15}, "Écart d’équipement");
+      svg(plot, "text", {x: width - 15, y: 263, "text-anchor": "end"}, "Écart au rythme médian (niv./7 j)");
       for (var tick = 0; tick <= 4; tick += 1) {
         var yValue = lowY + (highY - lowY) * tick / 4;
-        var xValue = Math.round(lowX + (highX - lowX) * tick / 4);
+        var xValue = lowX + (highX - lowX) * tick / 4;
         svg(plot, "line", {x1: 43, x2: width - 13, y1: y(yValue), y2: y(yValue)});
         svg(plot, "text", {x: 35, y: y(yValue) + 4, "text-anchor": "end"}, axisFormat.format(yValue));
         svg(plot, "line", {x1: x(xValue), x2: x(xValue), y1: 26, y2: 233});
-        svg(plot, "text", {x: x(xValue), y: 249, "text-anchor": "middle"}, xValue);
+        svg(plot, "text", {x: x(xValue), y: 249, "text-anchor": "middle"}, format.format(xValue));
       }
+      svg(plot, "line", {x1: x(lowX), x2: x(highX), y1: y(0), y2: y(0), style: "stroke:var(--gold);stroke-width:1.5"});
+      svg(plot, "line", {x1: x(0), x2: x(0), y1: 26, y2: 233, style: "stroke:var(--gold);stroke-width:1.5"});
       var visible = frame.points.filter(function (point) { return picker.selected.has(String(point.id)); });
       empty.hidden = visible.length > 0;
       if (!empty.hidden) {
@@ -427,7 +427,9 @@
           stroke: point.color, "stroke-width": 2, opacity: .42, fill: "none"
         });
         var dot = svg(plot, "circle", {cx: x(point.level), cy: y(point.gear), r: 7, fill: point.color});
-        var label = point.name + " · " + format.format(point.level) + " niv. · " + (current ? "Niveau d’équipement " : "Gain de niveau d’équipement ") + format.format(point.gear) + (current ? "" : " · " + axisFormat.format(point.days) + " j observés");
+        var label = point.name + " · " + format.format(point.level) + " niv./7 j vs médiane · "
+          + format.format(point.gear) + " équipement vs tendance (" + axisFormat.format(point.equipment)
+          + " relevé, " + axisFormat.format(point.expected) + " attendu) · " + axisFormat.format(point.days) + " j observés";
         svg(dot, "title", {}, label);
         var item = document.createElement("li");
         var swatch = document.createElement("span");
