@@ -37,7 +37,7 @@
   {% for char in chars %}
   {% set summary = (char.state or {}).get('account_summary', {}) %}
   {% set faction = char.faction or summary.faction or '' %}
-  <li class="account-roster-entry">
+  <li class="account-roster-entry" id="personnage-{{ char.id }}">
     <a class="roster-card{% if char.id == main_id %} main-character-glow{% endif %}" data-faction="{{ faction | faction_key }}" href="/perso/{{ char.id }}"
        style="--class-color: {{ char.class_name | class_color }}">
       <div class="roster-card-head">
@@ -54,6 +54,20 @@
         <div class="character-badges">{{ faction_badge(faction) }} {{ ruleset_badge(char) }}</div>
       </div>
     </a>
+    <form method="post" action="/compte/personnages/{{ char.id }}/role" class="character-role-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <fieldset>
+        <legend>Rôle préféré<span class="visually-hidden"> de {{ char.display_name }}</span></legend>
+        <div class="character-role-options">
+          {% for key, label, glyph in [('tank', 'Tank', 'shield'), ('heal', 'Heal', 'heal'), ('damage', 'DPS', 'bolt')] %}
+          <button type="submit" name="role" value="{{ key }}" data-role="{{ key }}"
+                  aria-pressed="{{ 'true' if char.preferred_role == key else 'false' }}">
+            {{ icon(glyph) }} {{ label }}
+          </button>
+          {% endfor %}
+        </div>
+      </fieldset>
+    </form>
   </li>
   {% endfor %}
 </ul>

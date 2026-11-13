@@ -256,6 +256,22 @@ async def set_main_character(request: Request, personnage: int = Form(0), csrf: 
     return back("/compte#personnage-principal")
 
 
+@router.post("/compte/personnages/{char_id}/role")
+async def set_character_role(request: Request, char_id: int, role: str = Form(...), csrf: str = Form("")):
+    check_csrf(request, csrf)
+    if role not in ("tank", "heal", "damage"):
+        raise HTTPException(400, "Rôle invalide.")
+    with SessionLocal() as db:
+        account_id = mission_account(db, request)
+        char = db.get(Character, char_id, with_for_update=True)
+        if char is None or char.account_id != account_id:
+            raise HTTPException(403, "Choisis un personnage de ton compte.")
+        char.preferred_role = role
+        db.commit()
+    flash(request, "Rôle enregistré.")
+    return back(f"/compte#personnage-{char_id}")
+
+
 def _squad_players(chars, accounts):
     by_id = {account.id: account for account in accounts}
     groups = {}

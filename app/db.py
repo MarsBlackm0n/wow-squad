@@ -32,6 +32,8 @@ class Character(Base):
 
     account_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id"), index=True)
 
+    preferred_role: Mapped[str | None] = mapped_column(String(12), nullable=True)
+
     class_name: Mapped[str] = mapped_column(String(40), default="")
     race: Mapped[str] = mapped_column(String(40), default="")
     faction: Mapped[str] = mapped_column(String(20), default="")
@@ -197,6 +199,8 @@ def init_db() -> None:
         if not any(column["name"] == "main_character_id" for column in accounts):
             connection.execute(text("ALTER TABLE accounts ADD COLUMN main_character_id INTEGER"))
         columns = inspect(connection).get_columns("characters")
+        if not any(column["name"] == "preferred_role" for column in columns):
+            connection.execute(text("ALTER TABLE characters ADD COLUMN preferred_role VARCHAR(12)"))
         if not any(column["name"] == "account_id" for column in columns):
             connection.execute(text("ALTER TABLE characters ADD COLUMN account_id INTEGER REFERENCES accounts(id)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_characters_account_id ON characters (account_id)"))
