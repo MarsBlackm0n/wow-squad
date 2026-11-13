@@ -574,9 +574,10 @@ def apply_account_characters(db: Session, region: str, account: Account, entries
         if char is None:
             legacy_slug = character_slug(summary["name"], summary["surname"])
             if legacy_slug and legacy_slug != slug:
-                char = db.scalar(select(Character).where(Character.region == region, Character.slug == legacy_slug,
-                                                        Character.account_id == account.id))
-                if char is not None:
+                legacy = db.scalar(select(Character).where(Character.region == region, Character.slug == legacy_slug))
+                if legacy is not None and (legacy.account_id == account.id or
+                                           (add_missing and legacy.account_id is None and not legacy.battletag)):
+                    char = legacy
                     char.slug = slug
         if char is None:
             if not add_missing:
