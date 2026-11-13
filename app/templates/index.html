@@ -390,10 +390,10 @@
       <h2 id="progression-title">Progression</h2>
     </header>
     <nav class="squad-stat-links" aria-label="Accès aux graphiques et classements">
+      <a class="button button-secondary button-small" href="#squad-comparison">Comparer les personnages</a>
       {% if race_charts %}<a class="button button-secondary button-small" href="#squad-race">Course au niveau</a>{% endif %}
       <a class="button button-secondary button-small" href="#squad-gear-history">Historique de l’équipement</a>
       <a class="button button-secondary button-small" href="#squad-equipment">Niveaux et équipement</a>
-      <a class="button button-secondary button-small" href="#squad-comparison">Comparer les personnages</a>
       <a class="button button-secondary button-small" href="#squad-rankings">Classements</a>
     </nav>
     {% if goal %}
@@ -427,6 +427,9 @@
     <p class="meta">L’objectif niveau {{ goal_cfg.target }} apparaîtra dès qu’un personnage principal aura un niveau connu.</p>
     {% endif %}
     <div class="squad-chart-grid">
+    <div id="squad-comparison" class="squad-stat-section">
+{% with radar_chars = chars %}{% include "_profession_radar.html" %}{% endwith %}
+    </div>
     <div id="squad-race" class="squad-stat-section">
         {% if race_charts %}
           <section class="chart-module" aria-labelledby="race-title" data-chart-picker>
@@ -530,9 +533,7 @@
     </section>
     {% endif %}
     </div>
-    <div id="squad-comparison" class="squad-stat-section">
-{% with radar_chars = chars %}{% include "_profession_radar.html" %}{% endwith %}
-    </div>
+
     </div>
     <section id="squad-rankings" class="squad-stat-section" aria-labelledby="squad-rankings-title">
       <h3 id="squad-rankings-title" class="block-title">Classements</h3>
