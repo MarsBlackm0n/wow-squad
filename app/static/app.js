@@ -492,14 +492,13 @@
   }
 
   // Onglets de l'accueil (motif ARIA « tabs ») : sans JS, ce sont de simples ancres et tout s'affiche.
-  var tabs = document.querySelector("[data-tabs]");
-  if (tabs) {
+  document.querySelectorAll("[data-tabs]").forEach(function (tabs) {
     var list = tabs.querySelector("[data-tablist]");
-    var links = Array.prototype.slice.call(tabs.querySelectorAll("[data-tab]"));
+    var links = Array.prototype.slice.call(list.querySelectorAll("[data-tab]"));
     var panels = links.map(function (a) { return document.getElementById(a.hash.slice(1)); });
 
     list.setAttribute("role", "tablist");
-    list.setAttribute("aria-label", "Sections du QG");
+    list.setAttribute("aria-label", tabs.querySelector(".tablist-wrap").getAttribute("aria-label"));
     tabs.querySelector(".tablist-wrap").removeAttribute("aria-label");
     links.forEach(function (a, i) {
       a.parentElement.setAttribute("role", "presentation");
@@ -520,10 +519,14 @@
         panels[i].hidden = !on;
       });
       if (focus) links[index].focus();
-      if (push) history.replaceState(null, "", links[index].hash);
+      if (push) {
+        history.replaceState(null, "", links[index].hash);
+        window.dispatchEvent(new Event("qg-tab-change"));
+      }
     };
     var fromHash = function () {
-      var i = links.findIndex(function (a) { return a.hash === location.hash; });
+      var target = document.getElementById(location.hash.slice(1));
+      var i = target ? panels.findIndex(function (panel) { return panel.contains(target); }) : -1;
       return i < 0 ? 0 : i;
     };
 
@@ -536,11 +539,16 @@
         select((next + links.length) % links.length, true, true);
       });
     });
-    window.addEventListener("hashchange", function () { select(fromHash(), false, false); });
+    window.addEventListener("qg-tab-change", function () { select(fromHash(), false, false); });
+    window.addEventListener("hashchange", function () {
+      select(fromHash(), false, false);
+      var target = document.getElementById(location.hash.slice(1));
+      if (target && panels[fromHash()].contains(target)) target.scrollIntoView({block: "start"});
+    });
     select(fromHash(), false, false);
-    // Arrivée sur un onglet précis (#squad après un formulaire) : on amène les onglets à l'écran.
-    if (location.hash && fromHash() > 0) tabs.scrollIntoView({ block: "start" });
-  }
+    var target = document.getElementById(location.hash.slice(1));
+    if (target && panels[fromHash()].contains(target) && !target.hidden) target.scrollIntoView({block: "start"});
+  });
   // Cadrage de la photo : aperçu identique au recadrage serveur (photos.crop_box), glisser ou curseurs.
   var crop = document.querySelector("[data-crop]");
   var photoInput = document.querySelector("[data-photo-input]");

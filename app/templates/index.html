@@ -62,7 +62,6 @@
 {% endif %}
 
 {% if chars %}
-{% with radar_chars = chars %}{% include "_profession_radar.html" %}{% endwith %}
 <section class="panel-block squad-section squad-crafting" aria-labelledby="crafting-title">
   <h3 id="crafting-title" class="block-title">Artisans et recettes</h3>
   <div class="squad-artisans">
@@ -142,9 +141,8 @@
   <nav class="tablist-wrap" aria-label="Sections du QG">
     <ul class="tablist" data-tablist>
       <li><a class="tab" href="#ce-soir" data-tab>{{ icon('moon', "tab-icon") }} Ce soir{% if ideas %} <span class="tab-count">{{ ideas | length }}</span>{% endif %}</a></li>
-      <li><a class="tab" href="#squad" data-tab>{{ icon('users', "tab-icon") }} La squad <span class="tab-count">{{ chars | length }}</span></a></li>
+      <li><a class="tab" href="#squad" data-tab>{{ icon('users', "tab-icon") }} La Squad <span class="tab-count">{{ chars | length }}</span></a></li>
       <li><a class="tab" href="#palmares" data-tab>{{ icon('trophy', "tab-icon") }} Palmarès</a></li>
-      <li><a class="tab" href="#progression" data-tab>{{ icon('trend', "tab-icon") }} Progression</a></li>
       <li><a class="tab" href="#journal" data-tab>{{ icon('banner', "tab-icon") }} Journal</a></li>
       <li><a class="tab" href="#carte" data-tab>{{ icon('flag', "tab-icon") }} Carte</a></li>
       <li><a class="tab" href="#guildes" data-tab>{{ icon('shield', "tab-icon") }} Guildes{% if guild_directory %} <span class="tab-count">{{ guild_directory | length }}</span>{% endif %}</a></li>
@@ -223,150 +221,6 @@
       {% endfor %}
     </ul>
     {% endif %}
-  </section>
-
-  <section id="progression" class="panel" data-panel aria-labelledby="progression-title">
-    <header class="panel-head">
-      <h2 id="progression-title">Progression</h2>
-      <p class="lead">On n'a pas tous commencé le même jour : le rythme compte autant que le niveau.</p>
-    </header>
-    {% if goal %}
-    <dl class="kpis kpis-overview">
-      <div class="kpi kpi-goal">
-        <dt>Objectif niveau {{ goal.target }}{% if goal.deadline %} · {{ goal.deadline.strftime('%d/%m') }}{% endif %}</dt>
-        <dd>{{ ring(goal.progress, 52) }}<span class="kpi-value">{{ goal.progress | round | int }}&nbsp;%</span>
-          <span class="kpi-note">
-            {%- if goal.at_target == goal.members %}tout le monde y est
-            {%- elif goal.deadline and goal.days_left is not none and goal.days_left < 0 %}échéance passée
-            {%- elif goal.deadline %}J-{{ goal.days_left }}{% if goal.average_estimated and goal.projected %} · projection estimée{% elif goal.on_track is true %} · dans les temps{% elif goal.on_track is false %} · en retard{% endif %}
-            {%- elif goal.projected %}tous là vers le {{ goal.projected.strftime('%d/%m') }}
-            {%- else %}{{ goal.at_target }}/{{ goal.members }} arrivés{% endif -%}
-          </span></dd>
-      </div>
-      <div class="kpi">
-        <dt>Rythme de la squad</dt>
-        <dd><span class="kpi-value">{{ ('+' ~ (goal.average_pace | number(1))) if goal.average_pace is not none else '—' }}</span><span class="kpi-note">niv. par jour par perso{% if goal.average_estimated %} · estimation incluse{% endif %}{% if goal.stalled %} · {{ goal.stalled }} sans gain observé{% endif %}</span></dd>
-      </div>
-      <div class="kpi">
-        <dt>Cette semaine</dt>
-        <dd><span class="kpi-value">+{{ week.total_levels + weekly_extra }}</span><span class="kpi-note">niveaux à vous tous{% if weekly_extra %} · dont {{ weekly_extra }} estimés{% endif %}</span></dd>
-      </div>
-      <div class="kpi">
-        <dt>Meilleur rythme</dt>
-        <dd>{% if goal.fastest %}<a class="kpi-value kpi-link" href="/perso/{{ goal.fastest.id }}">{{ goal.fastest.display_name }}</a><span class="kpi-note">+{{ goal.fastest_pace | number(1) }} niv. par jour{% if goal.fastest_estimated %} · estimé{% endif %}</span>{% else %}<span class="kpi-value">—</span><span class="kpi-note">aucun rythme positif disponible</span>{% endif %}</dd>
-      </div>
-    </dl>
-    {% endif %}
-    {% if race_replay %}
-    <section class="panel-block squad-replay" aria-labelledby="squad-replay-title" data-squad-replay hidden>
-      <div class="chart-toolbar">
-        <div>
-          <h3 id="squad-replay-title">Niveaux et équipement</h3>
-          {% if race_replay[0].current %}
-          <p class="meta">Dernières valeurs connues. La comparaison des gains s’activera lorsque deux persos auront au moins 24 h de relevés dans la même fenêtre de sept jours.</p>
-          {% else %}<p class="meta">Gains mesurés dans les sept jours précédant la date sélectionnée.</p>{% endif %}
-        </div>
-        {% if race_replay | length > 1 %}<button class="button button-secondary" type="button" data-replay-play>Lire</button>{% endif %}
-      </div>
-      <label for="replay-date"{% if race_replay[0].current %} hidden{% endif %}>Date de comparaison · <output data-replay-date></output></label>
-      <input type="range" id="replay-date" min="0" max="{{ race_replay | length - 1 }}" value="{{ race_replay | length - 1 }}"{% if race_replay | length == 1 %} hidden{% endif %}>
-      <svg data-replay-plot role="img" aria-label="{{ 'Niveau et équipement actuels des personnages' if race_replay[0].current else 'Gains de niveau et d’équipement des personnages' }}"></svg>
-      {% with filter_ids = replay_ids %}{% include "_chart_players.html" %}{% endwith %}
-      <p class="meta" data-replay-empty role="status" hidden></p>
-      <ul class="legend replay-legend" data-replay-legend role="list"></ul>
-      <script type="application/json" data-replay-data>{{ race_replay | tojson }}</script>
-    </section>
-    {% else %}
-    <section class="panel-block squad-replay" aria-labelledby="squad-replay-empty">
-      <h3 id="squad-replay-empty">Niveaux et équipement</h3>
-      <p class="meta">Le nuage de points apparaîtra lorsque Blizzard aura fourni le niveau d’équipement d’au moins deux personnages.</p>
-    </section>
-    {% endif %}
-    <div class="split">
-      <div class="split-main">
-        {% if race_charts %}
-          <section class="chart-module" aria-labelledby="race-title" data-chart-picker>
-            <div class="chart-toolbar">
-              <h3 id="race-title">Course au niveau</h3>
-              <div class="chart-control" data-chart-control hidden>
-                <label for="race-picker">Afficher</label>
-                <select id="race-picker" data-chart-select>
-                  <option value="comparison">Comparer les personnages</option>
-                  <option value="total">Cumul de la squad</option>
-                  <optgroup label="Par personnage">
-                    {% for c in race_charts %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
-                  </optgroup>
-                </select>
-              </div>
-            </div>
-            <figure class="chart-frame" data-chart-panel="comparison">
-              {{ race_comparison }}
-              <figcaption>
-                {% with filter_ids = race_charts | map(attribute='id') | list %}{% include "_chart_players.html" %}{% endwith %}
-                <ul class="legend" role="list" data-race-fallback>
-                  {% for c in race_charts %}
-                  <li data-race-id="{{ c.id }}" data-color="{{ c.color }}"><span class="legend-swatch" style="background: {{ c.color }}" aria-hidden="true"></span>{{ c.name }} <strong>{{ c.last }}</strong></li>
-                  {% endfor %}
-                </ul>
-                <p class="meta" data-race-empty role="status" hidden>Sélectionne au moins un personnage pour afficher sa courbe.</p>
-                <p>Le zéro au lancement sert de repère. Entre deux relevés, les niveaux sont interpolés.</p></figcaption>
-            </figure>
-            <figure class="chart-frame" data-chart-panel="total" hidden>
-              <div class="chart-current"><strong>{{ race_total_level | number }}</strong><span>Niveaux cumulés</span></div>
-              {{ race_total }}
-              <figcaption>Somme des niveaux de tous les personnages suivis. Le dernier niveau connu reste la référence après le dernier relevé de chaque personnage.</figcaption>
-            </figure>
-            {% for c in race_charts %}
-            <figure class="chart-frame" data-chart-panel="{{ c.id }}" hidden>
-              <div class="chart-current"><strong>{{ c.last }}</strong><span>Niveau relevé</span></div>
-              {{ c.svg }}
-              {% if c.launch %}<figcaption>Le zéro au lancement de Forever sert de repère. Les gains du tableau sont calculés entre relevés Blizzard.</figcaption>{% endif %}
-            </figure>
-            {% endfor %}
-          {{ chart_table(race_rows, ['Perso', 'Premier niveau relevé', 'Dernier niveau relevé', 'Gain observé'], 'Course au niveau depuis le lancement') }}
-        </section>
-        {% else %}
-        <p class="empty">La course au niveau apparaîtra après quelques synchros.</p>
-        {% endif %}
-      </div>
-      <section class="split-side" aria-labelledby="board-title">
-        <h3 id="pace-title" class="block-title">Au rythme <span class="count">7 derniers jours</span></h3>
-        {% if by_pace %}
-        <ol class="ranking ranking-pace" role="list" aria-labelledby="pace-title">
-          {% for c in by_pace %}{% set pc = paces[c.id] %}
-          <li class="rank-item" style="--class-color: {{ c.class_name | class_color }}">
-            <span class="rank-pos" aria-hidden="true">{{ loop.index }}</span>
-            {{ avatar(c, 'sm') }}
-            <div class="rank-body">
-              <a class="rank-name" href="/perso/{{ c.id }}"><span class="visually-hidden">{{ loop.index }}. </span>{{ c.display_name }}</a>
-              <span class="meta">{% if pc.estimated %}estimation depuis le lancement · {% endif %}{% if pc.reached %}objectif atteint{% elif pc.eta %}niv. {{ goal_cfg.target }} vers le {{ pc.eta.strftime('%d/%m') }}{% else %}{% if not pc.estimated %}{{ pc.gained }} niv. gagné{{ 's' if pc.gained > 1 }} sur {{ pc.observed_days | number(1) }} j{% endif %}{% endif %}</span>
-            </div>
-            <span class="pace"><strong>+{{ pc.per_day | number(1) }}</strong><span class="meta">/jour</span></span>
-          </li>
-          {% endfor %}
-        </ol>
-        {% else %}
-        <p class="quiet">Le rythme apparaîtra après quelques synchros.</p>
-        {% endif %}
-        <h3 id="board-title" class="block-title board-level">Au niveau</h3>
-        <ol class="ranking" role="list">
-          {% for c in chars %}
-          <li class="rank-item {{ 'is-pending' if c.status == 'pending' }}" style="--class-color: {{ c.class_name | class_color }}">
-            <span class="rank-pos" aria-hidden="true">{{ '–' if c.status == 'pending' else loop.index }}</span>
-            {{ avatar(c, 'sm') }}
-            <div class="rank-body">
-              <a class="rank-name" href="/perso/{{ c.id }}">
-                {%- if c.status != 'pending' %}<span class="visually-hidden">{{ loop.index }}. </span>{% endif -%}
-                {{ c.display_name }}
-              </a>
-              <span class="meta">{% if c.status == 'pending' %}En attente de l'API{% else %}{{ c.class_name }}{% if c.player %} · {{ c.player }}{% endif %}{% endif %}</span>
-            </div>
-            {% if c.status != 'pending' %}{{ level_bar(c.level, max_level) }}{% endif %}
-          </li>
-          {% endfor %}
-        </ol>
-      </section>
-    </div>
   </section>
 
   <section id="journal" class="panel" data-panel aria-labelledby="journal-title">
@@ -518,13 +372,178 @@
     {% endif %}
   </section>
 
-  <section id="squad" class="panel" data-panel aria-labelledby="squad-title">
+  <section id="squad" class="panel" data-panel aria-labelledby="squad-heading">
+    <header class="panel-head"><h2 id="squad-heading">La Squad</h2></header>
+    <div class="tabs squad-tabs" data-tabs>
+      <nav class="tablist-wrap" aria-label="Sections de La Squad">
+        <ul class="tablist" data-tablist aria-label="Sections de La Squad">
+          <li><a class="tab" href="#progression" data-tab>{{ icon('trend', 'tab-icon') }} Progression</a></li>
+          <li><a class="tab" href="#squad-infos" data-tab>{{ icon('info', 'tab-icon') }} Infos</a></li>
+        </ul>
+      </nav>
+  <section id="progression" class="panel" data-panel aria-labelledby="progression-title">
     <header class="panel-head">
-      <h2 id="squad-title">La squad</h2>
+      <h2 id="progression-title">Progression</h2>
+    </header>
+    <nav class="squad-stat-links" aria-label="Accès aux graphiques et classements">
+      {% if race_charts %}<a class="button button-secondary button-small" href="#race-title">Course au niveau</a>{% endif %}
+      <a class="button button-secondary button-small" href="#squad-equipment">Niveaux et équipement</a>
+      <a class="button button-secondary button-small" href="#squad-comparison">Comparer les personnages</a>
+      <a class="button button-secondary button-small" href="#pace-title">Classements</a>
+    </nav>
+    {% if goal %}
+    <dl class="kpis kpis-overview">
+      <div class="kpi kpi-goal">
+        <dt>Objectif niveau {{ goal.target }}{% if goal.deadline %} · {{ goal.deadline.strftime('%d/%m') }}{% endif %}</dt>
+        <dd>{{ ring(goal.progress, 52) }}<span class="kpi-value">{{ goal.progress | round | int }}&nbsp;%</span>
+          <span class="kpi-note">
+            {%- if goal.at_target == goal.members %}tout le monde y est
+            {%- elif goal.deadline and goal.days_left is not none and goal.days_left < 0 %}échéance passée
+            {%- elif goal.deadline %}J-{{ goal.days_left }}{% if goal.average_estimated and goal.projected %} · projection estimée{% elif goal.on_track is true %} · dans les temps{% elif goal.on_track is false %} · en retard{% endif %}
+            {%- elif goal.projected %}tous là vers le {{ goal.projected.strftime('%d/%m') }}
+            {%- else %}{{ goal.at_target }}/{{ goal.members }} arrivés{% endif -%}
+          </span></dd>
+      </div>
+      <div class="kpi">
+        <dt>Rythme de la squad</dt>
+        <dd><span class="kpi-value">{{ ('+' ~ (goal.average_pace | number(1))) if goal.average_pace is not none else '—' }}</span><span class="kpi-note">niv. par jour par perso{% if goal.average_estimated %} · estimation incluse{% endif %}{% if goal.stalled %} · {{ goal.stalled }} sans gain observé{% endif %}</span></dd>
+      </div>
+      <div class="kpi">
+        <dt>Cette semaine</dt>
+        <dd><span class="kpi-value">+{{ week.total_levels + weekly_extra }}</span><span class="kpi-note">niveaux à vous tous{% if weekly_extra %} · dont {{ weekly_extra }} estimés{% endif %}</span></dd>
+      </div>
+      <div class="kpi">
+        <dt>Meilleur rythme</dt>
+        <dd>{% if goal.fastest %}<a class="kpi-value kpi-link" href="/perso/{{ goal.fastest.id }}">{{ goal.fastest.display_name }}</a><span class="kpi-note">+{{ goal.fastest_pace | number(1) }} niv. par jour{% if goal.fastest_estimated %} · estimé{% endif %}</span>{% else %}<span class="kpi-value">—</span><span class="kpi-note">aucun rythme positif disponible</span>{% endif %}</dd>
+      </div>
+    </dl>
+    {% endif %}
+    <div class="split">
+      <div class="split-main">
+        {% if race_charts %}
+          <section class="chart-module" aria-labelledby="race-title" data-chart-picker>
+            <div class="chart-toolbar">
+              <h3 id="race-title">Course au niveau</h3>
+              <div class="chart-control" data-chart-control hidden>
+                <label for="race-picker">Afficher</label>
+                <select id="race-picker" data-chart-select>
+                  <option value="comparison">Comparer les personnages</option>
+                  <option value="total">Cumul de la squad</option>
+                  <optgroup label="Par personnage">
+                    {% for c in race_charts %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+            <figure class="chart-frame" data-chart-panel="comparison">
+              {{ race_comparison }}
+              <figcaption>
+                {% with filter_ids = race_charts | map(attribute='id') | list %}{% include "_chart_players.html" %}{% endwith %}
+                <ul class="legend" role="list" data-race-fallback>
+                  {% for c in race_charts %}
+                  <li data-race-id="{{ c.id }}" data-color="{{ c.color }}"><span class="legend-swatch" style="background: {{ c.color }}" aria-hidden="true"></span>{{ c.name }} <strong>{{ c.last }}</strong></li>
+                  {% endfor %}
+                </ul>
+                <p class="meta" data-race-empty role="status" hidden>Sélectionne au moins un personnage pour afficher sa courbe.</p>
+                <p>Le zéro au lancement sert de repère. Entre deux relevés, les niveaux sont interpolés.</p></figcaption>
+            </figure>
+            <figure class="chart-frame" data-chart-panel="total" hidden>
+              <div class="chart-current"><strong>{{ race_total_level | number }}</strong><span>Niveaux cumulés</span></div>
+              {{ race_total }}
+              <figcaption>Somme des niveaux de tous les personnages suivis. Le dernier niveau connu reste la référence après le dernier relevé de chaque personnage.</figcaption>
+            </figure>
+            {% for c in race_charts %}
+            <figure class="chart-frame" data-chart-panel="{{ c.id }}" hidden>
+              <div class="chart-current"><strong>{{ c.last }}</strong><span>Niveau relevé</span></div>
+              {{ c.svg }}
+              {% if c.launch %}<figcaption>Le zéro au lancement de Forever sert de repère. Les gains du tableau sont calculés entre relevés Blizzard.</figcaption>{% endif %}
+            </figure>
+            {% endfor %}
+          {{ chart_table(race_rows, ['Perso', 'Premier niveau relevé', 'Dernier niveau relevé', 'Gain observé'], 'Course au niveau depuis le lancement') }}
+        </section>
+        {% else %}
+        <p class="empty">La course au niveau apparaîtra après quelques synchros.</p>
+        {% endif %}
+      </div>
+      <section class="split-side" aria-labelledby="board-title">
+        <h3 id="pace-title" class="block-title">Au rythme <span class="count">7 derniers jours</span></h3>
+        {% if by_pace %}
+        <ol class="ranking ranking-pace" role="list" aria-labelledby="pace-title">
+          {% for c in by_pace %}{% set pc = paces[c.id] %}
+          <li class="rank-item" style="--class-color: {{ c.class_name | class_color }}">
+            <span class="rank-pos" aria-hidden="true">{{ loop.index }}</span>
+            {{ avatar(c, 'sm') }}
+            <div class="rank-body">
+              <a class="rank-name" href="/perso/{{ c.id }}"><span class="visually-hidden">{{ loop.index }}. </span>{{ c.display_name }}</a>
+              <span class="meta">{% if pc.estimated %}estimation depuis le lancement · {% endif %}{% if pc.reached %}objectif atteint{% elif pc.eta %}niv. {{ goal_cfg.target }} vers le {{ pc.eta.strftime('%d/%m') }}{% else %}{% if not pc.estimated %}{{ pc.gained }} niv. gagné{{ 's' if pc.gained > 1 }} sur {{ pc.observed_days | number(1) }} j{% endif %}{% endif %}</span>
+            </div>
+            <span class="pace"><strong>+{{ pc.per_day | number(1) }}</strong><span class="meta">/jour</span></span>
+          </li>
+          {% endfor %}
+        </ol>
+        {% else %}
+        <p class="quiet">Le rythme apparaîtra après quelques synchros.</p>
+        {% endif %}
+        <h3 id="board-title" class="block-title board-level">Au niveau</h3>
+        <ol class="ranking" role="list">
+          {% for c in chars %}
+          <li class="rank-item {{ 'is-pending' if c.status == 'pending' }}" style="--class-color: {{ c.class_name | class_color }}">
+            <span class="rank-pos" aria-hidden="true">{{ '–' if c.status == 'pending' else loop.index }}</span>
+            {{ avatar(c, 'sm') }}
+            <div class="rank-body">
+              <a class="rank-name" href="/perso/{{ c.id }}">
+                {%- if c.status != 'pending' %}<span class="visually-hidden">{{ loop.index }}. </span>{% endif -%}
+                {{ c.display_name }}
+              </a>
+              <span class="meta">{% if c.status == 'pending' %}En attente de l'API{% else %}{{ c.class_name }}{% if c.player %} · {{ c.player }}{% endif %}{% endif %}</span>
+            </div>
+            {% if c.status != 'pending' %}{{ level_bar(c.level, max_level) }}{% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+    </div>
+    <div id="squad-equipment" class="squad-stat-section">
+    {% if race_replay %}
+    <section class="panel-block squad-replay" aria-labelledby="squad-replay-title" data-squad-replay hidden>
+      <div class="chart-toolbar">
+        <div>
+          <h3 id="squad-replay-title">Niveaux et équipement</h3>
+          {% if race_replay[0].current %}
+          <p class="meta">Dernières valeurs connues. La comparaison des gains s’activera lorsque deux persos auront au moins 24 h de relevés dans la même fenêtre de sept jours.</p>
+          {% else %}<p class="meta">Gains mesurés dans les sept jours précédant la date sélectionnée.</p>{% endif %}
+        </div>
+        {% if race_replay | length > 1 %}<button class="button button-secondary" type="button" data-replay-play>Lire</button>{% endif %}
+      </div>
+      <label for="replay-date"{% if race_replay[0].current %} hidden{% endif %}>Date de comparaison · <output data-replay-date></output></label>
+      <input type="range" id="replay-date" min="0" max="{{ race_replay | length - 1 }}" value="{{ race_replay | length - 1 }}"{% if race_replay | length == 1 %} hidden{% endif %}>
+      <svg data-replay-plot role="img" aria-label="{{ 'Niveau et équipement actuels des personnages' if race_replay[0].current else 'Gains de niveau et d’équipement des personnages' }}"></svg>
+      {% with filter_ids = replay_ids %}{% include "_chart_players.html" %}{% endwith %}
+      <p class="meta" data-replay-empty role="status" hidden></p>
+      <ul class="legend replay-legend" data-replay-legend role="list"></ul>
+      <script type="application/json" data-replay-data>{{ race_replay | tojson }}</script>
+    </section>
+    {% else %}
+    <section class="panel-block squad-replay" aria-labelledby="squad-replay-empty">
+      <h3 id="squad-replay-empty">Niveaux et équipement</h3>
+      <p class="meta">Le nuage de points apparaîtra lorsque Blizzard aura fourni le niveau d’équipement d’au moins deux personnages.</p>
+    </section>
+    {% endif %}
+    </div>
+    <div id="squad-comparison" class="squad-stat-section">
+{% with radar_chars = chars %}{% include "_profession_radar.html" %}{% endwith %}
+    </div>
+  </section>
+
+  <section id="squad-infos" class="panel" data-panel aria-labelledby="squad-title">
+    <header class="panel-head">
+      <h2 id="squad-title">Infos</h2>
       <p class="lead">Retrouvez les personnages suivis et les comptes liés.</p>
     </header>
     {{ squad_panel() }}
 
+  </section>
+    </div>
   </section>
 </div>
 {% endif %}

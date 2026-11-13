@@ -1357,3 +1357,8 @@ html { scroll-padding-top: 5.5rem; }
 .chart-player-option small { color: var(--muted); white-space: nowrap; }
 .chart-player-main { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--surface)); }
 .chart-player-option .main-character-badge { color: var(--gold); }
+
+.squad-tabs { margin-top: 0; }
+.squad-stat-links { display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: 1rem; }
+.squad-stat-section { margin-top: 1rem; }
+#squad, #progression, #squad-infos, #race-title, #pace-title, .squad-stat-section { scroll-margin-top: 6rem; }
