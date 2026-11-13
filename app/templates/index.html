@@ -459,7 +459,7 @@
           {% for a in week.awards %}
           <li class="award tone-{{ 'danger' if a.key == 'graveyard' else 'accent' }}">
             <span class="award-icon">{{ icon(AWARD_ICONS[a.key]) }}</span>
-            <div><p class="award-title">{{ a.title }}</p><p class="meta"><a href="/perso/{{ a.winner.id }}">{{ a.winner.name }}</a> · {{ a.detail }}</p></div>
+            <div><p class="award-title">{{ a.title }}</p><p class="meta"><a href="/perso/{{ a.winner.id }}">{{ a.winner.display_name }}</a> · {{ a.detail }}</p></div>
           </li>
           {% endfor %}
         </ul>
@@ -471,7 +471,7 @@
         {% if firsts %}
         <dl class="firsts">
           {% for f in firsts %}
-          <div class="first"><dt>{{ f.label }}</dt><dd><a href="/perso/{{ f.character.id }}">{{ f.character.name }}</a><span class="meta">{{ f.at | localtime('%d/%m') }}</span></dd></div>
+          <div class="first"><dt>{{ f.label }}</dt><dd><a href="/perso/{{ f.character.id }}">{{ f.character.display_name }}</a><span class="meta">{{ f.at | localtime('%d/%m') }}</span></dd></div>
           {% endfor %}
         </dl>
         {% else %}<p class="quiet">Les premiers paliers, montures et boss relevés apparaîtront ici.</p>{% endif %}
@@ -484,7 +484,7 @@
           {% for r in records %}
           <li class="award tone-{{ 'danger' if r.icon == 'skull' else 'accent' }}">
             <span class="award-icon">{{ icon(r.icon) }}</span>
-            <div><p class="award-title">{{ r.label }}</p><p class="meta"><a href="/perso/{{ r.character.id }}">{{ r.character.name }}</a> · {{ r.value }} · <time datetime="{{ r.day.isoformat() }}">{{ r.day | frdate | lower }}</time></p></div>
+            <div><p class="award-title">{{ r.label }}</p><p class="meta"><a href="/perso/{{ r.character.id }}">{{ r.character.display_name }}</a> · {{ r.value }} · <time datetime="{{ r.day.isoformat() }}">{{ r.day | frdate | lower }}</time></p></div>
           </li>
           {% endfor %}
         </ul>
