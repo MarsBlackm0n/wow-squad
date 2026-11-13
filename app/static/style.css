@@ -1347,6 +1347,8 @@ html { scroll-padding-top: 5.5rem; }
 .chart-players [hidden], .chart-players[hidden], [data-race-fallback][hidden] { display: none; }
 .chart-player-active, .chart-player-option { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; }
 .chart-player-active > .tag-list { display: flex; flex-wrap: wrap; gap: .35rem; }
+.chart-player-actions { display: flex; align-items: start; flex-wrap: wrap; gap: .4rem; }
+.chart-player-picker { min-width: 0; max-width: 100%; }
 .chart-player-picker summary { cursor: pointer; padding: .45rem .6rem; }
 .chart-player-picker, .chart-player-groups > details { border: 1px solid var(--line); border-radius: .6rem; }
 .chart-player-picker > .field, .chart-player-picker > p { margin: .4rem .6rem; }
@@ -1407,7 +1409,7 @@ html { scroll-padding-top: 5.5rem; }
 #squad-equipment [data-replay-plot] { height: 13.5rem; }
 #squad-comparison [data-radar-plot] { width: min(100%, 23rem); }
 .squad-chart-grid .chart-players { gap: .4rem; margin-block: .45rem .7rem; }
-.squad-chart-grid .chart-player-picker { grid-row: 1; justify-self: start; width: max-content; max-width: 100%; }
+.squad-chart-grid .chart-player-picker { width: max-content; }
 .squad-chart-grid .chart-player-picker > summary {
   min-height: 2.65rem; align-content: center; padding-inline: .7rem;
   background: color-mix(in srgb, var(--teal) 10%, var(--surface));

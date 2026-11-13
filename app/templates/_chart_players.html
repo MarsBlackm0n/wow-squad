@@ -1,9 +1,5 @@
 <div class="chart-players" data-chart-players hidden>
-  <div class="chart-player-active">
-    <strong>Sélection</strong>
-    <div class="tag-list" data-chart-active></div>
-    <button type="button" class="button button-ghost button-small" data-chart-clear hidden>Tout décocher</button>
-  </div>
+  <div class="chart-player-actions">
   <details class="chart-player-picker">
     <summary>{{ icon("users") if icon is defined }} <span>Filtrer les personnages</span></summary>
     <label class="field">Rechercher un joueur ou un personnage
@@ -31,4 +27,10 @@
       {% endfor %}
     </div>
   </details>
+    <button type="button" class="button button-ghost button-small" data-chart-clear hidden>Tout décocher</button>
+  </div>
+  <div class="chart-player-active">
+    <strong>Sélection</strong>
+    <div class="tag-list" data-chart-active></div>
+  </div>
 </div>
