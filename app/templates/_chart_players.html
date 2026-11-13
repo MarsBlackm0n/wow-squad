@@ -22,7 +22,7 @@
           <label class="tag race-series-label chart-player-option{% if c.id in main_character_ids %} chart-player-main{% endif %}" data-chart-option data-character-name="{{ c.display_name }}">
             <input type="checkbox" value="{{ c.id }}"{% if c.id in main_character_ids %} checked{% endif %}>
             <span class="legend-swatch" aria-hidden="true"></span>
-            <span data-chart-character>{{ c.display_name }}{% if c.level %} <small>Niv. {{ c.level }}</small>{% endif %}{% if c.id in main_character_ids %} <small class="main-character-badge">Principal</small>{% endif %}</span>
+            <span data-chart-character>{{ c.display_name }}{% if c.level %} <small>Niv. {{ c.level }}</small>{% endif %}</span>
           </label>
           {% endfor %}
         </div>
