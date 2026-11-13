@@ -603,7 +603,6 @@ input[type="number"]:focus-visible, input[type="date"]:focus-visible { outline-o
 .plan-name { font-size: .78rem; font-weight: 650; color: var(--accent); }
 .plan { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
 .idea-members .is-out { opacity: .6; }
-.plans-after { margin-top: 2rem; }
 .plans-hint { margin-bottom: 1rem; }
 .pace { display: flex; align-items: baseline; justify-content: flex-end; gap: .1rem; font-variant-numeric: tabular-nums; }
 .pace strong { font-weight: 750; }
@@ -837,7 +836,6 @@ html { scroll-padding-top: 5.5rem; }
 .mission-form > button { justify-self: start; }
 .mission-archive { margin-top: .8rem; }
 .mission-archive ul { margin-top: .4rem; }
-.squad-activity { display: flex; flex-wrap: wrap; align-items: baseline; gap: .6rem 1rem; margin-bottom: 1.5rem; }
 .character-activity { margin-top: 1.5rem; }
 .activity-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .7rem; margin: 0; }
 .activity-metrics .panel-block { padding: .75rem .9rem; }
@@ -1476,5 +1474,5 @@ html { scroll-padding-top: 5.5rem; }
 .evening-suggestions .chart-toolbar .meta { margin: .25rem 0 0; }
 .suggestion-create .button { min-height: 44px; }
 @media (min-width: 960px) {
-  .evening-overview { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .evening-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
 }

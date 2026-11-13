@@ -155,68 +155,6 @@
     </header>
     {% include "_main_character_prompt.html" %}
     {% include "_evening_overview.html" %}
-    {% if activity.values() | sum %}
-    <section class="squad-activity" aria-labelledby="squad-activity-heading">
-      <h3 id="squad-activity-heading">En 7 jours de suivi</h3>
-      <ul class="tag-list" role="list">
-        {% for key, label in [('quests', 'quêtes terminées'), ('encounter', 'boss vaincus'), ('pvp', 'victoires honorables')] %}
-        {% if activity[key] %}<li class="tag"><strong>+{{ activity[key] | number }}</strong> {{ label }}</li>{% endif %}
-        {% endfor %}
-      </ul>
-    </section>
-    {% endif %}
-    {% if plans %}
-    <h3 class="block-title">Vos groupes</h3>
-    <ul class="ideas plans" role="list">
-      {% for plan in plans %}
-      <li class="idea plan">
-        <div class="idea-head">
-          <p class="plan-name">{{ plan.name }}</p>
-          {% if plan.dungeon %}
-          <h4 class="idea-title">{{ plan.dungeon }}</h4>
-          <p class="idea-range"><span class="pill">Niv. {{ plan.min_level }}–{{ plan.max_level }}</span>{% if plan.spread %} <span class="meta">écart de {{ plan.spread }} niv. dans le groupe</span>{% endif %}</p>
-          {% else %}
-          <h4 class="idea-title">Pas de donjon commun</h4>
-          <p class="meta">Les niveaux sont trop éloignés{% if plan.spread %} ({{ plan.spread }} niv. d'écart){% endif %}.</p>
-          {% endif %}
-        </div>
-        <ul class="idea-members" role="list" aria-label="Membres du groupe">
-          {% for m in plan.members %}
-          <li class="{{ 'is-out' if m in plan.out }}">{{ avatar(m, 'xs') }}<a href="/perso/{{ m.id }}">{{ m.name }}</a><span class="meta">{% if m in plan.out %}hors tranche · {% endif %}{{ m.level or '?' }}</span></li>
-          {% endfor %}
-        </ul>
-        {% if plan.mixed_factions %}<p class="role is-missing">{{ icon('alert') }} Horde et Alliance mélangées</p>{% endif %}
-        <p class="roles">
-          <span class="role {{ 'is-ok' if plan.has_tank else 'is-missing' }}">{{ icon('shield') }} {{ 'Tank possible' if plan.has_tank else 'Pas de tank' }}</span>
-          <span class="role {{ 'is-ok' if plan.has_heal else 'is-missing' }}">{{ icon('heal') }} {{ 'Soins possibles' if plan.has_heal else 'Pas de soigneur' }}</span>
-        </p>
-      </li>
-      {% endfor %}
-    </ul>
-    {% if ideas %}<h3 class="block-title plans-after">Autres combinaisons</h3>{% endif %}
-    {% endif %}
-    {% if ideas %}
-    <ul class="ideas" role="list">
-      {% for idea in ideas %}
-      <li class="idea">
-        <div class="idea-head">
-          <h3 class="idea-title">{{ idea.dungeon }}</h3>
-          <p class="idea-range"><span class="pill">Niv. {{ idea.min_level }}–{{ idea.max_level }}</span> {{ faction_badge(idea.faction | capitalize if idea.faction != 'neutral' else '') }}</p>
-        </div>
-        <ul class="idea-members" role="list" aria-label="Joueurs possibles">
-          {% for m in idea.members %}
-          <li>{{ avatar(m, 'xs') }}<a href="/perso/{{ m.id }}">{{ m.name }}</a><span class="meta">{{ m.level }}</span></li>
-          {% endfor %}
-        </ul>
-        <p class="roles">
-          <span class="role {{ 'is-ok' if idea.has_tank else 'is-missing' }}">{{ icon('shield') }} {{ 'Tank possible' if idea.has_tank else 'Pas de tank' }}</span>
-          <span class="role {{ 'is-ok' if idea.has_heal else 'is-missing' }}">{{ icon('heal') }} {{ 'Soins possibles' if idea.has_heal else 'Pas de soigneur' }}</span>
-        </p>
-        {% if idea.alternatives %}<p class="idea-alt">Sinon : {{ idea.alternatives[:3] | join(', ') }}</p>{% endif %}
-      </li>
-      {% endfor %}
-    </ul>
-    {% endif %}
   </section>
 
   <section id="journal" class="panel" data-panel aria-labelledby="journal-title">

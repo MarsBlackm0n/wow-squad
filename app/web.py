@@ -181,7 +181,7 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
                   suggestions=expedition.evening_suggestions(availability, chars, priority),
                   priority=priority, suggested_instance=suggested_instance,
                   dungeon_catalog=DUNGEON_CATALOG, raid_catalog=RAID_CATALOG, instance_catalog=INSTANCE_CATALOG,
-                  activity=insights.activity_totals(events), last_cycle=worker.last_cycle,
+                  last_cycle=worker.last_cycle,
                   blizzard_ready=settings.blizzard_enabled, add_form=request.session.pop("add_form", None) or {},
                   **_map_context([roster.mission for roster in missions], zone, repere))
 
