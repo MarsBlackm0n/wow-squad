@@ -508,8 +508,22 @@
     </section>
     {% else %}
     <section class="panel-block squad-replay" aria-labelledby="squad-replay-empty">
-      <h3 id="squad-replay-empty">Niveaux et équipement</h3>
-      <p class="meta">La comparaison nécessite trois personnages de niveaux variés avec au moins 24 h de relevés chacun dans la même fenêtre de sept jours.</p>
+      <div class="chart-toolbar">
+        <h3 id="squad-replay-empty">Niveaux et équipement</h3>
+        <span class="pill specimen-badge">SPÉCIMEN</span>
+      </div>
+      <p class="meta">Aperçu avec des données fictives. Le graphique réel apparaîtra avec au moins trois personnages de niveaux variés et 24 h de relevés chacun sur une même fenêtre de sept jours.</p>
+      <svg class="replay-specimen" viewBox="0 0 460 220" role="img" aria-label="Spécimen fictif des quatre quadrants de rythme et d’équipement">
+        <path d="M44 35H430 M44 75H430 M44 155H430 M44 195H430 M76 35V195 M156 35V195 M318 35V195 M398 35V195" fill="none" stroke="var(--line)"/>
+        <path d="M44 115H430 M237 35V195" fill="none" style="stroke:var(--gold);stroke-width:1.5"/>
+        <text x="44" y="23">Écart d’équipement</text>
+        <text x="430" y="212" text-anchor="end">Écart au rythme médian</text>
+        <text x="237" y="116" text-anchor="middle" dominant-baseline="middle" class="specimen-watermark">SPÉCIMEN</text>
+        <circle cx="132" cy="76" r="6" fill="var(--violet)"/>
+        <circle cx="349" cy="65" r="6" fill="var(--teal)"/>
+        <circle cx="116" cy="158" r="6" fill="var(--gold)"/>
+        <circle cx="336" cy="168" r="6" fill="#eb8976"/>
+      </svg>
     </section>
     {% endif %}
     </div>

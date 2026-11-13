@@ -1443,3 +1443,7 @@ html { scroll-padding-top: 5.5rem; }
 @media (min-width: 960px) {
   #squad-race .chart-toolbar, #squad-gear-history .chart-toolbar { min-height: 4.1rem; }
 }
+
+.squad-replay .replay-specimen { height: auto; max-height: 13.5rem; margin-inline: auto; }
+.squad-replay .specimen-watermark { fill: var(--muted); opacity: .22; font-size: 29px; font-weight: 800; letter-spacing: .12em; }
+.specimen-badge { color: var(--gold); border: 1px solid currentColor; }
