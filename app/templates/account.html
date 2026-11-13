@@ -38,36 +38,38 @@
   {% set summary = (char.state or {}).get('account_summary', {}) %}
   {% set faction = char.faction or summary.faction or '' %}
   <li class="account-roster-entry" id="personnage-{{ char.id }}">
-    <a class="roster-card{% if char.id == main_id %} main-character-glow{% endif %}" data-faction="{{ faction | faction_key }}" href="/perso/{{ char.id }}"
+    <article class="roster-card{% if char.id == main_id %} main-character-glow{% endif %}" data-faction="{{ faction | faction_key }}"
        style="--class-color: {{ char.class_name | class_color }}">
-      <div class="roster-card-head">
-        {{ avatar(char) }}
-        <div>
-          <h2>{{ char.display_name }}</h2>
-          {% if char.id == main_id %}<span class="main-character-badge">Personnage principal</span>{% endif %}
-          <p class="meta">{{ [char.race or summary.race, char.class_name or summary.class_name] | select | join(' · ') }}</p>
+      <a class="roster-profile-link" href="/perso/{{ char.id }}">
+        <div class="roster-card-head">
+          {{ avatar(char) }}
+          <div>
+            <h2>{{ char.display_name }}</h2>
+            {% if char.id == main_id %}<span class="main-character-badge">Personnage principal</span>{% endif %}
+            <p class="meta">{{ [char.race or summary.race, char.class_name or summary.class_name] | select | join(' · ') }}</p>
+          </div>
+          {{ icon('chevron', 'roster-chevron') }}
         </div>
-        {{ icon('chevron', 'roster-chevron') }}
-      </div>
-      <div class="roster-card-facts">
-        {{ level_bar(char.level or summary.level, max_level) }}
-        <div class="character-badges">{{ faction_badge(faction) }} {{ ruleset_badge(char) }}</div>
-      </div>
-    </a>
-    <form method="post" action="/compte/personnages/{{ char.id }}/role" class="character-role-form">
-      <input type="hidden" name="csrf" value="{{ csrf }}">
-      <fieldset>
-        <legend>Rôle préféré<span class="visually-hidden"> de {{ char.display_name }}</span></legend>
-        <div class="character-role-options">
-          {% for key, label, glyph in [('tank', 'Tank', 'shield'), ('heal', 'Heal', 'heal'), ('damage', 'DPS', 'bolt')] %}
-          <button type="submit" name="role" value="{{ key }}" data-role="{{ key }}"
-                  aria-pressed="{{ 'true' if char.preferred_role == key else 'false' }}">
-            {{ icon(glyph) }} {{ label }}
-          </button>
-          {% endfor %}
+        <div class="roster-card-facts">
+          {{ level_bar(char.level or summary.level, max_level) }}
+          <div class="character-badges">{{ faction_badge(faction) }} {{ ruleset_badge(char) }}</div>
         </div>
-      </fieldset>
-    </form>
+      </a>
+      <form method="post" action="/compte/personnages/{{ char.id }}/role" class="character-role-form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <fieldset>
+          <legend>Rôle préféré<span class="visually-hidden"> de {{ char.display_name }}</span></legend>
+          <div class="character-role-options">
+            {% for key, label, glyph in [('tank', 'Tank', 'shield'), ('heal', 'Heal', 'heal'), ('damage', 'DPS', 'bolt')] %}
+            <button type="submit" name="role" value="{{ key }}" data-role="{{ key }}"
+                    aria-pressed="{{ 'true' if char.preferred_role == key else 'false' }}">
+              {{ icon(glyph) }} {{ label }}
+            </button>
+            {% endfor %}
+          </div>
+        </fieldset>
+      </form>
+    </article>
   </li>
   {% endfor %}
 </ul>
