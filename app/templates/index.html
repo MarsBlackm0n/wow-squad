@@ -506,7 +506,7 @@
       <label for="replay-date"{% if race_replay | length == 1 %} hidden{% endif %}>Date de comparaison · <output data-replay-date></output></label>
       <input type="range" id="replay-date" min="0" max="{{ race_replay | length - 1 }}" value="{{ race_replay | length - 1 }}"{% if race_replay | length == 1 %} hidden{% endif %}>
       {% with filter_ids = replay_ids %}{% include "_chart_players.html" %}{% endwith %}
-      <svg data-replay-plot role="img" aria-label="Écart de rythme et d’équipement par rapport à la squad"></svg>
+      <svg data-replay-plot role="group" aria-label="Écart de rythme et d’équipement par rapport à la squad"></svg>
       <p class="meta" data-replay-empty role="status" hidden></p>
       <ul class="legend replay-legend" data-replay-legend role="list"></ul>
       <script type="application/json" data-replay-data>{{ race_replay | tojson }}</script>

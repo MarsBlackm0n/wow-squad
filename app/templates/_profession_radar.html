@@ -19,6 +19,6 @@
   </div>
   {% with filter_ids = radar_chars | map(attribute="id") | list %}{% include "_chart_players.html" %}{% endwith %}
   <p class="meta" data-radar-note aria-live="polite"></p>
-  <svg data-radar-plot viewBox="0 0 400 400" aria-hidden="true" hidden></svg>
+  <svg data-radar-plot viewBox="0 0 400 400" role="group" aria-label="Radar des personnages" hidden></svg>
   <details><summary>Voir les valeurs exactes</summary><div class="radar-table" data-radar-table></div></details>
 </section>

@@ -1455,3 +1455,12 @@ html { scroll-padding-top: 5.5rem; }
   color: var(--teal); border-color: var(--teal);
   background: color-mix(in srgb, var(--teal) 12%, var(--surface));
 }
+
+.chart-point { cursor: help; stroke: transparent; stroke-width: 9; }
+.chart-point:hover, .chart-point:focus-visible { stroke: var(--gold); stroke-width: 2; }
+.chart-point-tip {
+  position: fixed; z-index: 100; pointer-events: none;
+  max-width: min(24rem, calc(100vw - 16px)); padding: .45rem .65rem;
+  background: var(--surface); color: var(--text); border: 1px solid var(--line-strong);
+  border-radius: .45rem; font-size: .8rem; box-shadow: 0 4px 16px #0005;
+}

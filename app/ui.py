@@ -270,7 +270,7 @@ def line_chart(series: list[Series], title: str, desc: str, chart_id: str, y_lab
     def sy(v: float) -> float:
         return pad_t + plot_h - (v - lo) / (hi - lo) * plot_h
 
-    parts = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" '
+    parts = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="group" '
              f'aria-labelledby="{chart_id}-title {chart_id}-desc" preserveAspectRatio="xMidYMid meet">',
              f'<title id="{chart_id}-title">{escape(title)}</title>',
              f'<desc id="{chart_id}-desc">{escape(desc)}</desc>', '<g class="chart-grid" aria-hidden="true">']
@@ -296,7 +296,6 @@ def line_chart(series: list[Series], title: str, desc: str, chart_id: str, y_lab
             else:
                 d.append(f"H{x:.1f}V{y:.1f}" if step else f"L{x:.1f},{y:.1f}")
             prev_y = y
-        end_x = sx(pts[-1][0])
         if s.character_id is not None:
             parts.append(f'<g data-race-series="{s.character_id}">')
         if len(series) == 1 and len(pts) > 1:
@@ -310,8 +309,12 @@ def line_chart(series: list[Series], title: str, desc: str, chart_id: str, y_lab
             parts.append(f'<path d="{" ".join(d)}V{floor:.1f}H{start_x:.1f}Z" '
                          f'fill="url(#{fill_id})" aria-hidden="true"/>')
         parts.append(f'<path class="chart-line" d="{" ".join(d)}" stroke="{s.color}" aria-hidden="true"/>')
-        parts.append(f'<circle cx="{end_x:.1f}" cy="{prev_y:.1f}" r="4.5" fill="{s.color}" '
-                     'stroke="var(--chart-bg)" stroke-width="1.5" aria-hidden="true"/>')
+        for index, (ts, value) in enumerate(pts):
+            date = datetime.fromtimestamp(ts, ZoneInfo(tz_name)).strftime("%d/%m/%Y %H:%M")
+            label = escape(f"{s.label} \u00b7 {date} \u00b7 {y_label or 'Valeur'} {number(value, int(value % 1 != 0))}")
+            radius = 4.5 if index == len(pts) - 1 else 3
+            parts.append(f'<circle class="chart-point" cx="{sx(ts):.1f}" cy="{sy(value):.1f}" r="{radius}" '
+                         f'fill="{s.color}" tabindex="0" role="img" aria-label="{label}" data-point-tip="{label}"/>')
 
         if s.character_id is not None:
             parts.append("</g>")

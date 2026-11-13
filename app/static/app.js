@@ -2,6 +2,41 @@
 (function () {
   "use strict";
 
+  var pointTip = document.createElement("div");
+  pointTip.className = "chart-point-tip";
+  pointTip.hidden = true;
+  pointTip.setAttribute("aria-hidden", "true");
+  document.body.appendChild(pointTip);
+  var tipPoint;
+  function showPointTip(event) {
+    var point = event.target.closest?.("[data-point-tip]");
+    if (!point) return;
+    tipPoint = point;
+    pointTip.textContent = point.dataset.pointTip;
+    pointTip.hidden = false;
+    var bounds = point.getBoundingClientRect();
+    pointTip.style.left = Math.max(8, Math.min(bounds.left, window.innerWidth - pointTip.offsetWidth - 8)) + "px";
+    var top = bounds.top - pointTip.offsetHeight - 8;
+    pointTip.style.top = (top >= 8 ? top : bounds.bottom + 8) + "px";
+  }
+  function hidePointTip() {
+    pointTip.hidden = true;
+    tipPoint = null;
+  }
+  document.addEventListener("pointerover", showPointTip);
+  document.addEventListener("focusin", showPointTip);
+  document.addEventListener("pointerout", function (event) {
+    if (event.target === tipPoint && tipPoint !== document.activeElement) hidePointTip();
+  });
+  document.addEventListener("focusout", function (event) {
+    if (event.target === tipPoint) hidePointTip();
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") hidePointTip();
+  });
+  window.addEventListener("scroll", hidePointTip, true);
+  window.addEventListener("resize", hidePointTip);
+
   function chartPlayers(root, colors, redraw) {
     var control = root.querySelector("[data-chart-players]");
     var active = control.querySelector("[data-chart-active]");
@@ -304,6 +339,7 @@
       var selected = series.map(function (row, i) {
         return {row: row, color: colors[i % colors.length], checked: picker.selected.has(String(row.id))};
       }).filter(function (item) { return item.checked; });
+      if (tipPoint && plot.contains(tipPoint)) hidePointTip();
       plot.replaceChildren();
       tableWrap.replaceChildren();
       var showPlot = axes.length >= 3 && selected.length > 0;
@@ -361,8 +397,11 @@
         } else if (known.length === 2) {
           shape("polyline", {points: coordinates, fill: "none", stroke: item.color, "stroke-width": 2.4});
         }
-        known.forEach(function (dot) {
-          shape("circle", {cx: dot[0], cy: dot[1], r: 4.5, fill: item.color});
+        dots.forEach(function (dot, i) {
+          if (!dot) return;
+          var label = item.row.name + " \u00b7 " + axes[i] + " " + valueFor(item.row, axes[i]);
+          shape("circle", {cx: dot[0], cy: dot[1], r: 4.5, fill: item.color, class: "chart-point",
+                           tabindex: 0, role: "img", "aria-label": label, "data-point-tip": label});
         });
       });
     }
@@ -403,6 +442,7 @@
       var x = function (v) { return 54 + (width - 78) * (v - lowX) / (highX - lowX); };
       var y = function (v) { return 224 - 188 * (v - lowY) / (highY - lowY); };
       plot.setAttribute("viewBox", "0 0 " + width + " 270");
+      if (tipPoint && plot.contains(tipPoint)) hidePointTip();
       plot.replaceChildren();
       legend.replaceChildren();
       date.textContent = frame.date;
@@ -440,7 +480,11 @@
         var label = point.name + " · " + format.format(point.level) + " niv./7 j vs médiane · "
           + format.format(point.gear) + " équipement vs tendance (" + axisFormat.format(point.equipment)
           + " relevé, " + axisFormat.format(point.expected) + " attendu) · " + axisFormat.format(point.days) + " j observés";
-        svg(dot, "title", {}, label);
+        dot.classList.add("chart-point");
+        dot.setAttribute("tabindex", "0");
+        dot.setAttribute("role", "img");
+        dot.setAttribute("aria-label", label);
+        dot.dataset.pointTip = label;
         var item = document.createElement("li");
         var swatch = document.createElement("span");
         swatch.className = "legend-swatch";
