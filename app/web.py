@@ -137,7 +137,7 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
         chars = leaderboard(db)
         week = compute_week(db)
         events = insights.load_events(db, days=30)
-        race_charts, race_rows, race_comparison, race_total, race_total_level, race_replay = _race_chart(db, chars)
+        race_charts, race_rows, race_comparison, race_total, race_total_level, race_replay, equipment_chart, equipment_series = _race_chart(db, chars)
         firsts = insights.firsts(db)
         accounts = db.scalars(select(Account).order_by(Account.battletag)).all()
         goal_cfg, groups = squad.get_goal(db), squad.get_groups(db)
@@ -165,7 +165,7 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
                   show_main_prompt=bool(current_account and not any(
                       c.id == current_account.main_character_id for c in mission_chars)), guild_directory=guilds.tracked_guilds(chars),
                   main_character_ids={a.main_character_id for a in accounts if a.main_character_id is not None}, week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
-                  race_comparison=race_comparison, race_total=race_total, race_total_level=race_total_level, race_replay=race_replay,
+                  race_comparison=race_comparison, race_total=race_total, race_total_level=race_total_level, race_replay=race_replay, equipment_chart=equipment_chart, equipment_series=equipment_series,
                   replay_ids={point["id"] for frame in race_replay for point in frame["points"]},
                   days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
                   goal=insights.squad_goal(chars, goal_cfg.target, goal_cfg.deadline, pace_by_char),
@@ -320,6 +320,7 @@ def _race_chart(db, chars: list[Character]):
     charts = []
     series = []
     histories = []
+    equipment_series = []
     current_points = []
     for index, c in enumerate(sorted(chars, key=lambda char: char.id)):
         if c.status == "pending":
@@ -331,6 +332,9 @@ def _race_chart(db, chars: list[Character]):
         if c.level > 0 and c.ilvl > 0:
             current_points.append({"id": c.id, "name": c.display_name, "color": comparison_color,
                                    "level": c.level, "gear": round(c.ilvl, 1)})
+        equipment_points, _ = progression_points(snaps, "ilvl")
+        if equipment_points:
+            equipment_series.append(Series(c.display_name, comparison_color, equipment_points, character_id=c.id))
         if not points:
             continue
         observed = points[1:] if launch_anchor else points
@@ -352,15 +356,18 @@ def _race_chart(db, chars: list[Character]):
     replay = progression_replay(histories, now, settings.timezone)
     if not replay and len(current_points) >= 2:
         replay = [{"date": localtime(now, "%d/%m"), "points": current_points, "current": True}]
+    equipment_chart = line_chart(equipment_series, "Historique de l’équipement",
+                                 "Niveau moyen des objets équipés au fil des relevés.", "equipment-history",
+                                 y_label="Équipement", y_min=0, step=False, tz_name=settings.timezone)
     if not series:
-        return charts, rows, None, None, 0, replay
+        return charts, rows, None, None, 0, replay, equipment_chart, equipment_series
     comparison = line_chart(series, "Comparer les personnages", "Une courbe de niveau par personnage.",
                             "race-comparison", y_label="Niveau", y_min=0, step=False, tz_name=settings.timezone)
     cumulative = sum_progression(series)
     total = line_chart([Series("Total de la squad", "#f8cf65", cumulative)], "Niveaux cumulés",
                        "Somme des niveaux des personnages suivis à chaque date.", "race-total",
                        y_label="Total des niveaux", y_min=0, step=False, tz_name=settings.timezone)
-    return charts, rows, comparison, total, int(cumulative[-1][1]), replay
+    return charts, rows, comparison, total, int(cumulative[-1][1]), replay, equipment_chart, equipment_series
 
 
 

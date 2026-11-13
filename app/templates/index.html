@@ -391,6 +391,7 @@
     </header>
     <nav class="squad-stat-links" aria-label="Accès aux graphiques et classements">
       {% if race_charts %}<a class="button button-secondary button-small" href="#squad-race">Course au niveau</a>{% endif %}
+      <a class="button button-secondary button-small" href="#squad-gear-history">Historique de l’équipement</a>
       <a class="button button-secondary button-small" href="#squad-equipment">Niveaux et équipement</a>
       <a class="button button-secondary button-small" href="#squad-comparison">Comparer les personnages</a>
       <a class="button button-secondary button-small" href="#squad-rankings">Classements</a>
@@ -469,6 +470,24 @@
         <p class="empty">La course au niveau apparaîtra après quelques synchros.</p>
         {% endif %}
     </div>
+    <section id="squad-gear-history" class="squad-stat-section chart-module" aria-labelledby="gear-history-title">
+      <div class="chart-toolbar"><h3 id="gear-history-title">Historique de l’équipement</h3></div>
+      {% if equipment_series %}
+      <figure class="chart-frame" data-chart-panel="comparison">
+        {% with filter_ids = equipment_series | map(attribute='character_id') | list %}{% include "_chart_players.html" %}{% endwith %}
+        {{ equipment_chart }}
+        <figcaption>
+          <ul class="legend" role="list" data-race-fallback>
+            {% for series in equipment_series %}
+            <li data-race-id="{{ series.character_id }}" data-color="{{ series.color }}">{{ series.label }}</li>
+            {% endfor %}
+          </ul>
+          <p class="meta" data-race-empty role="status" hidden>Sélectionne au moins un personnage.</p>
+          <p>Le zéro au lancement sert de repère. La courbe relie les relevés du niveau moyen des objets équipés.</p>
+        </figcaption>
+      </figure>
+      {% else %}<p class="empty">Aucun relevé d’équipement disponible.</p>{% endif %}
+    </section>
     <div id="squad-equipment" class="squad-stat-section">
     {% if race_replay %}
     <section class="panel-block squad-replay" aria-labelledby="squad-replay-title" data-squad-replay hidden>

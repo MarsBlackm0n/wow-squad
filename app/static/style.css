@@ -1402,9 +1402,8 @@ html { scroll-padding-top: 5.5rem; }
 .squad-chart-grid .squad-replay, .squad-chart-grid .profession-radar { margin-block: 0; }
 @media (min-width: 960px) {
   .squad-chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  #squad-comparison { grid-column: 1 / -1; }
 }
-#squad-race .chart-frame > svg { width: min(100%, 34rem); max-height: 14rem; }
+#squad-race .chart-frame > svg, #squad-gear-history .chart-frame > svg { display: block; width: min(100%, 34rem); max-height: 14rem; margin-inline: auto; }
 #squad-equipment [data-replay-plot] { height: 13.5rem; }
 #squad-comparison [data-radar-plot] { width: min(100%, 23rem); }
 .squad-chart-grid .chart-players { gap: .4rem; margin-block: .45rem .7rem; }
