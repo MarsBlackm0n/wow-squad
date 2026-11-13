@@ -411,11 +411,11 @@
       </div>
       <div class="kpi">
         <dt>Rythme de la squad</dt>
-        <dd><span class="kpi-value">{{ ('+' ~ (goal.average_pace | number(1))) if goal.average_pace is not none else '—' }}</span><span class="kpi-note">niv. par jour par perso{% if goal.average_estimated %} · estimation incluse{% endif %}{% if goal.stalled %} · {{ goal.stalled }} sans gain observé{% endif %}</span></dd>
+        <dd><span class="kpi-value">{{ ('+' ~ (goal.average_pace | number(1))) if goal.average_pace is not none else '—' }}</span><span class="kpi-note">niv. par jour par perso{% if goal.stalled %} · {{ goal.stalled }} sans gain observé{% endif %}</span></dd>
       </div>
       <div class="kpi">
         <dt>Cette semaine</dt>
-        <dd><span class="kpi-value">+{{ week.total_levels + weekly_extra }}</span><span class="kpi-note">niveaux à vous tous{% if weekly_extra %} · dont {{ weekly_extra }} estimés{% endif %}</span></dd>
+        <dd><span class="kpi-value">+{{ week.total_levels + weekly_extra }}</span><span class="kpi-note">niveaux à vous tous</span></dd>
       </div>
       <div class="kpi">
         <dt>Meilleur rythme</dt>
