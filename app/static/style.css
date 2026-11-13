@@ -1362,3 +1362,13 @@ html { scroll-padding-top: 5.5rem; }
 .squad-stat-links { display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: 1rem; }
 .squad-stat-section { margin-top: 1rem; }
 #squad, #progression, #squad-infos, #race-title, #pace-title, .squad-stat-section { scroll-margin-top: 6rem; }
+
+#squad-race .chart-frame > svg { display: block; width: 100%; max-height: 24rem; margin-inline: auto; }
+.squad-ranking-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  gap: .85rem; align-items: start;
+}
+.squad-ranking-grid > section { border-top: 2px solid var(--violet); }
+.squad-ranking-grid > section + section { border-top-color: var(--teal); }
+.squad-rank-more { border-top: 1px solid var(--line); margin-top: .5rem; }
+.squad-rank-more summary { padding: .65rem 0; cursor: pointer; color: var(--link); }

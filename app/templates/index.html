@@ -386,10 +386,10 @@
       <h2 id="progression-title">Progression</h2>
     </header>
     <nav class="squad-stat-links" aria-label="Accès aux graphiques et classements">
-      {% if race_charts %}<a class="button button-secondary button-small" href="#race-title">Course au niveau</a>{% endif %}
+      {% if race_charts %}<a class="button button-secondary button-small" href="#squad-race">Course au niveau</a>{% endif %}
       <a class="button button-secondary button-small" href="#squad-equipment">Niveaux et équipement</a>
       <a class="button button-secondary button-small" href="#squad-comparison">Comparer les personnages</a>
-      <a class="button button-secondary button-small" href="#pace-title">Classements</a>
+      <a class="button button-secondary button-small" href="#squad-rankings">Classements</a>
     </nav>
     {% if goal %}
     <dl class="kpis kpis-overview">
@@ -418,8 +418,7 @@
       </div>
     </dl>
     {% endif %}
-    <div class="split">
-      <div class="split-main">
+    <div id="squad-race" class="squad-stat-section">
         {% if race_charts %}
           <section class="chart-module" aria-labelledby="race-title" data-chart-picker>
             <div class="chart-toolbar">
@@ -464,44 +463,6 @@
         {% else %}
         <p class="empty">La course au niveau apparaîtra après quelques synchros.</p>
         {% endif %}
-      </div>
-      <section class="split-side" aria-labelledby="board-title">
-        <h3 id="pace-title" class="block-title">Au rythme <span class="count">7 derniers jours</span></h3>
-        {% if by_pace %}
-        <ol class="ranking ranking-pace" role="list" aria-labelledby="pace-title">
-          {% for c in by_pace %}{% set pc = paces[c.id] %}
-          <li class="rank-item" style="--class-color: {{ c.class_name | class_color }}">
-            <span class="rank-pos" aria-hidden="true">{{ loop.index }}</span>
-            {{ avatar(c, 'sm') }}
-            <div class="rank-body">
-              <a class="rank-name" href="/perso/{{ c.id }}"><span class="visually-hidden">{{ loop.index }}. </span>{{ c.display_name }}</a>
-              <span class="meta">{% if pc.estimated %}estimation depuis le lancement · {% endif %}{% if pc.reached %}objectif atteint{% elif pc.eta %}niv. {{ goal_cfg.target }} vers le {{ pc.eta.strftime('%d/%m') }}{% else %}{% if not pc.estimated %}{{ pc.gained }} niv. gagné{{ 's' if pc.gained > 1 }} sur {{ pc.observed_days | number(1) }} j{% endif %}{% endif %}</span>
-            </div>
-            <span class="pace"><strong>+{{ pc.per_day | number(1) }}</strong><span class="meta">/jour</span></span>
-          </li>
-          {% endfor %}
-        </ol>
-        {% else %}
-        <p class="quiet">Le rythme apparaîtra après quelques synchros.</p>
-        {% endif %}
-        <h3 id="board-title" class="block-title board-level">Au niveau</h3>
-        <ol class="ranking" role="list">
-          {% for c in chars %}
-          <li class="rank-item {{ 'is-pending' if c.status == 'pending' }}" style="--class-color: {{ c.class_name | class_color }}">
-            <span class="rank-pos" aria-hidden="true">{{ '–' if c.status == 'pending' else loop.index }}</span>
-            {{ avatar(c, 'sm') }}
-            <div class="rank-body">
-              <a class="rank-name" href="/perso/{{ c.id }}">
-                {%- if c.status != 'pending' %}<span class="visually-hidden">{{ loop.index }}. </span>{% endif -%}
-                {{ c.display_name }}
-              </a>
-              <span class="meta">{% if c.status == 'pending' %}En attente de l'API{% else %}{{ c.class_name }}{% if c.player %} · {{ c.player }}{% endif %}{% endif %}</span>
-            </div>
-            {% if c.status != 'pending' %}{{ level_bar(c.level, max_level) }}{% endif %}
-          </li>
-          {% endfor %}
-        </ol>
-      </section>
     </div>
     <div id="squad-equipment" class="squad-stat-section">
     {% if race_replay %}
@@ -533,6 +494,58 @@
     <div id="squad-comparison" class="squad-stat-section">
 {% with radar_chars = chars %}{% include "_profession_radar.html" %}{% endwith %}
     </div>
+    <section id="squad-rankings" class="squad-stat-section" aria-labelledby="squad-rankings-title">
+      <h3 id="squad-rankings-title" class="block-title">Classements</h3>
+      <div class="squad-ranking-grid">
+        <section class="panel-block" aria-labelledby="pace-title">
+        <h3 id="pace-title" class="block-title">Au rythme <span class="count">7 derniers jours</span></h3>
+        {% if by_pace %}
+        {% macro rank_by_pace(c, position) %}{% set pc = paces[c.id] %}
+          <li class="rank-item" style="--class-color: {{ c.class_name | class_color }}">
+            <span class="rank-pos" aria-hidden="true">{{ position }}</span>
+            {{ avatar(c, 'sm') }}
+            <div class="rank-body">
+              <a class="rank-name" href="/perso/{{ c.id }}"><span class="visually-hidden">{{ position }}. </span>{{ c.display_name }}</a>
+              <span class="meta">{% if pc.estimated %}estimation depuis le lancement · {% endif %}{% if pc.reached %}objectif atteint{% elif pc.eta %}niv. {{ goal_cfg.target }} vers le {{ pc.eta.strftime('%d/%m') }}{% else %}{% if not pc.estimated %}{{ pc.gained }} niv. gagné{{ 's' if pc.gained > 1 }} sur {{ pc.observed_days | number(1) }} j{% endif %}{% endif %}</span>
+            </div>
+            <span class="pace"><strong>+{{ pc.per_day | number(1) }}</strong><span class="meta">/jour</span></span>
+          </li>{% endmacro %}
+<ol class="ranking ranking-pace" role="list" aria-labelledby="pace-title">
+          {% for c in by_pace[:5] %}{{ rank_by_pace(c, loop.index) }}{% endfor %}
+</ol>
+{% if by_pace | length > 5 %}<details class="squad-rank-more"><summary>Voir la suite ({{ by_pace | length - 5 }})</summary>
+<ol start="6" class="ranking ranking-pace" role="list" aria-labelledby="pace-title">
+          {% for c in by_pace[5:] %}{{ rank_by_pace(c, loop.index + 5) }}{% endfor %}
+</ol></details>{% endif %}
+        {% else %}
+        <p class="quiet">Le rythme apparaîtra après quelques synchros.</p>
+        {% endif %}
+        </section>
+        <section class="panel-block" aria-labelledby="board-title">
+        <h3 id="board-title" class="block-title">Au niveau</h3>
+        {% macro rank_chars(c, position) %}
+          <li class="rank-item {{ 'is-pending' if c.status == 'pending' }}" style="--class-color: {{ c.class_name | class_color }}">
+            <span class="rank-pos" aria-hidden="true">{{ '–' if c.status == 'pending' else position }}</span>
+            {{ avatar(c, 'sm') }}
+            <div class="rank-body">
+              <a class="rank-name" href="/perso/{{ c.id }}">
+                {%- if c.status != 'pending' %}<span class="visually-hidden">{{ position }}. </span>{% endif -%}
+                {{ c.display_name }}
+              </a>
+              <span class="meta">{% if c.status == 'pending' %}En attente de l'API{% else %}{{ c.class_name }}{% if c.player %} · {{ c.player }}{% endif %}{% endif %}</span>
+            </div>
+            {% if c.status != 'pending' %}{{ level_bar(c.level, max_level) }}{% endif %}
+          </li>{% endmacro %}
+<ol class="ranking" role="list">
+          {% for c in chars[:5] %}{{ rank_chars(c, loop.index) }}{% endfor %}
+</ol>
+{% if chars | length > 5 %}<details class="squad-rank-more"><summary>Voir la suite ({{ chars | length - 5 }})</summary>
+<ol start="6" class="ranking" role="list">
+          {% for c in chars[5:] %}{{ rank_chars(c, loop.index + 5) }}{% endfor %}
+</ol></details>{% endif %}
+        </section>
+      </div>
+    </section>
   </section>
 
   <section id="squad-infos" class="panel" data-panel aria-labelledby="squad-title">
