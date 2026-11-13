@@ -1124,42 +1124,27 @@ html { scroll-padding-top: 5.5rem; }
   gap: .65rem;
 }
 
-.evening-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: .6rem;
-  min-height: 44px;
-  padding: .25rem .55rem;
-  border: 0;
-  border-radius: 2rem;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-weight: 650;
-  cursor: pointer;
+.evening-toggle {
+  display: inline-flex; gap: .2rem; padding: .2rem;
+  border: 1px solid var(--line); border-radius: .65rem; background: var(--chart-bg);
 }
-
-.evening-switch-track {
-  display: inline-flex;
-  align-items: center;
-  width: 2.55rem;
-  height: 1.45rem;
-  padding: .18rem;
-  border-radius: 2rem;
-  background: #a83439;
+.evening-toggle button {
+  min-height: 34px; padding: .3rem .55rem;
+  border: 1px solid transparent; border-radius: .45rem; background: transparent;
+  color: var(--muted); font: inherit; font-size: .8rem; font-weight: 650; cursor: pointer;
 }
-
-.evening-switch-track::before {
-  content: "";
-  width: 1.05rem;
-  height: 1.05rem;
-  border-radius: 50%;
-  background: #fff;
+.evening-toggle button[value="yes"] { --status-color: #6ed59c; }
+.evening-toggle button[value="no"] { --status-color: #ff8791; }
+:root[data-theme="light"] .evening-toggle button[value="yes"] { --status-color: #237448; }
+  :root[data-theme="light"] .evening-toggle button[value="no"] { --status-color: #a92d3a; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .evening-toggle button[value="yes"] { --status-color: #237448; }
+  :root:not([data-theme]) .evening-toggle button[value="no"] { --status-color: #a92d3a; }
 }
-
-.evening-switch[aria-checked="true"] .evening-switch-track {
-  justify-content: end;
-  background: #277a4f;
+.evening-toggle button:hover { color: var(--text); }
+.evening-toggle button[aria-pressed="true"] {
+  color: var(--status-color); border-color: var(--status-color);
+  background: color-mix(in srgb, var(--status-color) 12%, var(--surface));
 }
 
 .tag.evening-status {
