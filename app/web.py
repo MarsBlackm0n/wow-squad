@@ -166,6 +166,7 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
                       c.id == current_account.main_character_id for c in mission_chars)), guild_directory=guilds.tracked_guilds(chars),
                   main_character_ids={a.main_character_id for a in accounts if a.main_character_id is not None}, week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
                   race_comparison=race_comparison, race_total=race_total, race_total_level=race_total_level, race_replay=race_replay,
+                  replay_ids={point["id"] for frame in race_replay for point in frame["points"]},
                   days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
                   goal=insights.squad_goal(chars, goal_cfg.target, goal_cfg.deadline, pace_by_char),
                   goal_cfg=goal_cfg, groups=groups, plans=insights.group_plans(groups, chars),
@@ -391,10 +392,12 @@ async def guild_page(request: Request, char_id: int):
         tracked = [member for member in candidates if guilds.guild_slug(member) == slug]
         movements = guilds.roster_movements(db, char.region, slug)
         account_ids = {member.account_id for member in tracked if member.account_id is not None}
-        main_character_ids = set(db.scalars(select(Account.main_character_id).where(Account.id.in_(account_ids))))
+        accounts = db.scalars(select(Account).where(Account.id.in_(account_ids))).all()
+        main_character_ids = {account.main_character_id for account in accounts}
     bz = request.app.state.worker.bz
     guild = await guilds.fetch_guild(bz, slug) if bz and slug and bz.region == char.region else guilds.guild_details(None, None, None, None)
     return render(request, "guild.html", char=char, guild=guild, tracked=tracked, movements=movements, main_character_ids=main_character_ids,
+                  player_groups=_squad_players(tracked, accounts),
                   tracked_by_slug={member.slug: member for member in tracked})
 
 

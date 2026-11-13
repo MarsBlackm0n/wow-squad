@@ -2,24 +2,85 @@
 (function () {
   "use strict";
 
-  document.querySelectorAll('[data-chart-panel="comparison"]').forEach(function (figure) {
-    var toggles = Array.from(figure.querySelectorAll("[data-race-toggle]"));
-    var groups = new Map(Array.from(figure.querySelectorAll("[data-race-series]"), function (group) {
-      return [group.dataset.raceSeries, group];
-    }));
-    var empty = figure.querySelector("[data-race-empty]");
-    toggles.forEach(function (toggle) {
-      toggle.hidden = false;
-      toggle.addEventListener("change", update);
-    });
-    function update() {
-      toggles.forEach(function (toggle) {
-        var group = groups.get(toggle.value);
-        if (group) group.setAttribute("display", toggle.checked ? "inline" : "none");
-      });
-      empty.hidden = toggles.some(function (toggle) { return toggle.checked; });
+  function chartPlayers(root, colors, redraw) {
+    var control = root.querySelector("[data-chart-players]");
+    var active = control.querySelector("[data-chart-active]");
+    var clear = control.querySelector("[data-chart-clear]");
+    var search = control.querySelector("[data-chart-search]");
+    var groups = Array.from(control.querySelectorAll("[data-chart-player]"));
+    var selected = new Set();
+    function fold(value) {
+      return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
     }
-    update();
+    function filter() {
+      var query = fold(search.value.trim());
+      groups.forEach(function (group) {
+        var matchesPlayer = fold(group.dataset.playerName).includes(query);
+        var options = Array.from(group.querySelectorAll("[data-chart-option]"));
+        options.forEach(function (option) {
+          option.hidden = !matchesPlayer && !fold(option.dataset.characterName).includes(query);
+        });
+        group.hidden = options.every(function (option) { return option.hidden; });
+        if (query && !group.hidden) group.open = true;
+      });
+      control.querySelector("[data-chart-no-results]").hidden = groups.some(function (group) { return !group.hidden; });
+    }
+    function update() {
+      var focused = active.contains(document.activeElement) ? document.activeElement.dataset.id : null;
+      selected.clear();
+      active.replaceChildren();
+      groups.forEach(function (group) {
+        var inputs = Array.from(group.querySelectorAll("input"));
+        var checked = inputs.filter(function (input) { return input.checked; });
+        group.querySelector("[data-chart-count]").textContent = checked.length + "/" + inputs.length;
+        checked.forEach(function (input) {
+          selected.add(input.value);
+          var button = document.createElement("button");
+          button.type = "button";
+          button.dataset.id = input.value;
+          button.className = input.parentElement.className;
+          button.style.setProperty("--series-color", colors.get(input.value));
+          button.append(input.parentElement.querySelector(".legend-swatch").cloneNode(true),
+                        input.parentElement.querySelector("[data-chart-character]").cloneNode(true), " ×");
+          button.setAttribute("aria-label", "Masquer " + input.parentElement.dataset.characterName);
+          button.addEventListener("click", function () { input.checked = false; update(); });
+          active.appendChild(button);
+        });
+      });
+      clear.hidden = !selected.size;
+      if (!selected.size) active.textContent = "Aucun personnage s\u00e9lectionn\u00e9";
+      if (focused) (Array.from(active.children).find(function (button) { return button.dataset.id === focused; })
+                   || active.firstElementChild || control.querySelector(".chart-player-picker > summary")).focus();
+      redraw(selected);
+    }
+    control.querySelectorAll("[data-chart-option] input").forEach(function (input) {
+      input.parentElement.style.setProperty("--series-color", colors.get(input.value));
+      input.addEventListener("change", update);
+    });
+    clear.addEventListener("click", function () {
+      control.querySelectorAll("[data-chart-option] input").forEach(function (input) { input.checked = false; });
+      update();
+      control.querySelector(".chart-player-picker > summary").focus();
+    });
+    search.addEventListener("input", filter);
+    control.hidden = !groups.length;
+    return {selected: selected, update: update};
+  }
+
+  document.querySelectorAll('[data-chart-panel="comparison"]').forEach(function (figure) {
+    var fallback = figure.querySelector("[data-race-fallback]");
+    var colors = new Map(Array.from(fallback.children, function (item) {
+      return [item.dataset.raceId, item.dataset.color];
+    }));
+    var groups = figure.querySelectorAll("[data-race-series]");
+    var empty = figure.querySelector("[data-race-empty]");
+    chartPlayers(figure, colors, function (selected) {
+      groups.forEach(function (group) {
+        group.setAttribute("display", selected.has(group.dataset.raceSeries) ? "inline" : "none");
+      });
+      empty.hidden = selected.size > 0;
+    }).update();
+    fallback.hidden = true;
   });
 
   document.querySelectorAll("[data-chart-picker]").forEach(function (picker) {
@@ -196,7 +257,6 @@
 
   document.querySelectorAll("[data-profession-radar]").forEach(function (radar) {
     var series = JSON.parse(radar.querySelector("[data-radar-data]").textContent);
-    var controls = radar.querySelector("[data-radar-series]");
     var note = radar.querySelector("[data-radar-note]");
     var plot = radar.querySelector("[data-radar-plot]");
     var tableWrap = radar.querySelector("[data-radar-table]");
@@ -204,21 +264,11 @@
     var mode = radar.querySelector("[data-radar-mode]");
     var axes = [];
     mode.addEventListener("change", draw);
-    var inputs = series.map(function (row, index) {
-      var label = document.createElement("label");
-      label.className = "tag";
-      label.style.borderColor = colors[index % colors.length];
-      var input = document.createElement("input");
-      input.type = "checkbox";
-      input.checked = row.main;
-      input.addEventListener("change", draw);
-      label.append(input, document.createTextNode(row.name));
-      controls.appendChild(label);
-      return input;
-    });
+    var picker = chartPlayers(radar, new Map(series.map(function (row, i) {
+      return [String(row.id), colors[i % colors.length]];
+    })), draw);
     plot.setAttribute("viewBox", "0 0 620 485");
     radar.hidden = false;
-    radar.querySelector("fieldset").hidden = !series.length;
     radar.querySelector("details").hidden = !series.length;
     function shape(tag, attrs, text) {
       var node = document.createElementNS("http://www.w3.org/2000/svg", tag);
@@ -243,7 +293,7 @@
         return isSkills && row.skills ? row.skills[axis] ?? 0 : row[group]?.[axis];
       }
       var selected = series.map(function (row, i) {
-        return {row: row, color: colors[i % colors.length], checked: inputs[i].checked};
+        return {row: row, color: colors[i % colors.length], checked: picker.selected.has(String(row.id))};
       }).filter(function (item) { return item.checked; });
       plot.replaceChildren();
       tableWrap.replaceChildren();
@@ -306,7 +356,7 @@
         });
       });
     }
-    draw();
+    picker.update();
   });
 
   document.querySelectorAll("[data-squad-replay]").forEach(function (replay) {
@@ -318,27 +368,9 @@
     var legend = replay.querySelector("[data-replay-legend]");
     var current = Boolean(frames[0].current);
     var observations = frames.flatMap(function (frame) { return frame.points; });
-    var selected = new Set(JSON.parse(replay.dataset.mainIds));
-    var filters = replay.querySelector("[data-replay-filters]");
     var empty = replay.querySelector("[data-replay-empty]");
-    var characters = new Map(observations.map(function (point) { return [point.id, point]; }));
-    characters.forEach(function (point, id) {
-      var item = document.createElement("li");
-      var label = document.createElement("label");
-      label.className = "tag race-series-label";
-      label.style.borderColor = point.color;
-      var toggle = document.createElement("input");
-      toggle.type = "checkbox";
-      toggle.checked = selected.has(id);
-      toggle.addEventListener("change", function () {
-        if (toggle.checked) selected.add(id);
-        else selected.delete(id);
-        draw();
-      });
-      label.append(toggle, document.createTextNode(point.name));
-      item.appendChild(label);
-      filters.appendChild(item);
-    });
+    var colors = new Map(observations.map(function (point) { return [String(point.id), point.color]; }));
+    var picker = chartPlayers(replay, colors, draw);
     var lowX = Math.floor(Math.min(0, ...observations.map(function (p) { return p.level; })));
     var highX = Math.max(lowX + 4, Math.ceil(Math.max(0, ...observations.map(function (p) { return p.level; }))));
     var lowY = Math.floor(Math.min(0, ...observations.map(function (p) { return p.gear; })));
@@ -376,10 +408,10 @@
         svg(plot, "line", {x1: x(xValue), x2: x(xValue), y1: 26, y2: 233});
         svg(plot, "text", {x: x(xValue), y: 249, "text-anchor": "middle"}, xValue);
       }
-      var visible = frame.points.filter(function (point) { return selected.has(point.id); });
+      var visible = frame.points.filter(function (point) { return picker.selected.has(String(point.id)); });
       empty.hidden = visible.length > 0;
       if (!empty.hidden) {
-        empty.textContent = Array.from(characters.keys()).some(function (id) { return selected.has(id); })
+        empty.textContent = picker.selected.size > 0
           ? "Aucun relevé pour les personnages sélectionnés à cette date."
           : "Sélectionne au moins un personnage.";
       }
@@ -425,7 +457,7 @@
     });
     replay.hidden = false;
     new ResizeObserver(draw).observe(plot);
-    draw();
+    picker.update();
   });
 
   // Bascule de thème : respecte le réglage système tant que la personne n'a rien choisi.

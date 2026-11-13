@@ -258,7 +258,7 @@
     </dl>
     {% endif %}
     {% if race_replay %}
-    <section class="panel-block squad-replay" aria-labelledby="squad-replay-title" data-squad-replay data-main-ids='{{ main_character_ids | list | tojson }}' hidden>
+    <section class="panel-block squad-replay" aria-labelledby="squad-replay-title" data-squad-replay hidden>
       <div class="chart-toolbar">
         <div>
           <h3 id="squad-replay-title">Niveaux et équipement</h3>
@@ -271,7 +271,7 @@
       <label for="replay-date"{% if race_replay[0].current %} hidden{% endif %}>Date de comparaison · <output data-replay-date></output></label>
       <input type="range" id="replay-date" min="0" max="{{ race_replay | length - 1 }}" value="{{ race_replay | length - 1 }}"{% if race_replay | length == 1 %} hidden{% endif %}>
       <svg data-replay-plot role="img" aria-label="{{ 'Niveau et équipement actuels des personnages' if race_replay[0].current else 'Gains de niveau et d’équipement des personnages' }}"></svg>
-      <ul class="legend replay-legend" data-replay-filters aria-label="Personnages à comparer" role="list"></ul>
+      {% with filter_ids = replay_ids %}{% include "_chart_players.html" %}{% endwith %}
       <p class="meta" data-replay-empty role="status" hidden></p>
       <ul class="legend replay-legend" data-replay-legend role="list"></ul>
       <script type="application/json" data-replay-data>{{ race_replay | tojson }}</script>
@@ -301,15 +301,14 @@
             </div>
             <figure class="chart-frame" data-chart-panel="comparison">
               {{ race_comparison }}
-              <figcaption><ul class="legend" role="list">
-                {% for c in race_charts %}
-                <li><label class="tag race-series-label" style="border-color: {{ c.color }}">
-                  <input type="checkbox" value="{{ c.id }}" data-race-toggle{% if c.id in main_character_ids %} checked{% endif %} hidden>
-                  <span class="legend-swatch" style="background: {{ c.color }}" aria-hidden="true"></span>
-                  {{ c.name }} <strong>{{ c.last }}</strong>
-                </label></li>
-                {% endfor %}
-              </ul><p class="meta" data-race-empty role="status" hidden>Sélectionne au moins un personnage pour afficher sa courbe.</p>
+              <figcaption>
+                {% with filter_ids = race_charts | map(attribute='id') | list %}{% include "_chart_players.html" %}{% endwith %}
+                <ul class="legend" role="list" data-race-fallback>
+                  {% for c in race_charts %}
+                  <li data-race-id="{{ c.id }}" data-color="{{ c.color }}"><span class="legend-swatch" style="background: {{ c.color }}" aria-hidden="true"></span>{{ c.name }} <strong>{{ c.last }}</strong></li>
+                  {% endfor %}
+                </ul>
+                <p class="meta" data-race-empty role="status" hidden>Sélectionne au moins un personnage pour afficher sa courbe.</p>
                 <p>Le zéro au lancement sert de repère. Entre deux relevés, les niveaux sont interpolés.</p></figcaption>
             </figure>
             <figure class="chart-frame" data-chart-panel="total" hidden>

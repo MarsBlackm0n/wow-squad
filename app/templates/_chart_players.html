@@ -1,0 +1,34 @@
+<div class="chart-players" data-chart-players hidden>
+  <div class="chart-player-active">
+    <strong>Sélection</strong>
+    <div class="tag-list" data-chart-active></div>
+    <button type="button" class="button button-ghost button-small" data-chart-clear hidden>Tout décocher</button>
+  </div>
+  <details class="chart-player-picker">
+    <summary>Choisir les personnages</summary>
+    <label class="field">Rechercher un joueur ou un personnage
+      <input type="search" data-chart-search autocomplete="off">
+    </label>
+    <p class="meta" data-chart-no-results hidden>Aucun joueur ou personnage trouvé.</p>
+    <div class="chart-player-groups">
+      {% for group in player_groups %}
+      {% set members = ([group.main] if group.main else []) + group.characters %}
+      {% set options = members | selectattr('id', 'in', filter_ids) | list %}
+      {% if options %}
+      <details data-chart-player data-player-name="{{ group.name }}">
+        <summary>{{ group.name }} <span class="meta" data-chart-count></span></summary>
+        <div class="tag-list">
+          {% for c in options %}
+          <label class="tag race-series-label chart-player-option{% if c.id in main_character_ids %} chart-player-main{% endif %}" data-chart-option data-character-name="{{ c.display_name }}">
+            <input type="checkbox" value="{{ c.id }}"{% if c.id in main_character_ids %} checked{% endif %}>
+            <span class="legend-swatch" aria-hidden="true"></span>
+            <span data-chart-character>{{ c.display_name }}{% if c.level %} <small>Niv. {{ c.level }}</small>{% endif %}{% if c.id in main_character_ids %} <small class="main-character-badge">Principal</small>{% endif %}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </details>
+</div>

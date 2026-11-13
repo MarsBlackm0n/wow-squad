@@ -1342,3 +1342,18 @@ html { scroll-padding-top: 5.5rem; }
   color: var(--role-tone); font-weight: 700;
 }
 .character-role-options button:focus-visible { outline: 2px solid var(--role-tone); outline-offset: 2px; }
+
+.chart-players { margin-block: .85rem; display: grid; gap: .5rem; }
+.chart-players [hidden], .chart-players[hidden], [data-race-fallback][hidden] { display: none; }
+.chart-player-active, .chart-player-option { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; }
+.chart-player-active > .tag-list { display: flex; flex-wrap: wrap; gap: .35rem; }
+.chart-player-picker summary { cursor: pointer; padding: .45rem .6rem; }
+.chart-player-picker, .chart-player-groups > details { border: 1px solid var(--line); border-radius: .6rem; }
+.chart-player-picker > .field, .chart-player-picker > p { margin: .4rem .6rem; }
+.chart-player-groups { display: grid; gap: .4rem; padding: .5rem; max-height: 22rem; overflow: auto; }
+.chart-player-groups .tag-list { padding: .35rem .6rem .65rem; }
+.chart-player-option { font: inherit; font-size: .85rem; color: var(--text); }
+.chart-player-option .legend-swatch { background: var(--series-color, var(--muted)); }
+.chart-player-option small { color: var(--muted); white-space: nowrap; }
+.chart-player-main { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--surface)); }
+.chart-player-option .main-character-badge { color: var(--gold); }
