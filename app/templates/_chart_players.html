@@ -5,7 +5,7 @@
     <button type="button" class="button button-ghost button-small" data-chart-clear hidden>Tout décocher</button>
   </div>
   <details class="chart-player-picker">
-    <summary>Choisir les personnages</summary>
+    <summary>{{ icon("users") if icon is defined }} <span>Filtrer les personnages</span></summary>
     <label class="field">Rechercher un joueur ou un personnage
       <input type="search" data-chart-search autocomplete="off">
     </label>

@@ -422,6 +422,7 @@
       </div>
     </dl>
     {% endif %}
+    <div class="squad-chart-grid">
     <div id="squad-race" class="squad-stat-section">
         {% if race_charts %}
           <section class="chart-module" aria-labelledby="race-title" data-chart-picker>
@@ -439,9 +440,9 @@
               </div>
             </div>
             <figure class="chart-frame" data-chart-panel="comparison">
+                {% with filter_ids = race_charts | map(attribute='id') | list %}{% include "_chart_players.html" %}{% endwith %}
               {{ race_comparison }}
               <figcaption>
-                {% with filter_ids = race_charts | map(attribute='id') | list %}{% include "_chart_players.html" %}{% endwith %}
                 <ul class="legend" role="list" data-race-fallback>
                   {% for c in race_charts %}
                   <li data-race-id="{{ c.id }}" data-color="{{ c.color }}"><span class="legend-swatch" style="background: {{ c.color }}" aria-hidden="true"></span>{{ c.name }} <strong>{{ c.last }}</strong></li>
@@ -482,8 +483,8 @@
       </div>
       <label for="replay-date"{% if race_replay[0].current %} hidden{% endif %}>Date de comparaison · <output data-replay-date></output></label>
       <input type="range" id="replay-date" min="0" max="{{ race_replay | length - 1 }}" value="{{ race_replay | length - 1 }}"{% if race_replay | length == 1 %} hidden{% endif %}>
-      <svg data-replay-plot role="img" aria-label="{{ 'Niveau et équipement actuels des personnages' if race_replay[0].current else 'Gains de niveau et d’équipement des personnages' }}"></svg>
       {% with filter_ids = replay_ids %}{% include "_chart_players.html" %}{% endwith %}
+      <svg data-replay-plot role="img" aria-label="{{ 'Niveau et équipement actuels des personnages' if race_replay[0].current else 'Gains de niveau et d’équipement des personnages' }}"></svg>
       <p class="meta" data-replay-empty role="status" hidden></p>
       <ul class="legend replay-legend" data-replay-legend role="list"></ul>
       <script type="application/json" data-replay-data>{{ race_replay | tojson }}</script>
@@ -497,6 +498,7 @@
     </div>
     <div id="squad-comparison" class="squad-stat-section">
 {% with radar_chars = chars %}{% include "_profession_radar.html" %}{% endwith %}
+    </div>
     </div>
     <section id="squad-rankings" class="squad-stat-section" aria-labelledby="squad-rankings-title">
       <h3 id="squad-rankings-title" class="block-title">Classements</h3>
