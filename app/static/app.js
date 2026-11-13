@@ -333,6 +333,7 @@
         var values = series.flatMap(function (row) { return isSkills ? Object.values(row.skills || {}) : [row.activity[axis] ?? 0]; });
         return Math.max(isSkills ? 300 : axis === "Niveau" ? 60 : 1, ...values);
       });
+      function isReversed(axis) { return !isSkills && axis === "Morts"; }
       function valueFor(row, axis) {
         return isSkills && row.skills ? row.skills[axis] ?? 0 : row[group]?.[axis];
       }
@@ -366,7 +367,7 @@
         th.scope = "row";
         th.textContent = axis;
         row.appendChild(th);
-        row.insertCell().textContent = limits[index];
+        row.insertCell().textContent = isReversed(axis) ? 0 : limits[index];
         selected.forEach(function (item) {
           row.insertCell().textContent = valueFor(item.row, axis) ?? "Non relevé";
         });
@@ -382,12 +383,14 @@
         var label = point(i, 195);
         shape("line", {x1: 310, y1: 235, x2: edge[0], y2: edge[1], stroke: "var(--line)"});
         shape("text", {x: label[0], y: label[1], "text-anchor": "middle", "dominant-baseline": "middle",
-                       "font-size": 15, fill: "var(--text)"}, axis);
+                       "font-size": 15, fill: "var(--text)"}, isReversed(axis) ? axis + " ↓" : axis);
       });
       selected.forEach(function (item) {
         var dots = axes.map(function (axis, i) {
           var value = valueFor(item.row, axis);
-          return typeof value === "number" ? point(i, value / limits[i] * 175) : null;
+          if (typeof value !== "number") return null;
+          var ratio = value / limits[i];
+          return point(i, (isReversed(axis) ? 1 - ratio : ratio) * 175);
         });
         var known = dots.filter(Boolean);
         var coordinates = known.map(function (dot) { return dot.join(","); }).join(" ");
