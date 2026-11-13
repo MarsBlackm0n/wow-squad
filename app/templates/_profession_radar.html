@@ -13,9 +13,10 @@
     }} | tojson }}{% if not loop.last %},{% endif %}
     {% endfor %}
   ]</script>
-  <label class="radar-mode">Indicateurs
-    <select data-radar-mode><option value="skills">Métiers</option><option value="activity">Progression et activité</option></select>
-  </label>
+  <div class="radar-switch" role="group" aria-label="Indicateurs du graphique">
+    <button type="button" data-radar-mode="activity" aria-pressed="true">Progression et activité</button>
+    <button type="button" data-radar-mode="skills" aria-pressed="false">Métiers</button>
+  </div>
   {% with filter_ids = radar_chars | map(attribute="id") | list %}{% include "_chart_players.html" %}{% endwith %}
   <p class="meta" data-radar-note aria-live="polite"></p>
   <svg data-radar-plot viewBox="0 0 400 400" aria-hidden="true" hidden></svg>

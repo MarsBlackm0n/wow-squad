@@ -160,15 +160,17 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
                        for gain in week.gains if gain.character.id in pace_by_char
                        and pace_by_char[gain.character.id].weekly_estimate is not None)
     current_account = next((account for account in accounts if account.id == account_id), None)
+    main_character_ids = {account.main_character_id for account in accounts if account.main_character_id is not None}
     return render(request, "index.html", chars=chars,
                   player_groups=_squad_players(chars, accounts),
                   show_main_prompt=bool(current_account and not any(
                       c.id == current_account.main_character_id for c in mission_chars)), guild_directory=guilds.tracked_guilds(chars),
-                  main_character_ids={a.main_character_id for a in accounts if a.main_character_id is not None}, week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
+                  main_character_ids=main_character_ids, week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
                   race_comparison=race_comparison, race_total=race_total, race_total_level=race_total_level, race_replay=race_replay, equipment_chart=equipment_chart, equipment_series=equipment_series,
                   replay_ids={point["id"] for frame in race_replay for point in frame["points"]},
                   days=insights.chronicle(events, tz), ideas=insights.group_ideas(chars),
-                  goal=insights.squad_goal(chars, goal_cfg.target, goal_cfg.deadline, pace_by_char),
+                  goal=insights.squad_goal([c for c in chars if c.id in main_character_ids],
+                                           goal_cfg.target, goal_cfg.deadline, pace_by_char),
                   goal_cfg=goal_cfg, groups=groups, plans=insights.group_plans(groups, chars),
                   paces=pace_by_char, by_pace=by_pace, firsts=firsts, records=insights.records(events, tz),
                   seen=insights.recently_seen(chars), headlines=insights.headlines(events), accounts=accounts,

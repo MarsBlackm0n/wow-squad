@@ -261,9 +261,18 @@
     var plot = radar.querySelector("[data-radar-plot]");
     var tableWrap = radar.querySelector("[data-radar-table]");
     var colors = ["var(--teal)", "var(--violet)", "var(--gold)", "#df6384", "#5d9de8", "#85ad49"];
-    var mode = radar.querySelector("[data-radar-mode]");
+    var modes = radar.querySelectorAll("[data-radar-mode]");
+    var mode = "activity";
     var axes = [];
-    mode.addEventListener("change", draw);
+    modes.forEach(function (button) {
+      button.addEventListener("click", function () {
+        mode = button.dataset.radarMode;
+        modes.forEach(function (item) {
+          item.setAttribute("aria-pressed", String(item === button));
+        });
+        draw();
+      });
+    });
     var picker = chartPlayers(radar, new Map(series.map(function (row, i) {
       return [String(row.id), colors[i % colors.length]];
     })), draw);
@@ -281,7 +290,7 @@
       return [310 + Math.cos(angle) * radius, 235 + Math.sin(angle) * radius];
     }
     function draw() {
-      var group = mode.value;
+      var group = mode;
       var isSkills = group === "skills";
       axes = Array.from(new Set(series.flatMap(function (row) { return Object.keys(row[group] || {}); })));
       if (isSkills) axes.sort(function (a, b) { return a.localeCompare(b, "fr"); });

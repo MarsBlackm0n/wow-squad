@@ -422,6 +422,9 @@
         <dd>{% if goal.fastest %}<a class="kpi-value kpi-link" href="/perso/{{ goal.fastest.id }}">{{ goal.fastest.display_name }}</a><span class="kpi-note">+{{ goal.fastest_pace | number(1) }} niv. par jour{% if goal.fastest_estimated %} · estimé{% endif %}</span>{% else %}<span class="kpi-value">—</span><span class="kpi-note">aucun rythme positif disponible</span>{% endif %}</dd>
       </div>
     </dl>
+    <p class="meta">Objectif et rythme calculés sur les personnages principaux.</p>
+    {% else %}
+    <p class="meta">L’objectif niveau {{ goal_cfg.target }} apparaîtra dès qu’un personnage principal aura un niveau connu.</p>
     {% endif %}
     <div class="squad-chart-grid">
     <div id="squad-race" class="squad-stat-section">

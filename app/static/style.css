@@ -1210,14 +1210,7 @@ html { scroll-padding-top: 5.5rem; }
 .radar-table table { width: 100%; border-collapse: collapse; text-align: start; }
 .radar-table th, .radar-table td { text-align: start; padding: .35rem .55rem; border-bottom: 1px solid var(--line); }
 
-.profession-radar .radar-mode {
-  display: grid;
-  width: min(100%, 20rem);
-  gap: .35rem;
-  margin-block: .65rem 1rem;
-  font-weight: 650;
-}
-.radar-mode select, .field select:not([multiple]), .chart-control select {
+.field select:not([multiple]), .chart-control select {
   appearance: none;
   width: 100%;
   min-height: 44px;
@@ -1231,8 +1224,8 @@ html { scroll-padding-top: 5.5rem; }
   font: inherit;
   cursor: pointer;
 }
-.radar-mode select:hover, .field select:not([multiple]):hover, .chart-control select:hover { border-color: var(--teal); }
-.radar-mode select:focus-visible, .field select:not([multiple]):focus-visible, .chart-control select:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.field select:not([multiple]):hover, .chart-control select:hover { border-color: var(--teal); }
+.field select:not([multiple]):focus-visible, .chart-control select:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 .profession-radar [data-radar-plot] { width: min(100%, 39rem); height: auto; aspect-ratio: 620 / 485; }
 
 .squad-directory { display: grid; gap: 1.2rem; }
@@ -1447,3 +1440,18 @@ html { scroll-padding-top: 5.5rem; }
 .squad-replay .replay-specimen { height: auto; max-height: 13.5rem; margin-inline: auto; }
 .squad-replay .specimen-watermark { fill: var(--muted); opacity: .22; font-size: 29px; font-weight: 800; letter-spacing: .12em; }
 .specimen-badge { color: var(--gold); border: 1px solid currentColor; }
+
+.radar-switch {
+  display: inline-flex; flex-wrap: wrap; gap: .2rem; padding: .2rem;
+  border: 1px solid var(--line); border-radius: .65rem; background: var(--chart-bg);
+}
+.radar-switch button {
+  border: 1px solid transparent; border-radius: .45rem; background: transparent;
+  padding: .3rem .55rem; min-height: 34px; color: var(--muted);
+  font: inherit; font-size: .8rem; font-weight: 650; cursor: pointer;
+}
+.radar-switch button:hover { color: var(--text); }
+.radar-switch button[aria-pressed="true"] {
+  color: var(--teal); border-color: var(--teal);
+  background: color-mix(in srgb, var(--teal) 12%, var(--surface));
+}
