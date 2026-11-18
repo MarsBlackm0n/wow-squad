@@ -1,0 +1,22 @@
+{% from "_macros.html" import avatar %}
+<div class="faction-main-grid">
+{% for choice in main_choices %}
+<form method="post" action="{{ main_action }}" class="faction-main-choice{% if not choice.main_id %} main-character-glow{% endif %}" data-faction="{{ choice.faction }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="faction" value="{{ choice.faction }}">
+  <fieldset>
+    <legend>Principal {{ choice.label }}</legend>
+    <div class="main-character-options">
+      <label class="main-character-option"><input type="radio" name="personnage" value="0"{% if not choice.main_id %} checked{% endif %}> Aucun principal</label>
+      {% for c in choice.characters %}
+      <label class="main-character-option">
+        <input type="radio" name="personnage" value="{{ c.id }}"{% if c.id == choice.main_id %} checked{% endif %}>
+        {{ avatar(c, 'xs') }} <span>{{ c.display_name }} <small class="meta">Niv. {{ c.level or '?' }}</small></span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <button class="button button-secondary button-small" type="submit">Enregistrer</button>
+</form>
+{% endfor %}
+</div>

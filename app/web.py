@@ -150,6 +150,35 @@ def faction_controls(factions: set[str]) -> dict:
     }
 
 
+def automatic_account_sync(request: Request) -> Response | None:
+    """Renew the account-list authorization on visits, with a retry cooldown."""
+    if request.method != "GET" or request.url.path not in {"/", "/compte"}:
+        return None
+    worker = request.app.state.worker
+    account_id = request.session.get("account_id")
+    if not account_id or not settings.battlenet_login_enabled or not worker.bz:
+        return None
+    with SessionLocal() as db:
+        account = db.get(Account, account_id)
+    if account is None:
+        return None
+    if worker.user_token(account.battle_id):
+        worker.trigger_account_sync(account.id)
+        return None
+    now = utcnow().timestamp()
+    if now - request.session.get("auto_oauth_at", 0) < 3600:
+        return None
+    request.session["auto_oauth_at"] = now
+    request.session["oauth_auto_battle_id"] = account.battle_id
+    destination = request.url.path
+    if request.url.query:
+        destination += "?" + request.url.query
+    if request.query_params.get("repere") and request.url.path == "/":
+        destination += "#carte"
+    request.session["oauth_auto_return"] = destination
+    return RedirectResponse("/auth/battlenet?automatique=1", status_code=302)
+
+
 # --- Pages ---------------------------------------------------------------------------------------
 
 @router.get("/", response_class=HTMLResponse)
@@ -192,12 +221,11 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
                        for gain in week.gains if gain.character.id in pace_by_char
                        and pace_by_char[gain.character.id].weekly_estimate is not None)
     current_account = next((account for account in accounts if account.id == account_id), None)
-    main_character_ids = {account.main_character_id for account in accounts if account.main_character_id is not None}
+    main_character_ids = {cid for account in accounts for cid in account.main_ids}
     return render(request, "index.html", chars=chars, has_characters=bool(all_chars),
                   faction_total=len(all_chars), **faction_controls(factions),
                   player_groups=_squad_players(chars, accounts),
-                  show_main_prompt=bool(current_account and not any(
-                      c.id == current_account.main_character_id for c in mission_chars)), guild_directory=guilds.tracked_guilds(chars),
+                  show_main_prompt=bool(current_account and any(not choice["main_id"] for choice in main_choices(current_account, mission_chars))), guild_directory=guilds.tracked_guilds(chars),
                   main_character_ids=main_character_ids, week=week, weekly_extra=weekly_extra, race_charts=race_charts, race_rows=race_rows,
                   race_comparison=race_comparison, race_total=race_total, race_total_level=race_total_level, race_replay=race_replay, equipment_chart=equipment_chart, equipment_series=equipment_series,
                   replay_ids={point["id"] for frame in race_replay for point in frame["points"]},
@@ -229,27 +257,69 @@ async def admin_page(request: Request):
         chars = leaderboard(db)
         accounts = db.scalars(select(Account)).all()
         return render(request, "admin.html", chars=chars, player_groups=_squad_players(chars, accounts),
+                      sync_accounts=accounts,
+                      sync_ready_ids={a.id for a in accounts if request.app.state.worker.user_token(a.battle_id)},
                       groups=squad.get_groups(db),
                       admin_missions=admin_missions, mission_kinds=squad.MISSION_KINDS,
                       goal_cfg=squad.get_goal(db), targets=squad.community_targets(db),
                       metrics=squad.COMMUNITY_METRICS, add_form=request.session.pop("add_form", None) or {})
 
 
+@router.post("/administration/comptes/synchroniser")
+async def admin_sync_accounts(request: Request, csrf: str = Form("")):
+    require_admin(request)
+    check_csrf(request, csrf)
+    request.app.state.worker.trigger_cycle()
+    flash(request, "Actualisation lancée pour les comptes dont l’autorisation Battle.net est encore valide. Les autres seront reconnectés à leur prochaine visite du QG.")
+    return back("/administration#admin-sync")
+
+
+def main_choices(account: Account, chars) -> list[dict]:
+    return [
+        {"faction": side, "label": label, "characters": members,
+         "main_id": next((c.id for c in members if c.id in account.main_ids), None)}
+        for side, label in (("alliance", "Alliance"), ("horde", "Horde"))
+        if (members := [c for c in chars if c.account_id == account.id and faction_key(c.faction) == side])
+    ]
+
+
+def assign_main(db, account: Account, personnage: int, faction: str) -> None:
+    chars = db.scalars(select(Character).where(Character.account_id == account.id)).all()
+    char = next((c for c in chars if c.id == personnage), None)
+    side = faction or (faction_key(char.faction) if char else "")
+    if not side and not personnage:
+        previous = [c for c in chars if c.id in account.main_ids]
+        if len(previous) == 1:
+            side = faction_key(previous[0].faction)
+    if side not in ("alliance", "horde"):
+        raise HTTPException(400, "Choisis une faction connue pour ce personnage.")
+    if personnage and (char is None or faction_key(char.faction) != side):
+        raise HTTPException(400, "Choisis un personnage de ce compte et de cette faction.")
+    selected = {faction_key(c.faction): c.id for c in chars
+                if c.id in account.main_ids and faction_key(c.faction) in ("alliance", "horde")}
+    selected.pop(side, None)
+    if char:
+        selected[side] = char.id
+    account.main_characters = selected
+    # Keep compatibility with records created before per-faction selections.
+    if char:
+        account.main_character_id = char.id
+    elif account.main_character_id not in selected.values():
+        account.main_character_id = next(iter(selected.values()), None)
+
+
 @router.post("/administration/comptes/{account_id}/personnage-principal")
-async def admin_main_character(request: Request, account_id: int, personnage: int = Form(0), csrf: str = Form("")):
+async def admin_main_character(request: Request, account_id: int, personnage: int = Form(0),
+                               faction: str = Form(""), csrf: str = Form("")):
     require_admin(request)
     check_csrf(request, csrf)
     with SessionLocal() as db:
         account = db.get(Account, account_id, with_for_update=True)
         if account is None:
             raise HTTPException(404, "Compte introuvable.")
-        if personnage != 0:
-            char = db.get(Character, personnage)
-            if char is None or char.account_id != account.id:
-                raise HTTPException(400, "Choisis un personnage de ce compte.")
-        account.main_character_id = personnage or None
+        assign_main(db, account, personnage, faction)
         db.commit()
-    flash(request, "Personnage principal mis à jour.")
+    flash(request, "Personnage principal de la faction mis à jour.")
     return back(f"/administration#admin-player-account-{account_id}")
 
 
@@ -289,28 +359,23 @@ async def account_page(request: Request):
                            .order_by(Character.level.desc(), Character.name, Character.surname)).all() if account else []
     if not account:
         request.session.pop("account_id", None)
-    main_id = next((char.id for char in chars if char.id == account.main_character_id), None) if account else None
-    return render(request, "account.html", account=account, chars=chars, main_id=main_id)
+    return render(request, "account.html", account=account, chars=chars,
+                  main_ids=account.main_ids if account else set(),
+                  main_choices=main_choices(account, chars) if account else [])
 
 
 @router.post("/compte/personnage-principal")
 async def set_main_character(request: Request, personnage: int = Form(0), csrf: str = Form(""),
-                             action: str = Form("save")):
+                             action: str = Form("save"), faction: str = Form("")):
     check_csrf(request, csrf)
+    if action not in ("save", "remove"):
+        raise HTTPException(400, "Action inconnue.")
     with SessionLocal() as db:
         account_id = mission_account(db, request)
         account = db.get(Account, account_id, with_for_update=True)
-        if action == "remove":
-            account.main_character_id = None
-        elif action == "save":
-            char = db.get(Character, personnage)
-            if char is None or char.account_id != account_id:
-                raise HTTPException(403, "Choisis un personnage de ton compte.")
-            account.main_character_id = char.id
-        else:
-            raise HTTPException(400, "Action inconnue.")
+        assign_main(db, account, 0 if action == "remove" else personnage, faction)
         db.commit()
-    flash(request, "Personnage principal retiré." if action == "remove" else "Personnage principal enregistré.")
+    flash(request, "Personnage principal de la faction enregistré." if personnage else "Principal de la faction retiré.")
     return back("/compte#personnage-principal")
 
 
@@ -342,12 +407,14 @@ def _squad_players(chars, accounts):
         else:
             key = f"manual-{player.casefold()}"
             name = player or "Joueur non renseigné"
-        group = groups.setdefault(key, {"key": key, "name": name, "account": account, "main": None, "characters": []})
-        if account and char.id == account.main_character_id:
-            group["main"] = char
+        group = groups.setdefault(key, {"key": key, "name": name, "account": account, "main": None, "mains": [], "characters": []})
+        if account and char.id in account.main_ids:
+            group["mains"].append(char)
+            group["main"] = group["main"] or char
         else:
             group["characters"].append(char)
     for group in groups.values():
+        group["main_choices"] = main_choices(group["account"], group["mains"] + group["characters"]) if group["account"] else []
         group["characters"].sort(key=lambda char: (-char.level, char.display_name.casefold()))
     return sorted(groups.values(), key=lambda group: (group["name"].casefold(), group["key"]))
 
@@ -452,7 +519,7 @@ async def guild_page(request: Request, char_id: int):
         movements = guilds.roster_movements(db, char.region, slug)
         account_ids = {member.account_id for member in tracked if member.account_id is not None}
         accounts = db.scalars(select(Account).where(Account.id.in_(account_ids))).all()
-        main_character_ids = {account.main_character_id for account in accounts}
+        main_character_ids = {cid for account in accounts for cid in account.main_ids}
     bz = request.app.state.worker.bz
     guild = await guilds.fetch_guild(bz, slug) if bz and slug and bz.region == char.region else guilds.guild_details(None, None, None, None)
     return render(request, "guild.html", char=char, guild=guild, tracked=faction_characters(tracked, factions), movements=movements,
@@ -530,8 +597,12 @@ async def delete_character(request: Request, char_id: int, csrf: str = Form(""))
         name = char.display_name
         if char.account_id is not None:
             account = db.get(Account, char.account_id, with_for_update=True)
-            if account and account.main_character_id == char.id:
-                account.main_character_id = None
+            if account and char.id in account.main_ids:
+                account.main_characters = {
+                    side: cid for side, cid in (account.main_characters or {}).items() if cid != char.id
+                }
+                if account.main_character_id == char.id:
+                    account.main_character_id = next(iter(account.main_characters.values()), None)
             today = utcnow().astimezone(ZoneInfo(settings.timezone)).date()
             availability = db.get(EveningAvailability, (today, char.account_id))
             if availability and char_id in availability.character_ids:
@@ -1002,8 +1073,11 @@ async def send_recap(request: Request, csrf: str = Form("")):
 # --- Connexion Battle.net (ajoute automatiquement ses persos Forever) ----------------------------
 
 @router.get("/auth/battlenet")
-async def battlenet_login(request: Request, suite: str = ""):
+async def battlenet_login(request: Request, suite: str = "", automatique: int = 0):
     worker = request.app.state.worker
+    if not automatique:
+        request.session.pop("oauth_auto_return", None)
+        request.session.pop("oauth_auto_battle_id", None)
     return_to = "/compte" if is_authenticated(request) else "/connexion"
     if not settings.battlenet_login_enabled or not worker.bz:
         flash(request, "La connexion Battle.net n'est pas configurée (PUBLIC_URL et identifiants API).", "error")
@@ -1018,7 +1092,9 @@ async def battlenet_login(request: Request, suite: str = ""):
 async def battlenet_callback(request: Request, code: str = "", state: str = "", error: str = ""):
     worker = request.app.state.worker
     direct_login = not is_authenticated(request)
-    return_to = "/connexion" if direct_login else "/compte"
+    automatic_return = request.session.pop("oauth_auto_return", "")
+    expected_battle_id = request.session.pop("oauth_auto_battle_id", None)
+    return_to = automatic_return or ("/connexion" if direct_login else "/compte")
     expected_state = request.session.pop("oauth_state", "")
     map_destination = request.session.pop("oauth_map_destination", "")
     if error or not code or not expected_state or not hmac.compare_digest(
@@ -1034,6 +1110,10 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         message = (str(exc) if isinstance(exc, BlizzardCredentialsError)
                    else f"Battle.net a refusé la connexion ({exc}).")
         flash(request, message, "error")
+        return back(return_to)
+
+    if expected_battle_id is not None and int(info["id"]) != expected_battle_id:
+        flash(request, "Le navigateur est connecté à un autre compte Battle.net. Reconnecte ton compte depuis Mes personnages pour détecter tes nouveaux persos.", "error")
         return back(return_to)
 
     try:
@@ -1052,16 +1132,25 @@ async def battlenet_callback(request: Request, code: str = "", state: str = "", 
         added = -1
         if entries is not None:
             added = apply_account_characters(db, worker.bz.region, account, entries, add_missing=True,
-                                             reimport_removed=not direct_login)
+                                             reimport_removed=not direct_login and not automatic_return)
         db.commit()
         photos.refresh(db)
     worker.remember_user_token(account.battle_id, token["access_token"], int(token.get("expires_in", 86400)))
+    factions = request.session.get("factions")
     request.session.clear()
-    request.session.update(auth=True, account_id=account.id)
+    request.session.update(auth=True, account_id=account.id, auto_oauth_at=utcnow().timestamp())
+    if factions is not None:
+        request.session["factions"] = factions
     if added >= 0:
         worker.trigger_cycle()
+    if automatic_return:
+        if added > 0:
+            flash(request, f"{added} nouveau(x) personnage(s) détecté(s) automatiquement.")
+        elif entries is None:
+            flash(request, "Battle.net est reconnecté. La détection des nouveaux personnages sera retentée automatiquement.", "info")
+        return back(automatic_return)
     if added > 0:
-        flash(request, f"Compte lié : {added} perso(s) Forever ajouté(s). Ils seront suivis en continu, sans reconnexion.")
+        flash(request, f"Compte lié : {added} perso(s) Forever ajouté(s). Leur progression et les nouveaux personnages seront détectés automatiquement.")
     elif added == 0:
         flash(request, "Compte lié. Aucun nouveau perso : ils sont déjà suivis, ou pas encore niveau 10.", "info")
     else:

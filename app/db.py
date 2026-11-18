@@ -103,9 +103,16 @@ class Account(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     battle_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     main_character_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    main_characters: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     battletag: Mapped[str] = mapped_column(String(64))
     linked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def main_ids(self) -> set[int]:
+        if self.main_characters is not None:
+            return set(self.main_characters.values())
+        return {self.main_character_id} if self.main_character_id is not None else set()
 
 
 class SquadMission(Base):
@@ -198,6 +205,8 @@ def init_db() -> None:
         accounts = inspect(connection).get_columns("accounts")
         if not any(column["name"] == "main_character_id" for column in accounts):
             connection.execute(text("ALTER TABLE accounts ADD COLUMN main_character_id INTEGER"))
+        if not any(column["name"] == "main_characters" for column in accounts):
+            connection.execute(text("ALTER TABLE accounts ADD COLUMN main_characters JSON"))
         columns = inspect(connection).get_columns("characters")
         if not any(column["name"] == "preferred_role" for column in columns):
             connection.execute(text("ALTER TABLE characters ADD COLUMN preferred_role VARCHAR(12)"))

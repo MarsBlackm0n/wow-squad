@@ -24,6 +24,11 @@ class BlizzardError(Exception):
     pass
 
 
+
+class UserAuthorizationExpired(BlizzardError):
+    """The user's account listing requires a new OAuth authorization."""
+
+
 class BlizzardCredentialsError(BlizzardError):
     """Battle.net a refusé l'authentification du client OAuth."""
 
@@ -103,6 +108,8 @@ class Blizzard:
         rate_limit_retries = 0
         while True:
             resp = await self.http.get(url, headers={"Authorization": f"Bearer {bearer}"})
+            if resp.status_code in (401, 403) and token is not None:
+                raise UserAuthorizationExpired("Autorisation du compte Battle.net à renouveler.")
             if resp.status_code == 401 and token is None and not renewed:
                 bearer = await self._app_token(rejected_token=bearer)
                 renewed = True

@@ -21,7 +21,7 @@ from .blizzard import make_http
 from .config import settings
 from . import photos
 from .db import SessionLocal, init_db
-from .web import is_authenticated, render, router
+from .web import automatic_account_sync, is_authenticated, render, router
 from .worker import Worker
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -60,6 +60,9 @@ async def guard(request: Request, call_next):
             if path == "/":
                 destination += "#carte"
         return RedirectResponse(f"/connexion?suite={quote(destination)}", status_code=303)
+    automatic_redirect = automatic_account_sync(request)
+    if automatic_redirect is not None:
+        return automatic_redirect
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "same-origin")

@@ -41,11 +41,11 @@
   </fieldset>
   <div class="squad-player-grid">
     {% for group in player_groups %}
-    {% set featured = group.main or group.characters[0] %}
-    {% set others = group.characters if group.main else group.characters[1:] %}
+    {% set featured = group.mains or group.characters[:1] %}
+    {% set others = group.characters if group.mains else group.characters[1:] %}
     <article class="panel-block squad-player" data-squad-player="{{ group.key }}">
       <h4>{{ group.name }}</h4>
-      <ul class="squad-character-list" role="list">{{ squad_member(featured, group.main is not none) }}</ul>
+      <ul class="squad-character-list" role="list">{% for c in featured %}{{ squad_member(c, c.id in main_character_ids) }}{% endfor %}</ul>
       {% if others %}
       <details>
         <summary>{{ others | length }} autre{{ 's' if others | length > 1 }} personnage{{ 's' if others | length > 1 }}</summary>

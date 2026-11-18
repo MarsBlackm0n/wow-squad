@@ -10,42 +10,31 @@
 </section>
 
 {% if account and settings.battlenet_login_enabled %}
-<p><a class="button button-secondary" href="/auth/battlenet">Synchroniser Battle.net</a></p>
+<p class="meta">Tes nouveaux personnages sont détectés automatiquement à chaque cycle et quand tu reviens au QG. Si Battle.net le demande, reconnecte-toi pour renouveler cet accès.</p>
+<p><a class="button button-secondary button-small" href="/auth/battlenet">Relancer la connexion Battle.net</a></p>
 {% endif %}
 {% if account %}<details class="account-identity"><summary>Identifiant Battle.net</summary><p><code>{{ account.battle_id }}</code></p></details>{% endif %}
 
 {% if chars %}
-<section id="personnage-principal" class="panel-block main-character-prompt{% if not main_id %} main-character-glow{% endif %}" aria-labelledby="main-character-title">
-  <h2 id="main-character-title">{{ 'Ton personnage principal' if main_id else 'Choisis ton personnage principal' }}</h2>
-  {% if not main_id %}<p>Il sera mis en avant dans La squad et affiché par défaut sur les graphiques.</p>{% endif %}
-  <form method="post" action="/compte/personnage-principal" class="main-character-form">
-    <input type="hidden" name="csrf" value="{{ csrf }}">
-    <div class="field">
-      <label for="main-character-select">Personnage principal</label>
-      <select id="main-character-select" name="personnage" required>
-        {% if not main_id %}<option value="" selected disabled>Choisir un personnage</option>{% endif %}
-        {% for c in chars %}<option value="{{ c.id }}"{% if c.id == main_id %} selected{% endif %}>{{ c.display_name }}</option>{% endfor %}
-      </select>
-    </div>
-    <button class="button button-secondary" type="submit">{{ 'Modifier le principal' if main_id else 'Confirmer le principal' }}</button>
-    {% if main_id %}
-    <button class="button button-ghost" type="submit" name="action" value="remove" formnovalidate>Retirer le principal</button>
-    {% endif %}
-  </form>
+<section id="personnage-principal" class="panel-block main-character-prompt" aria-labelledby="main-character-title">
+  <h2 id="main-character-title">Tes personnages principaux</h2>
+  <p>Choisis un principal par faction. Ils seront mis en avant dans La Squad et cochés par défaut sur les graphiques.</p>
+  {% with main_action = '/compte/personnage-principal' %}{% include "_main_choices.html" %}{% endwith %}
+  {% if not main_choices %}<p class="meta">La sélection sera disponible quand la faction de tes personnages sera connue.</p>{% endif %}
 </section>
 <ul class="roster" role="list" aria-label="Mes personnages Forever">
   {% for char in chars %}
   {% set summary = (char.state or {}).get('account_summary', {}) %}
   {% set faction = char.faction or summary.faction or '' %}
   <li class="account-roster-entry" id="personnage-{{ char.id }}">
-    <article class="roster-card{% if char.id == main_id %} main-character-glow{% endif %}" data-faction="{{ faction | faction_key }}"
+    <article class="roster-card{% if char.id in main_ids %} main-character-glow{% endif %}" data-faction="{{ faction | faction_key }}"
        style="--class-color: {{ char.class_name | class_color }}">
       <a class="roster-profile-link" href="/perso/{{ char.id }}">
         <div class="roster-card-head">
           {{ avatar(char) }}
           <div>
             <h2>{{ char.display_name }}</h2>
-            {% if char.id == main_id %}<span class="main-character-badge">Personnage principal</span>{% endif %}
+            {% if char.id in main_ids %}<span class="main-character-badge">Personnage principal</span>{% endif %}
             <p class="meta">{{ [char.race or summary.race, char.class_name or summary.class_name] | select | join(' · ') }}</p>
           </div>
           {{ icon('chevron', 'roster-chevron') }}
@@ -77,7 +66,7 @@
 <section id="personnage-principal" class="panel-block account-empty">
   {% if account %}
   <h2>Aucun personnage importé</h2>
-  <p>Battle.net peut mettre du temps à afficher un perso Forever. Une fois le niveau 10 atteint, déconnecte-toi du jeu puis relance la synchronisation.</p>
+  <p>Battle.net peut mettre du temps à afficher un perso Forever. Une fois le niveau 10 atteint, déconnecte-toi du jeu puis reviens au QG : la détection est automatique dès que Blizzard le référence.</p>
   {% else %}
   <h2>Retrouve tes personnages Forever</h2>
   {% if settings.battlenet_login_enabled %}

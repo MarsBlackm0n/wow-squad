@@ -1540,3 +1540,16 @@ html { scroll-padding-top: 5.5rem; }
   :root:not([data-theme]) .faction-toggle[data-faction="alliance"] { --faction-tone: #1c63ad; }
   :root:not([data-theme]) .faction-toggle[data-faction="horde"] { --faction-tone: #b3322d; }
 }
+
+.faction-main-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: .8rem; margin-top: .75rem; width: 100%; }
+.faction-main-choice { border: 1px solid var(--line-strong); border-radius: var(--radius); padding: .75rem; min-width: 0; background: var(--surface); }
+.faction-main-choice fieldset { border: 0; padding: 0; margin: 0 0 .65rem; min-width: 0; }
+.faction-main-choice legend { font-weight: 750; margin-bottom: .5rem; }
+.main-character-options { display: flex; flex-wrap: wrap; gap: .4rem; }
+.main-character-option { display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .55rem; border: 1px solid var(--line); border-radius: .5rem; font-size: .8rem; cursor: pointer; }
+.main-character-option:has(input:checked) { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 12%, var(--surface)); }
+.main-character-option input { accent-color: var(--gold); }
+.main-character-option:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.faction-main-choice[data-faction="alliance"] { border-top: 2px solid var(--alliance); }
+.faction-main-choice[data-faction="horde"] { border-top: 2px solid var(--horde); }
