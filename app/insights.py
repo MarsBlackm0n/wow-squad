@@ -385,12 +385,14 @@ def encounter_kind(event: Event) -> str | None:
     return None
 
 
-def firsts(db: Session) -> list[First]:
+def firsts(db: Session, character_ids: set[int] | None = None) -> list[First]:
     """Le premier de la squad à atteindre chaque palier de 10 niveaux, et la première monture."""
     out: dict[str, First] = {}
     rows = db.scalars(select(Event).where(Event.kind.in_(("level", "level_milestone", "mount", "encounter")))
                       .order_by(Event.at)).all()
     for e in rows:
+        if character_ids is not None and e.character_id not in character_ids:
+            continue
         data = e.data or {}
         if e.kind == "mount":
             out.setdefault("mount", First("Première monture", e.character, e.at))

@@ -10,6 +10,8 @@
   <p class="lead">{{ faction_badge(guild.faction or char.faction) }}
     {% if guild.ruleset or char.ruleset %}<span class="pill">{{ (guild.ruleset or char.ruleset) | ruleset_label }}</span>{% endif %}</p>
 </header>
+{% include "_faction_filter.html" %}
+{% if guild_visible %}
 <dl class="activity-metrics stats-metrics">
   <div class="panel-block"><dt>Membres de la guilde</dt><dd><strong>{{ (guild.count if guild.count is not none else (guild.members | length if guild.roster_available else none)) | number }}</strong></dd></div>
   <div class="panel-block"><dt>Persos suivis par la squad</dt><dd><strong>{{ tracked | length }}</strong></dd></div>
@@ -81,4 +83,7 @@
     {% endif %}
   </aside>
 </div>
+{% else %}
+<p class="empty" role="status">Cette guilde est masquée par le filtre de faction. Active sa faction pour afficher ses statistiques.</p>
+{% endif %}
 {% endblock %}

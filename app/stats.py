@@ -56,9 +56,10 @@ class Week:
         return sum(g.achievements for g in self.gains)
 
 
-def compute_week(db: Session, since: datetime | None = None) -> Week:
+def compute_week(db: Session, since: datetime | None = None, *,
+                 characters: list[Character] | None = None) -> Week:
     since = since or utcnow() - timedelta(days=7)
-    chars = db.scalars(select(Character)).all()
+    chars = db.scalars(select(Character)).all() if characters is None else characters
     gains = {c.id: Gains(c) for c in chars}
     for ev in db.scalars(select(Event).where(Event.at >= since)).all():
         g = gains.get(ev.character_id)

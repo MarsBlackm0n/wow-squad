@@ -1,0 +1,16 @@
+<div class="faction-filter" role="group" aria-label="Filtrer les personnages et statistiques par faction">
+  <span class="faction-filter-label">Factions</span>
+  {% for option in faction_options %}
+  <form method="get" action="{{ request.url.path }}" data-faction-form>
+    {% for key, value in request.query_params.multi_items() if key != 'factions' %}
+    <input type="hidden" name="{{ key }}" value="{{ value }}">
+    {% endfor %}
+    <input type="hidden" name="factions" value="{{ option.value }}">
+    <button type="submit" class="faction-toggle" data-faction="{{ option.key }}" aria-pressed="{{ 'true' if option.active else 'false' }}">
+      <span class="faction-toggle-mark" aria-hidden="true">{{ '✓' if option.active else '+' }}</span>
+      {{ option.label }}
+    </button>
+  </form>
+  {% endfor %}
+  {% if faction_total is defined %}<span class="meta faction-filter-count">{{ chars | length }} / {{ faction_total }} personnages</span>{% endif %}
+</div>

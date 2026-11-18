@@ -119,7 +119,12 @@
 
 </section>
 
-{% if not chars %}
+{% include "_faction_filter.html" %}
+{% if has_characters and not chars %}
+<p class="empty faction-empty" role="status">{{ 'Aucune faction activée. Active Alliance ou Horde pour afficher les personnages et leurs statistiques.' if not factions else 'Aucun personnage suivi dans la faction sélectionnée.' }}</p>
+{% endif %}
+
+{% if not has_characters %}
 <div id="ce-soir">{% include "_main_character_prompt.html" %}{% include "_evening_overview.html" %}</div>
 <p><a href="/carte">Carte d’Azeroth</a></p>
 <section class="onboarding" aria-labelledby="onboarding-title">

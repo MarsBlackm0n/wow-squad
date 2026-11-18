@@ -1508,3 +1508,35 @@ html { scroll-padding-top: 5.5rem; }
 .evening-suggestions .idea-range .instance-guide-link { min-height: 24px; gap: .25rem; }
 .evening-suggestions .idea-members { margin: 0; gap: .3rem; }
 .evening-suggestions .idea .roles { padding-top: .55rem; }
+
+.faction-filter {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .45rem;
+  margin: .75rem 0; padding: .5rem .7rem;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface);
+}
+.faction-filter-label { margin-right: .25rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.faction-filter form { margin: 0; }
+.faction-toggle {
+  display: inline-flex; align-items: center; gap: .35rem;
+  min-height: 38px; padding: .35rem .65rem;
+  border: 1px solid var(--line-strong); border-radius: .5rem;
+  color: var(--muted); background: transparent;
+  font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer;
+}
+.faction-toggle[data-faction="alliance"] { --faction-tone: #69b5ff; }
+.faction-toggle[data-faction="horde"] { --faction-tone: #ff8278; }
+.faction-toggle[aria-pressed="true"] {
+  color: var(--faction-tone); border-color: var(--faction-tone);
+  background: color-mix(in srgb, var(--faction-tone) 12%, var(--surface));
+}
+.faction-toggle:hover { color: var(--text); border-color: var(--faction-tone); }
+.faction-toggle:focus-visible { outline: 2px solid var(--faction-tone); outline-offset: 3px; }
+.faction-toggle-mark { width: .85rem; text-align: center; }
+.faction-filter-count { margin-left: auto; font-size: .75rem; }
+:root[data-theme="light"] .faction-toggle[data-faction="alliance"] { --faction-tone: #1c63ad; }
+:root[data-theme="light"] .faction-toggle[data-faction="horde"] { --faction-tone: #b3322d; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .faction-toggle[data-faction="alliance"] { --faction-tone: #1c63ad; }
+  :root:not([data-theme]) .faction-toggle[data-faction="horde"] { --faction-tone: #b3322d; }
+}

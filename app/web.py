@@ -126,32 +126,64 @@ async def logout(request: Request, csrf: str = Form("")):
     return back("/connexion")
 
 
+def selected_factions(request: Request) -> set[str]:
+    known = {"alliance", "horde"}
+    value = request.query_params.get("factions")
+    if value is not None and (value == "none" or set(value.split(",")) <= known):
+        request.session["factions"] = sorted(set(value.split(",")) & known)
+    return set(request.session.get("factions", ["alliance", "horde"])) & known
+
+
+def faction_characters(chars, factions: set[str]):
+    return [c for c in chars if faction_key(c.faction) in factions
+            or (len(factions) == 2 and faction_key(c.faction) == "neutral")]
+
+
+def faction_controls(factions: set[str]) -> dict:
+    return {
+        "factions": factions,
+        "faction_options": [
+            {"key": key, "label": label, "active": key in factions,
+             "value": ",".join(sorted(factions ^ {key})) or "none"}
+            for key, label in (("alliance", "Alliance"), ("horde", "Horde"))
+        ],
+    }
+
+
 # --- Pages ---------------------------------------------------------------------------------------
 
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request, priorite: str = "group", suggestion: str = "", zone: str = "", repere: str = ""):
+    factions = selected_factions(request)
     tz = settings.timezone
     today = utcnow().astimezone(ZoneInfo(tz)).date()
     priority = priorite if priorite in expedition.PREFERENCES else "group"
     with SessionLocal() as db:
-        chars = leaderboard(db)
-        week = compute_week(db)
-        events = insights.load_events(db, days=30)
+        all_chars = leaderboard(db)
+        chars = faction_characters(all_chars, factions)
+        char_ids = {c.id for c in chars}
+        week = compute_week(db, characters=chars)
+        events = [e for e in insights.load_events(db, days=30) if e.character_id in char_ids]
         race_charts, race_rows, race_comparison, race_total, race_total_level, race_replay, equipment_chart, equipment_series = _race_chart(db, chars)
-        firsts = insights.firsts(db)
+        firsts = insights.firsts(db, character_ids=char_ids)
         accounts = db.scalars(select(Account).order_by(Account.battletag)).all()
         goal_cfg, groups = squad.get_goal(db), squad.get_groups(db)
         pace_by_char = insights.paces(db, chars, goal_cfg.target, tz)
-        targets = squad.community_targets(db)
+        targets = squad.community_targets(db, character_ids=char_ids if len(factions) < 2 else None)
         missions, completed_missions = squad.mission_rosters(db, pace_by_char, utcnow().astimezone(ZoneInfo(tz)).date())
         account_id = request.session.get("account_id")
-        mission_chars = [c for c in chars if account_id is not None and c.account_id == account_id]
-        owners_by_character = {c.id: c.account_id for c in chars}
+        mission_chars = [c for c in all_chars if account_id is not None and c.account_id == account_id]
+        owners_by_character = {c.id: c.account_id for c in all_chars}
         availability = [
             row for row in db.scalars(select(EveningAvailability).where(EveningAvailability.day == today))
             if row.status == "no" or any(owners_by_character.get(cid) == row.account_id for cid in row.character_ids)
         ]
         my_availability = next((row for row in availability if row.account_id == account_id), None)
+        availability = [
+            row for row in availability if len(factions) == 2 or any(
+                cid in char_ids and owners_by_character.get(cid) == row.account_id for cid in row.character_ids)
+            or (row.account_id == account_id)
+        ]
         availability_names = {a.id: a.battletag.split("#")[0] for a in accounts}
         suggested_instance = INSTANCE_CATALOG.get(suggestion)
     worker = request.app.state.worker
@@ -161,7 +193,8 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
                        and pace_by_char[gain.character.id].weekly_estimate is not None)
     current_account = next((account for account in accounts if account.id == account_id), None)
     main_character_ids = {account.main_character_id for account in accounts if account.main_character_id is not None}
-    return render(request, "index.html", chars=chars,
+    return render(request, "index.html", chars=chars, has_characters=bool(all_chars),
+                  faction_total=len(all_chars), **faction_controls(factions),
                   player_groups=_squad_players(chars, accounts),
                   show_main_prompt=bool(current_account and not any(
                       c.id == current_account.main_character_id for c in mission_chars)), guild_directory=guilds.tracked_guilds(chars),
@@ -173,7 +206,8 @@ async def home(request: Request, priorite: str = "group", suggestion: str = "", 
                                            goal_cfg.target, goal_cfg.deadline, pace_by_char),
                   goal_cfg=goal_cfg, groups=groups, plans=insights.group_plans(groups, chars),
                   paces=pace_by_char, by_pace=by_pace, firsts=firsts, records=insights.records(events, tz),
-                  seen=insights.recently_seen(chars), headlines=insights.headlines(events), accounts=accounts,
+                  seen=insights.recently_seen(chars), headlines=insights.headlines(events),
+                  accounts=[a for a in accounts if len(factions) == 2 or any(c.account_id == a.id for c in chars)],
                   targets=targets, missions=missions, completed_missions=completed_missions, mission_chars=mission_chars,
                   mission_kinds=squad.MISSION_KINDS, mission_roles=squad.MISSION_ROLES, account_id=account_id,
                   availability=availability, availability_names=availability_names, my_availability=my_availability,
@@ -407,6 +441,7 @@ async def character_page(request: Request, char_id: int):
 
 @router.get("/perso/{char_id}/guilde", response_class=HTMLResponse)
 async def guild_page(request: Request, char_id: int):
+    factions = selected_factions(request)
     with SessionLocal() as db:
         char = db.get(Character, char_id)
         if not char or not char.guild:
@@ -420,8 +455,10 @@ async def guild_page(request: Request, char_id: int):
         main_character_ids = {account.main_character_id for account in accounts}
     bz = request.app.state.worker.bz
     guild = await guilds.fetch_guild(bz, slug) if bz and slug and bz.region == char.region else guilds.guild_details(None, None, None, None)
-    return render(request, "guild.html", char=char, guild=guild, tracked=tracked, movements=movements, main_character_ids=main_character_ids,
-                  player_groups=_squad_players(tracked, accounts),
+    return render(request, "guild.html", char=char, guild=guild, tracked=faction_characters(tracked, factions), movements=movements,
+                  guild_visible=bool(faction_characters([char], factions)),
+                  **faction_controls(factions), main_character_ids=main_character_ids,
+                  player_groups=_squad_players(faction_characters(tracked, factions), accounts),
                   tracked_by_slug={member.slug: member for member in tracked})
 
 

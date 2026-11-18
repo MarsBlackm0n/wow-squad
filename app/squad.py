@@ -125,17 +125,24 @@ COMMUNITY_METRICS = {
 }
 
 
-def community_targets(db: Session) -> list[dict]:
+def community_targets(db: Session, character_ids: set[int] | None = None) -> list[dict]:
     targets = (kv_get(db, "community_targets") or {}).get("items", [])
     results = []
     for target in targets:
         start = datetime.fromisoformat(target["start"])
         kind = target["kind"]
         if kind == "outings":
-            progress = len(db.scalars(select(SquadMission.id).where(SquadMission.completed_at >= start)).all())
+            query = select(SquadMission.id).where(SquadMission.completed_at >= start)
+            if character_ids is not None:
+                query = query.where(SquadMission.id.in_(
+                    select(MissionSignup.mission_id).where(MissionSignup.character_id.in_(character_ids))))
+            progress = len(db.scalars(query).all())
         else:
             kinds = ("level", "level_milestone") if kind == "level" else (kind,)
-            rows = db.scalars(select(Event.data).where(Event.kind.in_(kinds), Event.at >= start)).all()
+            query = select(Event.data).where(Event.kind.in_(kinds), Event.at >= start)
+            if character_ids is not None:
+                query = query.where(Event.character_id.in_(character_ids))
+            rows = db.scalars(query).all()
             progress = sum(max(0, row.get("to", 0) - row.get("from", 0)) if kind == "level"
                            else row.get("count", 0) for row in rows if row)
         results.append({**target, "label": COMMUNITY_METRICS[kind], "progress": progress})

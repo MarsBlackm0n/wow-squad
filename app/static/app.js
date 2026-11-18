@@ -2,6 +2,12 @@
 (function () {
   "use strict";
 
+  document.querySelectorAll("[data-faction-form]").forEach(function (form) {
+    form.addEventListener("submit", function () {
+      form.action = window.location.pathname + window.location.hash;
+    });
+  });
+
   var pointTip = document.createElement("div");
   pointTip.className = "chart-point-tip";
   pointTip.hidden = true;
